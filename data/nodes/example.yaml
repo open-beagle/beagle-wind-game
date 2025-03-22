@@ -1,0 +1,66 @@
+nodes:
+  - id: "node-241"
+    name: "游戏机-241"
+    model: "Beagle-Wind-2024"
+    hardware: |
+      CPU: Intel i9-13900K
+      RAM: 128GB DDR5-7000
+      GPU: NVIDIA RTX 4090 24GB
+      Storage: 2TB NVMe SSD
+      Network: 2.5G
+    network: |
+      IP: 192.168.1.241
+      Speed: 2.5Gbps
+    location: "北京比格"
+    status: "ready"
+    resources: |
+      CPU Usage: 5%
+      RAM Usage: 12%
+      GPU Usage: 0%
+      Storage: 1.5TB Free
+    online: true
+    last_online: "2024-03-21T10:00:00Z"
+
+  - id: "node-243"
+    name: "游戏机-243"
+    model: "Beagle-Wind-2024"
+    hardware: |
+      CPU: Intel i9-13900K
+      RAM: 128GB DDR5-7000
+      GPU: NVIDIA RTX 4090 24GB
+      Storage: 2TB NVMe SSD
+      Network: 2.5G
+    network: |
+      IP: 192.168.1.243
+      Speed: 2.5Gbps
+    location: "北京比格"
+    status: "ready"
+    resources: |
+      CPU Usage: 3%
+      RAM Usage: 10%
+      GPU Usage: 0%
+      Storage: 1.6TB Free
+    online: true
+    last_online: "2024-03-21T10:00:00Z"
+
+  - id: "node-246"
+    name: "游戏机-246"
+    model: "Beagle-Wind-2024"
+    hardware: |
+      CPU: Intel i9-13900K
+      RAM: 128GB DDR5-7000
+      GPU: NVIDIA RTX 4090 24GB
+      Storage: 2TB NVMe SSD
+      Network: 2.5G
+    network: |
+      IP: 192.168.1.246
+      Speed: 2.5Gbps
+    location: "北京比格"
+    status: "ready"
+    resources: |
+      CPU Usage: 3%
+      RAM Usage: 10%
+      GPU Usage: 0%
+      Storage: 1.7TB Free
+    online: true
+    last_online: "2024-03-21T10:00:00Z"

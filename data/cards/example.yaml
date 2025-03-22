@@ -1,0 +1,163 @@
+cards:
+  - id: "lutris-20200917"
+    name: "哈迪斯：逃出地狱"
+    sort_name: "Hades"
+    slug_name: "hades"
+    type: "Roguelike"
+    description: "在这款获得多个游戏大奖的动作地牢游戏中，你将扮演冥界王子扎格列欧斯，运用奥林匹斯众神赐予的力量挑战地狱，试图逃出冥界。"
+    cover: "https://cdn.cloudflare.steamstatic.com/steam/apps/1145360/header.jpg"
+    category: "动作地牢"
+    release_date: "2020-09-17"
+    tags: |
+      - 单人游戏
+      - Roguelike
+      - 动作
+      - 地牢探索
+      - 希腊神话
+    files: |
+      - path: /games/hades/Hades.exe
+        size: 15GB
+        md5: abc123def456
+      - path: /games/hades/Content.pak
+        size: 8GB
+        md5: def456abc123
+    updates: |
+      - version: 1.38.2
+        date: 2024-03-21
+        size: 500MB
+        changes: 修复已知问题和性能优化
+    patches: |
+      - version: 1.38.3
+        date: 2024-03-22
+        size: 100MB
+        changes: 修复存档同步问题
+    params: |
+      -resolution: 1920x1080
+      -graphics: high
+      -language: zh-CN
+      -vsync: enabled
+    settings: |
+      graphics:
+        quality: high
+        shadows: enabled
+        anti-aliasing: 4x
+        vsync: true
+      audio:
+        master: 100%
+        music: 80%
+        effects: 90%
+        voice: 85%
+    permissions: |
+      - read: true
+      - write: true
+      - execute: true
+      - network: true
+
+  - id: "lutris-20220225"
+    name: "艾尔登法环"
+    sort_name: "Elden Ring"
+    slug_name: "EldenRing"
+    type: "ARPG"
+    description: "在广阔的开放世界中探索未知的土地，与强大的敌人战斗，揭开交错世界的秘密。一款由宫崎英高与乔治·R·R·马丁联手打造的黑暗奇幻动作RPG。"
+    cover: "https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg"
+    category: "动作角色扮演"
+    release_date: "2022-02-25"
+    tags: |
+      - 开放世界
+      - 动作RPG
+      - 魂系列
+      - 黑暗奇幻
+      - 剧情
+    files: |
+      - path: /games/eldenring/eldenring.exe
+        size: 60GB
+        md5: ghi789jkl012
+      - path: /games/eldenring/data.pak
+        size: 45GB
+        md5: jkl012ghi789
+    updates: |
+      - version: 1.10
+        date: 2024-03-21
+        size: 2GB
+        changes: 新增暗影的王冠DLC内容
+    patches: |
+      - version: 1.10.1
+        date: 2024-03-22
+        size: 500MB
+        changes: 平衡性调整和bug修复
+    params: |
+      -resolution: 1920x1080
+      -graphics: ultra
+      -language: zh-CN
+      -hdr: enabled
+    settings: |
+      graphics:
+        quality: ultra
+        shadows: enabled
+        anti-aliasing: 8x
+        ray-tracing: enabled
+        hdr: enabled
+      audio:
+        master: 100%
+        music: 90%
+        effects: 100%
+        voice: 95%
+    permissions: |
+      - read: true
+      - write: true
+      - execute: true
+      - network: true
+
+  - id: "lutris-20000323"
+    name: "合金弹头3"
+    sort_name: "Metal Slug 3"
+    slug_name: "MetalSlug3"
+    type: "ACT"
+    description: "经典的横版射击游戏，玩家将扮演精英士兵，与敌人展开激烈的枪战。游戏支持双人合作模式，让您与朋友一起体验紧张刺激的战斗。"
+    cover: "https://www.mobygames.com/images/covers/l/93155-metal-slug-3-windows-front-cover.jpg"
+    category: "横版射击"
+    release_date: "2000-03-23"
+    tags: |
+      - 街机
+      - 横版射击
+      - 合作模式
+      - 复古
+      - 像素风格
+    files: |
+      - path: /games/metalslug3/mslug3.exe
+        size: 200MB
+        md5: xyz789abc123
+      - path: /games/metalslug3/data.pak
+        size: 500MB
+        md5: abc123xyz789
+    updates: |
+      - version: 1.0.3
+        date: 2024-03-21
+        size: 50MB
+        changes: 优化在线联机体验
+    patches: |
+      - version: 1.0.4
+        date: 2024-03-22
+        size: 20MB
+        changes: 修复音频延迟问题
+    params: |
+      -resolution: 1920x1080
+      -scaling: pixel-perfect
+      -language: zh-CN
+    settings: |
+      graphics:
+        scaling: pixel-perfect
+        filter: none
+        scanlines: optional
+      audio:
+        master: 100%
+        music: 85%
+        effects: 90%
+      input:
+        keyboard: enabled
+        gamepad: enabled
+    permissions: |
+      - read: true
+      - write: true
+      - execute: true
+      - network: true

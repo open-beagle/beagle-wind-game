@@ -1,0 +1,48 @@
+# 数据库设计
+tables:
+  # 游戏平台表 - 已移除，改为使用 data/platforms/example.yaml 作为静态配置
+
+  # 游戏节点表
+  nodes:
+    - name: id                  # 节点ID
+      type: TEXT PRIMARY KEY
+    - name: name               # 节点名称
+      type: TEXT
+    - name: hardware           # 硬件配置 (JSON)
+      type: TEXT
+    - name: network           # 网络配置 (JSON)
+      type: TEXT
+    - name: status            # 状态
+      type: TEXT
+    - name: location          # 位置
+      type: TEXT
+    - name: created_at        # 创建时间
+      type: DATETIME
+    - name: updated_at        # 更新时间
+      type: DATETIME
+
+  # 游戏卡表
+  cards:
+    - name: id                # 卡片ID
+      type: TEXT PRIMARY KEY
+    - name: name              # 游戏名称
+      type: TEXT
+    - name: platform_id       # 平台ID（关联platforms.yaml中的id）
+      type: TEXT
+    - name: node_id          # 节点ID（关联nodes表）
+      type: TEXT
+    - name: status           # 状态
+      type: TEXT
+    - name: config           # 游戏配置 (JSON)
+      type: TEXT
+    - name: created_at       # 创建时间
+      type: DATETIME
+    - name: updated_at       # 更新时间
+      type: DATETIME
+
+# 外键关系
+foreign_keys:
+  - table: cards
+    columns:
+      - name: node_id
+        references: nodes(id) 
