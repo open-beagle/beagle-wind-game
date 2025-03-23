@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Xbox 手柄背景 -->
+  <path d="M20 40 C20 20 108 20 108 40 L108 88 C108 108 20 108 20 88 Z" 
+        fill="#107C10" opacity="0.1"/>
+  
+  <!-- 云元素 -->
+  <path d="M30 50 C30 45 35 40 40 40 C45 40 50 45 50 50 C55 50 60 45 60 40 C65 40 70 45 70 50 C70 55 65 60 60 60 L40 60 C35 60 30 55 30 50" 
+        fill="#00B4D8" opacity="0.8"/>
+  
+  <!-- 比格犬头部 -->
+  <path d="M45 45 C45 40 50 35 55 35 C60 35 65 40 65 45 C65 50 60 55 55 55 C50 55 45 50 45 45" 
+        fill="#0077B6"/>
+  
+  <!-- 比格犬耳朵 -->
+  <path d="M40 45 C40 40 45 35 50 35" 
+        stroke="#0077B6" stroke-width="4" fill="none"/>
+  <path d="M70 45 C70 40 65 35 60 35" 
+        stroke="#0077B6" stroke-width="4" fill="none"/>
+  
+  <!-- 比格犬眼睛 -->
+  <circle cx="50" cy="45" r="2" fill="#FF6B6B"/>
+  <circle cx="60" cy="45" r="2" fill="#FF6B6B"/>
+  
+  <!-- 比格犬鼻子 -->
+  <path d="M55 48 C55 47 56 46 57 46 C58 46 59 47 59 48" 
+        fill="#0077B6"/>
+</svg> 

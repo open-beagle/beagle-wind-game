@@ -6,6 +6,10 @@ platforms:
     image: "registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-desktop"
     bin: "/usr/games/lutris"
     data: "/data/wind"
+    files:
+      - id: "data"
+        type: "system"
+        url: "https://github.com/open-beagle/beagle-wind-game/releases/download/v1.0.0/lutris-data.tar.xz"
     features: |
       - 支持多种游戏源整合
       - Wine/Proton 支持
@@ -24,6 +28,10 @@ platforms:
     image: "registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-desktop"
     bin: "/usr/bin/steam"
     data: "/data/wind"
+    files:
+      - id: "data"
+        type: "system"
+        url: "https://github.com/open-beagle/beagle-wind-game/releases/download/v1.0.0/steam-data.tar.xz"
     features: |
       - Steam Play 兼容层
       - 云存档同步
@@ -44,9 +52,18 @@ platforms:
     bin: "$HOME/.local/bin/yuzu"
     data: "/data/wind"
     files:
-      - appimage: "https://github.com/GamerSwir2/yuzu-linux/releases/download/stable/yuzu-mainline-20240304-537296095.AppImage"
-      - keys: "https://github.com/GamerSwir2/yuzu-linux/releases/download/stable/prod.keys"
-      - firmware: "https://github.com/GamerSwir2/yuzu-linux/releases/download/stable/firmware-16.1.0.zip"
+      - id: "data"
+        type: "system"
+        url: "https://github.com/open-beagle/beagle-wind-game/releases/download/v1.0.0/switch-data.tar.xz"
+      - id: "appimage"
+        type: "appimage"
+        url: "https://github.com/GamerSwir2/yuzu-linux/releases/download/stable/yuzu-mainline-20240304-537296095.AppImage"
+      - id: "keys"
+        type: "keys"
+        url: "https://github.com/GamerSwir2/yuzu-linux/releases/download/stable/prod.keys.zip"
+      - id: "firmware"
+        type: "firmware"
+        url: "https://github.com/GamerSwir2/yuzu-linux/releases/download/stable/firmware-16.1.0.zip"
     game:
       exe: "yuzu-mainline-20240304-537296095.AppImage"
     installer:

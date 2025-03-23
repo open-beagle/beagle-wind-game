@@ -68,6 +68,24 @@ CREATE TABLE IF NOT EXISTS game_instances (
     stopped_at TIMESTAMP WITH TIME ZONE
 );
 
+-- 创建用户游戏状态表
+CREATE TABLE IF NOT EXISTS user_game_status (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+    card_id VARCHAR(36) NOT NULL REFERENCES game_cards(id),
+    last_run_time TIMESTAMP WITH TIME ZONE,
+    total_play_time INTEGER DEFAULT 0, -- 累计运行时长（分钟）
+    run_count INTEGER DEFAULT 0,       -- 运行次数
+    last_save_time TIMESTAMP WITH TIME ZONE,
+    game_progress TEXT,                -- 游戏进度
+    avg_session_time INTEGER,          -- 平均每次运行时长（分钟）
+    weekly_frequency INTEGER,          -- 最近一周运行频率
+    completion_rate INTEGER,           -- 游戏完成度（百分比）
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, card_id)           -- 确保每个用户对每个游戏只有一条状态记录
+);
+
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_game_nodes_status ON game_nodes(status);
 CREATE INDEX IF NOT EXISTS idx_game_nodes_online ON game_nodes(online);
@@ -78,6 +96,9 @@ CREATE INDEX IF NOT EXISTS idx_game_instances_status ON game_instances(status);
 CREATE INDEX IF NOT EXISTS idx_game_instances_node_id ON game_instances(node_id);
 CREATE INDEX IF NOT EXISTS idx_game_instances_platform_id ON game_instances(platform_id);
 CREATE INDEX IF NOT EXISTS idx_game_instances_card_id ON game_instances(card_id);
+CREATE INDEX IF NOT EXISTS idx_user_game_status_user_id ON user_game_status(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_game_status_card_id ON user_game_status(card_id);
+CREATE INDEX IF NOT EXISTS idx_user_game_status_last_run_time ON user_game_status(last_run_time);
 
 -- 创建更新时间触发器函数
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -106,5 +127,10 @@ CREATE TRIGGER update_game_cards_updated_at
 
 CREATE TRIGGER update_game_instances_updated_at
     BEFORE UPDATE ON game_instances
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_game_status_updated_at
+    BEFORE UPDATE ON user_game_status
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column(); 
