@@ -101,6 +101,121 @@
 - 安装步骤：移动文件、添加权限、解压文件、执行命令
 - 时间信息：创建时间、更新时间
 
+### 数据同步规范
+
+#### 1. 数据源定义
+
+1. 配置数据源（`config` 目录）：
+
+   - 存储系统静态配置
+   - 包含平台、游戏卡片等基础数据
+   - 使用 YAML 格式
+   - 作为数据源和版本控制
+
+2. 示例数据源（`data` 目录）：
+
+   - 存储示例数据
+   - 用于开发和测试
+   - 使用 YAML 格式
+   - 作为数据模板
+
+3. Mock 数据（`frontend/src/mocks/data` 目录）：
+   - 前端开发使用的模拟数据
+   - 使用 TypeScript 格式
+   - 自动从配置同步生成
+   - 用于前端开发和测试
+
+#### 2. 同步规则
+
+1. 配置到 Mock 的同步：
+
+   - 使用 `sync-mocks.ts` 脚本
+   - 自动生成 TypeScript 类型定义
+   - 保持数据结构一致性
+   - 支持数据验证
+
+2. Mock 到配置的同步：
+
+   - 使用 `sync-mocks.ts` 脚本
+   - 自动生成 YAML 配置
+   - 保持数据格式规范
+   - 支持数据验证
+
+3. 数据验证规则：
+   - 类型检查
+   - 必填字段验证
+   - 格式规范验证
+   - 关联关系验证
+
+#### 3. 同步流程
+
+1. 开发流程：
+
+   - 在 `config` 或 `data` 目录修改数据
+   - 运行同步脚本更新 mock 数据
+   - 前端开发使用 mock 数据
+   - 提交代码时包含所有变更
+
+2. 测试流程：
+
+   - 使用 mock 数据进行单元测试
+   - 使用示例数据进行集成测试
+   - 验证数据同步的正确性
+   - 确保数据一致性
+
+3. 部署流程：
+   - 构建时使用配置数据
+   - 验证数据完整性
+   - 确保数据格式正确
+   - 保持数据版本一致
+
+#### 4. 目录结构
+
+```text
+project/
+├── config/                 # 配置数据源
+│   ├── platforms.yaml     # 平台配置
+│   └── cards.yaml        # 游戏卡片配置
+├── data/                  # 示例数据源
+│   ├── platforms/        # 平台示例
+│   └── cards/           # 游戏卡片示例
+└── frontend/
+    └── src/
+        └── mocks/
+            └── data/     # Mock 数据
+                ├── GamePlatform.ts
+                └── GameCard.ts
+```
+
+#### 5. 注意事项
+
+1. 数据一致性：
+
+   - 保持各数据源格式一致
+   - 确保数据同步及时
+   - 避免手动修改 mock 数据
+   - 定期验证数据完整性
+
+2. 版本控制：
+
+   - 配置数据需要版本控制
+   - 记录数据变更历史
+   - 支持数据回滚
+   - 保持版本同步
+
+3. 开发规范：
+
+   - 遵循数据格式规范
+   - 使用同步脚本更新数据
+   - 保持代码整洁
+   - 编写必要的注释
+
+4. 测试要求：
+   - 编写数据验证测试
+   - 测试同步功能
+   - 验证数据一致性
+   - 确保测试覆盖
+
 ### 4. GameInstance（游戏实例）
 
 - 关联信息：游戏节点 ID、平台 ID、游戏卡片 ID
@@ -202,6 +317,7 @@ CREATE INDEX idx_platform_user_states_last_used_at ON platform_user_states(last_
 #### 状态类型说明
 
 1. system 状态：
+
    - 系统配置信息
    - 环境变量设置
    - 依赖项版本
@@ -218,61 +334,64 @@ CREATE INDEX idx_platform_user_states_last_used_at ON platform_user_states(last_
 #### 状态数据示例
 
 1. Lutris system 状态：
+
 ```json
 {
-    "wine_version": "7.0",
-    "dxvk_version": "2.0",
-    "python_version": "3.8",
-    "system_path": "/data/beagle-wind/games/lutris/system",
-    "environment": {
-        "WINEARCH": "win64",
-        "WINEPREFIX": "/data/beagle-wind/games/lutris/prefix"
-    }
+  "wine_version": "7.0",
+  "dxvk_version": "2.0",
+  "python_version": "3.8",
+  "system_path": "/data/beagle-wind/games/lutris/system",
+  "environment": {
+    "WINEARCH": "win64",
+    "WINEPREFIX": "/data/beagle-wind/games/lutris/prefix"
+  }
 }
 ```
 
 2. Steam user 状态：
+
 ```json
 {
-    "steam_id": "76561198123456789",
-    "login_state": "logged_in",
-    "steam_play": {
-        "enabled": true,
-        "compatibility_tool": "Proton-7.0"
-    },
-    "display": {
-        "resolution": "1920x1080",
-        "refresh_rate": 60
-    },
-    "audio": {
-        "output_device": "default",
-        "volume": 100
-    },
-    "controller": {
-        "enabled": true,
-        "layout": "xbox"
-    }
+  "steam_id": "76561198123456789",
+  "login_state": "logged_in",
+  "steam_play": {
+    "enabled": true,
+    "compatibility_tool": "Proton-7.0"
+  },
+  "display": {
+    "resolution": "1920x1080",
+    "refresh_rate": 60
+  },
+  "audio": {
+    "output_device": "default",
+    "volume": 100
+  },
+  "controller": {
+    "enabled": true,
+    "layout": "xbox"
+  }
 }
 ```
 
 3. Nintendo Switch user 状态：
+
 ```json
 {
-    "yuzu_version": "1200",
-    "keys_path": "/data/beagle-wind/games/switch/keys",
-    "firmware_path": "/data/beagle-wind/games/switch/firmware",
-    "display": {
-        "resolution": "1280x720",
-        "fullscreen": false
-    },
-    "audio": {
-        "output_device": "default",
-        "volume": 100
-    },
-    "controller": {
-        "enabled": true,
-        "layout": "pro"
-    }
+  "yuzu_version": "1200",
+  "keys_path": "/data/beagle-wind/games/switch/keys",
+  "firmware_path": "/data/beagle-wind/games/switch/firmware",
+  "display": {
+    "resolution": "1280x720",
+    "fullscreen": false
+  },
+  "audio": {
+    "output_device": "default",
+    "volume": 100
+  },
+  "controller": {
+    "enabled": true,
+    "layout": "pro"
+  }
 }
 ```
 
@@ -301,11 +420,13 @@ CREATE INDEX idx_platform_state_history_created_at ON platform_state_history(cre
 #### 用途说明
 
 1. 状态追踪：
+
    - 记录用户平台配置的变更历史
    - 支持配置回滚
    - 审计配置变更
 
 2. 版本控制：
+
    - 管理配置版本
    - 支持增量更新
    - 配置冲突处理
@@ -341,11 +462,13 @@ CREATE INDEX idx_platform_state_sync_status ON platform_state_sync(sync_status);
 #### 用途说明
 
 1. 同步管理：
+
    - 追踪配置同步状态
    - 处理同步冲突
    - 错误恢复
 
 2. 状态监控：
+
    - 监控同步状态
    - 检测同步失败
    - 同步性能统计
