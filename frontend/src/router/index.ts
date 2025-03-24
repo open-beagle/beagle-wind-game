@@ -39,46 +39,38 @@ const router = createRouter({
           component: () => import("../views/instance/index.vue"),
         },
         {
-          path: "platform/detail/:id",
-          name: "gamePlatformDetail",
-          component: () => import("../views/platform/detail.vue"),
-          meta: {
-            title: "平台详情"
-          }
-        },
-        {
-          path: "node/detail/:id",
+          path: "nodes/detail/:id",
           name: "gameNodeDetail",
           component: () => import("../views/node/detail.vue"),
           meta: {
-            title: "节点详情"
-          }
+            title: "节点详情",
+          },
         },
         {
-          path: "instance/detail/:id",
+          path: "platforms/detail/:id",
+          name: "gamePlatformDetail",
+          component: () => import("../views/platform/detail.vue"),
+          meta: {
+            title: "平台详情",
+          },
+        },
+        {
+          path: "/cards/detail/:id",
+          name: "GameCardDetail",
+          component: () => import("@/views/card/detail.vue"),
+          meta: {
+            title: "游戏详情",
+          },
+        },
+        {
+          path: "instances/detail/:id",
           name: "gameInstanceDetail",
           component: () => import("../views/instance/detail.vue"),
           meta: {
-            title: "实例详情"
-          }
+            title: "实例详情",
+          },
         },
       ],
-    },
-    {
-      path: '/card',
-      component: () => import('@/views/card/index.vue'),
-      name: 'GameCard',
-      meta: {
-        title: '游戏卡片管理'
-      }
-    },
-    {
-      path: '/card/detail/:id',
-      component: () => import('@/views/card/detail.vue'),
-      name: 'GameCardDetail',
-      meta: {
-        title: '游戏详情'
-      }
     },
   ],
 });

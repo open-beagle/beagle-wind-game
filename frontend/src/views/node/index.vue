@@ -103,14 +103,14 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { mockGameNodes } from '@/mocks/data/GameNode';
-import type { GameNode, GameNodeQuery } from '@/types/GameNode';
+import type { GameNode, NodeQuery } from '@/types/GameNode';
+import { getNodeList, deleteNode } from '@/services/nodeService';
 import { useRouter } from 'vue-router'
 
 const loading = ref(false);
 const nodeList = ref<GameNode[]>([]);
 const total = ref(0);
-const query = ref<GameNodeQuery>({
+const query = ref<NodeQuery>({
   page: 1,
   pageSize: 10,
 });
@@ -118,17 +118,12 @@ const query = ref<GameNodeQuery>({
 const router = useRouter()
 
 // 获取节点列表
-const getNodeList = async () => {
+const fetchNodeList = async () => {
   loading.value = true;
   try {
-    // 模拟 API 请求延迟
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // 模拟数据处理
-    const start = (query.value.page - 1) * query.value.pageSize;
-    const end = start + query.value.pageSize;
-    nodeList.value = mockGameNodes.slice(start, end);
-    total.value = mockGameNodes.length;
+    const result = await getNodeList(query.value)
+    nodeList.value = result.list
+    total.value = result.total
   } catch (error) {
     ElMessage.error('加载数据失败');
     console.error('加载数据失败:', error);
@@ -158,21 +153,66 @@ const getStatusText = (status: string) => statusTextMap[status] || status;
 // 分页处理
 const handleSizeChange = (val: number) => {
   query.value.pageSize = val;
-  getNodeList();
+  fetchNodeList();
 };
 
 const handleCurrentChange = (val: number) => {
   query.value.page = val;
-  getNodeList();
+  fetchNodeList();
 };
 
 // 查看详情
 const handleViewDetail = (row: GameNode) => {
-  router.push(`/node/detail/${row.id}`)
+  router.push(`/nodes/detail/${row.id}`)
+}
+
+// 删除节点
+const handleDelete = (row: GameNode) => {
+  ElMessageBox.confirm(
+    `确定要删除节点 "${row.name}" 吗？此操作不可恢复`,
+    '删除确认',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  )
+    .then(async () => {
+      try {
+        const success = await deleteNode(row.id)
+        if (success) {
+          ElMessage.success('删除成功')
+          fetchNodeList()
+        } else {
+          ElMessage.error('删除失败')
+        }
+      } catch (error) {
+        ElMessage.error('删除失败')
+        console.error('删除失败:', error)
+      }
+    })
+    .catch(() => {
+      // 用户取消删除
+    })
+}
+
+// 添加节点
+const handleAdd = () => {
+  router.push('/node/create')
+}
+
+// 编辑节点
+const handleEdit = (row: GameNode) => {
+  router.push(`/node/edit/${row.id}`)
+}
+
+// 节点监控
+const handleMonitor = (row: GameNode) => {
+  router.push(`/node/monitor/${row.id}`)
 }
 
 // 初始化数据
 onMounted(() => {
-  getNodeList();
+  fetchNodeList();
 });
 </script>

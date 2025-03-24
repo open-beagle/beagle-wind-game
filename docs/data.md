@@ -8,7 +8,7 @@
 /data/beagle-wind/
 ```
 
-如/data/beagle-wind/lutris:/data/beagle-wind/ 
+如/data/beagle-wind/lutris:/data/beagle-wind/
 在主机上目录是/data/beagle-wind/lutris
 在容器内部对应的目录是/data/beagle-wind/
 

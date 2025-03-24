@@ -22,20 +22,20 @@
     "baseUrl": ".",
     "paths": {
       "@/*": [
-        "frontend/src/*"
+        "./src/*"
       ]
     }
   },
   "include": [
-    "frontend/src/**/*.ts",
-    "frontend/src/**/*.d.ts",
-    "frontend/src/**/*.tsx",
-    "frontend/src/**/*.vue",
-    "frontend/src/env.d.ts"
+    "./src/**/*.ts",
+    "./src/**/*.d.ts",
+    "./src/**/*.tsx",
+    "./src/**/*.vue",
+    "./src/env.d.ts"
   ],
   "references": [
     {
-      "path": "./frontend/tsconfig.node.json"
+      "path": "./tsconfig.node.json"
     }
   ]
 }

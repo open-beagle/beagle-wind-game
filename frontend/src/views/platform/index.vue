@@ -23,25 +23,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="name" label="名称" min-width="150" />
-        <el-table-column prop="os" label="操作系统" width="120">
+        <el-table-column prop="type" label="类型" width="120">
           <template #default="{ row }">
-            <el-tag type="info">{{ row.os }}</el-tag>
+            <el-tag type="info">{{ row.type }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="version" label="版本" width="120" />
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
-              {{ getStatusText(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="description"
-          label="描述"
-          min-width="200"
-          show-overflow-tooltip
-        />
         <el-table-column label="特性" min-width="200">
           <template #default="{ row }">
             <el-tag
@@ -67,15 +54,8 @@
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)"
-              >编辑</el-button
-            >
-            <el-button link type="primary" @click="handleConfig(row)"
-              >配置</el-button
-            >
-            <el-button link type="danger" @click="handleDelete(row)"
-              >删除</el-button
-            >
+            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -103,30 +83,14 @@
         <el-form-item label="平台名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入平台名称" />
         </el-form-item>
-        <el-form-item label="操作系统" prop="os">
-          <el-select v-model="form.os" placeholder="请选择操作系统">
-            <el-option label="Linux" value="Linux" />
-            <el-option label="Windows" value="Windows" />
-            <el-option label="macOS" value="macOS" />
+        <el-form-item label="平台类型" prop="type">
+          <el-select v-model="form.type" placeholder="请选择平台类型">
+            <el-option label="游戏平台" value="gaming" />
+            <el-option label="模拟器" value="emulator" />
           </el-select>
         </el-form-item>
         <el-form-item label="版本" prop="version">
           <el-input v-model="form.version" placeholder="请输入版本号" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="form.status" placeholder="请选择状态">
-            <el-option label="正常" value="active" />
-            <el-option label="停用" value="inactive" />
-            <el-option label="维护中" value="maintenance" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input
-            v-model="form.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入平台描述"
-          />
         </el-form-item>
         <el-form-item label="镜像" prop="image">
           <el-input v-model="form.image" placeholder="请输入容器镜像地址" />
@@ -134,8 +98,8 @@
         <el-form-item label="启动路径" prop="bin">
           <el-input v-model="form.bin" placeholder="请输入启动路径" />
         </el-form-item>
-        <el-form-item label="数据目录" prop="data">
-          <el-input v-model="form.data" placeholder="请输入数据目录" />
+        <el-form-item label="操作系统" prop="os">
+          <el-input v-model="form.os" placeholder="请输入操作系统" />
         </el-form-item>
         <el-form-item label="特性" prop="features">
           <el-tag
@@ -186,7 +150,7 @@ import type {
   GamePlatformQuery,
   GamePlatformForm,
 } from "@/types/GamePlatform";
-import { useRouter } from 'vue-router'
+import { useRouter } from "vue-router";
 
 const loading = ref(false);
 const platformList = ref<GamePlatform[]>([]);
@@ -202,16 +166,15 @@ const dialogType = ref<"add" | "edit">("add");
 const formRef = ref<FormInstance>();
 const form = reactive<GamePlatformForm>({
   name: "",
-  os: "Linux",
-  description: "",
-  status: "active",
+  type: "gaming",
   version: "",
   image: "",
   bin: "",
-  data: "",
+  os: "Linux",
   files: [],
   features: [],
   config: {},
+  status: "inactive"
 });
 
 // 特性输入相关
@@ -222,54 +185,34 @@ const featureInputRef = ref<HTMLInputElement>();
 // 表单验证规则
 const rules = {
   name: [{ required: true, message: "请输入平台名称", trigger: "blur" }],
-  os: [{ required: true, message: "请选择操作系统", trigger: "change" }],
+  type: [{ required: true, message: "请选择平台类型", trigger: "change" }],
   version: [{ required: true, message: "请输入版本号", trigger: "blur" }],
-  status: [{ required: true, message: "请选择状态", trigger: "change" }],
-  description: [{ required: true, message: "请输入平台描述", trigger: "blur" }],
   image: [{ required: true, message: "请输入容器镜像地址", trigger: "blur" }],
   bin: [{ required: true, message: "请输入启动路径", trigger: "blur" }],
   data: [{ required: true, message: "请输入数据目录", trigger: "blur" }],
 };
 
-const router = useRouter()
+const router = useRouter();
 
 // 获取平台列表
 const getPlatformList = async () => {
   loading.value = true;
   try {
     // 模拟 API 请求延迟
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
     // 模拟数据处理
     const start = (query.value.page - 1) * query.value.pageSize;
     const end = start + query.value.pageSize;
     platformList.value = mockGamePlatforms.slice(start, end);
     total.value = mockGamePlatforms.length;
   } catch (error) {
-    ElMessage.error('加载数据失败');
-    console.error('加载数据失败:', error);
+    ElMessage.error("加载数据失败");
+    console.error("加载数据失败:", error);
   } finally {
     loading.value = false;
   }
 };
-
-// 状态类型
-const statusTypeMap: Record<string, string> = {
-  active: "success",
-  inactive: "info",
-  maintenance: "warning",
-};
-
-const getStatusType = (status: string) => statusTypeMap[status] || "info";
-
-// 状态文本
-const statusTextMap: Record<string, string> = {
-  active: "正常",
-  inactive: "停用",
-  maintenance: "维护中",
-};
-
-const getStatusText = (status: string) => statusTextMap[status] || status;
 
 // 分页处理
 const handleSizeChange = (val: number) => {
@@ -288,16 +231,16 @@ const handleAdd = () => {
   dialogVisible.value = true;
   Object.assign(form, {
     name: "",
-    os: "Linux",
-    description: "",
-    status: "active",
+    type: "gaming",
     version: "",
     image: "",
     bin: "",
     data: "",
+    os: "Linux",
     files: [],
     features: [],
     config: {},
+    status: "inactive"
   });
 };
 
@@ -308,22 +251,16 @@ const handleEdit = (row: GamePlatform) => {
   Object.assign(form, {
     id: row.id,
     name: row.name,
-    os: row.os,
-    description: row.description,
-    status: row.status,
+    type: row.type,
     version: row.version,
     image: row.image,
     bin: row.bin,
-    data: row.data,
+    os: row.os,
     files: [...row.files],
     features: [...row.features],
     config: { ...row.config },
+    status: row.status
   });
-};
-
-// 配置平台
-const handleConfig = (row: GamePlatform) => {
-  ElMessage.info("配置功能开发中");
 };
 
 // 删除平台
@@ -347,11 +284,21 @@ const handleSubmit = async () => {
   await formRef.value.validate((valid) => {
     if (valid) {
       if (dialogType.value === "add") {
+        // 创建新平台
         const newPlatform: GamePlatform = {
           id: String(Date.now()),
-          ...form,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          name: form.name || "",
+          type: form.type || "gaming",
+          version: form.version || "",
+          image: form.image || "",
+          bin: form.bin || "",
+          os: form.os || "Linux",
+          files: form.files || [],
+          features: form.features || [],
+          config: form.config || {},
+          status: form.status || "inactive",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         };
         platformList.value.push(newPlatform);
         total.value++;
@@ -361,10 +308,20 @@ const handleSubmit = async () => {
           (item) => item.id === form.id
         );
         if (index > -1) {
+          // 更新时保留原有的created_at字段
           platformList.value[index] = {
             ...platformList.value[index],
-            ...form,
-            updatedAt: new Date().toISOString(),
+            name: form.name || "",
+            type: form.type || "gaming",
+            version: form.version || "",
+            image: form.image || "",
+            bin: form.bin || "",
+            os: form.os || "Linux",
+            files: form.files || [],
+            features: form.features || [],
+            config: form.config || {},
+            status: form.status || "inactive",
+            updated_at: new Date().toISOString(),
           };
           ElMessage.success("更新成功");
         }
@@ -385,6 +342,9 @@ const showFeatureInput = () => {
 // 添加特性
 const handleAddFeature = () => {
   if (featureInputValue.value) {
+    if (!form.features) {
+      form.features = [];
+    }
     form.features.push(featureInputValue.value);
   }
   featureInputVisible.value = false;
@@ -393,13 +353,16 @@ const handleAddFeature = () => {
 
 // 移除特性
 const handleRemoveFeature = (index: number) => {
+  if (!form.features) {
+    form.features = [];
+  }
   form.features.splice(index, 1);
 };
 
 // 查看详情
 const handleViewDetail = (row: GamePlatform) => {
-  router.push(`/platform/detail/${row.id}`)
-}
+  router.push(`/platforms/detail/${row.id}`);
+};
 
 // 初始化数据
 onMounted(() => {

@@ -7,10 +7,9 @@ export const mockGamePlatforms: GamePlatform[] = [
     version: 'v0.5.18',
     os: 'Linux',
     status: 'active',
-    description: 'Lutris 是一个开放的游戏平台，支持多种游戏源整合',
+    type: 'gaming',
     image: 'registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-desktop',
     bin: '/usr/games/lutris',
-    data: '/data/wind',
     files: [
       {
         id: 'data',
@@ -30,8 +29,8 @@ export const mockGamePlatforms: GamePlatform[] = [
       vkd3d: '2.9',
       python: '3.10'
     },
-    createdAt: '2024-03-01T00:00:00Z',
-    updatedAt: '2024-03-01T00:00:00Z'
+    created_at: '2024-03-01T00:00:00Z',
+    updated_at: '2024-03-01T00:00:00Z'
   },
   {
     id: 'steam',
@@ -39,10 +38,9 @@ export const mockGamePlatforms: GamePlatform[] = [
     version: '1.0.0.82',
     os: 'Linux',
     status: 'active',
-    description: 'Steam 是全球最大的数字游戏发行平台',
+    type: 'gaming',
     image: 'registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-desktop',
     bin: '/usr/bin/steam',
-    data: '/data/wind',
     files: [
       {
         id: 'data',
@@ -63,8 +61,8 @@ export const mockGamePlatforms: GamePlatform[] = [
       'remote-play': 'enabled',
       broadcast: 'enabled'
     },
-    createdAt: '2024-03-01T00:00:00Z',
-    updatedAt: '2024-03-01T00:00:00Z'
+    created_at: '2024-03-01T00:00:00Z',
+    updated_at: '2024-03-01T00:00:00Z'
   },
   {
     id: 'switch',
@@ -72,10 +70,9 @@ export const mockGamePlatforms: GamePlatform[] = [
     version: '2024.03.04',
     os: 'Linux',
     status: 'active',
-    description: 'Nintendo Switch 模拟器平台',
+    type: 'emulator',
     image: 'registry.cn-qingdao.aliyuncs.com/wod/beagle-wind-vnc:v1.0.8-desktop',
     bin: '$HOME/.local/bin/yuzu',
-    data: '/data/wind',
     files: [
       {
         id: 'data',
@@ -133,7 +130,7 @@ export const mockGamePlatforms: GamePlatform[] = [
       },
       { command: 'ln -sf $GAMEDIR/yuzu-mainline-20240304-537296095.AppImage $HOME/.local/bin/yuzu' }
     ],
-    createdAt: '2024-03-01T00:00:00Z',
-    updatedAt: '2024-03-01T00:00:00Z'
+    created_at: '2024-03-01T00:00:00Z',
+    updated_at: '2024-03-01T00:00:00Z'
   }
 ]

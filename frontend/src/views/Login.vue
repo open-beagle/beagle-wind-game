@@ -2,7 +2,7 @@
   <div class="login-container">
     <el-card class="login-card">
       <div class="logo">
-        <img src="../assets/logo.svg" alt="Beagle Wind Game" />
+        <img src="../assets/logo.png" alt="Beagle Wind Game" />
       </div>
       <h2>Beagle Wind Game</h2>
       <el-form
@@ -107,13 +107,21 @@ const handleLogin = async () => {
 }
 
 .logo {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
 }
 
 .logo img {
-  width: 120px;
-  height: 120px;
-  filter: drop-shadow(0 4px 8px rgba(0, 21, 41, 0.1));
+  width: 250px;
+  height: 250px;
+  filter: contrast(1.2) brightness(1.1) drop-shadow(0 8px 16px rgba(0, 21, 41, 0.3));
+  object-fit: contain;
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  border: 2px solid #e6f7ff;
+  box-shadow: 0 0 20px rgba(24, 144, 255, 0.25);
 }
 
 h2 {

@@ -53,7 +53,8 @@
 - 查询参数:
   - `page`: 页码 (默认: 1)
   - `size`: 每页数量 (默认: 20)
-  - `status`: 节点状态 (可选)
+  - `keyword`: 搜索关键词 (可选)
+  - `status`: 节点状态 (可选: online/offline/maintenance)
 - 响应:
 
 ```json
@@ -63,30 +64,36 @@
     {
       "id": "string",
       "name": "string",
+      "description": "string",
+      "type": "string",
       "status": "string",
-      "hardware": {
-        "cpu": {
-          "model": "string",
-          "cores": "integer",
-          "threads": "integer"
-        },
-        "memory": {
-          "total": "integer",
-          "used": "integer"
-        },
-        "gpu": {
-          "model": "string",
-          "memory": "integer"
-        },
-        "disk": {
-          "total": "integer",
-          "used": "integer"
-        }
-      },
       "network": {
         "ip": "string",
         "port": "integer",
+        "protocol": "string",
         "bandwidth": "integer"
+      },
+      "resources": {
+        "cpu": "integer",
+        "memory": "integer",
+        "storage": "integer",
+        "network": "integer",
+        "gpu": {
+          "model": "string",
+          "memory": "integer"
+        }
+      },
+      "metrics": {
+        "cpuUsage": "float",
+        "memoryUsage": "float",
+        "storageUsage": "float",
+        "networkUsage": "float",
+        "gpuUsage": "float"
+      },
+      "labels": {
+        "region": "string",
+        "zone": "string",
+        "rack": "string"
       },
       "created_at": "string",
       "updated_at": "string"
@@ -106,48 +113,52 @@
 {
   "id": "string",
   "name": "string",
+  "description": "string",
+  "type": "string",
   "status": "string",
-  "hardware": {
-    "cpu": {
-      "model": "string",
-      "cores": "integer",
-      "threads": "integer",
-      "usage": "float"
-    },
-    "memory": {
-      "total": "integer",
-      "used": "integer",
-      "free": "integer"
-    },
-    "gpu": {
-      "model": "string",
-      "memory": "integer",
-      "usage": "float"
-    },
-    "disk": {
-      "total": "integer",
-      "used": "integer",
-      "free": "integer"
-    }
-  },
   "network": {
     "ip": "string",
     "port": "integer",
-    "bandwidth": "integer",
-    "current_usage": "integer"
+    "protocol": "string",
+    "bandwidth": "integer"
+  },
+  "resources": {
+    "cpu": "integer",
+    "memory": "integer",
+    "storage": "integer",
+    "network": "integer",
+    "gpu": {
+      "model": "string",
+      "memory": "integer"
+    }
+  },
+  "metrics": {
+    "cpuUsage": "float",
+    "memoryUsage": "float",
+    "storageUsage": "float",
+    "networkUsage": "float",
+    "gpuUsage": "float",
+    "uptime": "integer",
+    "fps": "float",
+    "instanceCount": "integer",
+    "playerCount": "integer"
   },
   "instances": [
     {
       "id": "string",
       "name": "string",
       "status": "string",
-      "resources": {
-        "cpu": "float",
-        "memory": "integer",
-        "disk": "integer"
+      "gameCard": {
+        "id": "string",
+        "name": "string"
       }
     }
   ],
+  "labels": {
+    "region": "string",
+    "zone": "string",
+    "rack": "string"
+  },
   "created_at": "string",
   "updated_at": "string"
 }
@@ -208,6 +219,12 @@
       "in": "integer",
       "out": "integer"
     }
+  ],
+  "gpu": [
+    {
+      "timestamp": "string",
+      "usage": "float"
+    }
   ]
 }
 ```
@@ -263,6 +280,8 @@
 - 查询参数:
   - `page`: 页码 (默认: 1)
   - `size`: 每页数量 (默认: 20)
+  - `keyword`: 搜索关键词 (可选)
+  - `status`: 平台状态 (可选: active/maintenance/inactive)
 - 响应:
 
 ```json
@@ -273,12 +292,71 @@
       "id": "string",
       "name": "string",
       "version": "string",
-      "type": "string",
+      "os": "string",
       "status": "string",
+      "description": "string",
+      "image": "string",
       "created_at": "string",
       "updated_at": "string"
     }
   ]
+}
+```
+
+### 创建平台
+
+- 路径: `/platforms`
+- 方法: POST
+- 请求头: `Authorization: Bearer <token>`
+- 请求体:
+
+```json
+{
+  "name": "string",
+  "version": "string",
+  "os": "string",
+  "description": "string",
+  "image": "string",
+  "bin": "string",
+  "data": "string",
+  "files": [
+    {
+      "type": "string",
+      "url": "string"
+    }
+  ],
+  "features": ["string"],
+  "config": {},
+  "installer": [
+    {
+      "command": "string"
+    },
+    {
+      "move": {
+        "src": "string",
+        "dst": "string"
+      }
+    },
+    {
+      "chmodx": "string"
+    },
+    {
+      "extract": {
+        "file": "string",
+        "dst": "string"
+      }
+    }
+  ]
+}
+```
+
+- 响应:
+
+```json
+{
+  "id": "string",
+  "name": "string",
+  "status": "string"
 }
 ```
 
@@ -294,33 +372,115 @@
   "id": "string",
   "name": "string",
   "version": "string",
-  "type": "string",
+  "os": "string",
   "status": "string",
+  "description": "string",
+  "image": "string",
+  "bin": "string",
+  "data": "string",
+  "files": [
+    {
+      "id": "string",
+      "type": "string",
+      "url": "string"
+    }
+  ],
+  "features": ["string"],
   "config": {
-    "system": {},
-    "user": {}
+    "wine": "string",
+    "dxvk": "string",
+    "vkd3d": "string",
+    "python": "string",
+    "proton": "string",
+    "shader-cache": "string",
+    "remote-play": "string",
+    "broadcast": "string",
+    "mode": "string",
+    "resolution": "string",
+    "wifi": "string",
+    "bluetooth": "string"
   },
+  "installer": [
+    {
+      "command": "string"
+    },
+    {
+      "move": {
+        "src": "string",
+        "dst": "string"
+      }
+    },
+    {
+      "chmodx": "string"
+    },
+    {
+      "extract": {
+        "file": "string",
+        "dst": "string"
+      }
+    }
+  ],
   "created_at": "string",
   "updated_at": "string"
 }
 ```
 
-### 更新平台配置
+### 更新平台
 
-- 路径: `/platforms/{platform_id}/config`
+- 路径: `/platforms/{platform_id}`
 - 方法: PUT
 - 请求头: `Authorization: Bearer <token>`
 - 请求体:
 
 ```json
 {
-  "config": {
-    "system": {},
-    "user": {}
-  }
+  "name": "string",
+  "version": "string",
+  "os": "string",
+  "status": "string",
+  "description": "string",
+  "image": "string",
+  "bin": "string",
+  "data": "string",
+  "files": [
+    {
+      "id": "string",
+      "type": "string",
+      "url": "string"
+    }
+  ],
+  "features": ["string"],
+  "config": {},
+  "installer": [
+    {
+      "command": "string"
+    },
+    {
+      "move": {
+        "src": "string",
+        "dst": "string"
+      }
+    },
+    {
+      "chmodx": "string"
+    },
+    {
+      "extract": {
+        "file": "string",
+        "dst": "string"
+      }
+    }
+  ]
 }
 ```
 
+- 响应: 204 No Content
+
+### 删除平台
+
+- 路径: `/platforms/{platform_id}`
+- 方法: DELETE
+- 请求头: `Authorization: Bearer <token>`
 - 响应: 204 No Content
 
 ### 获取平台状态
@@ -342,6 +502,34 @@
 }
 ```
 
+### 获取远程访问链接
+
+- 路径: `/platforms/{platform_id}/access`
+- 方法: GET
+- 请求头: `Authorization: Bearer <token>`
+- 响应:
+
+```json
+{
+  "link": "string",
+  "expires_at": "string"
+}
+```
+
+### 刷新远程访问链接
+
+- 路径: `/platforms/{platform_id}/access/refresh`
+- 方法: POST
+- 请求头: `Authorization: Bearer <token>`
+- 响应:
+
+```json
+{
+  "link": "string",
+  "expires_at": "string"
+}
+```
+
 ## 游戏卡片管理
 
 ### 获取卡片列表
@@ -352,7 +540,9 @@
 - 查询参数:
   - `page`: 页码 (默认: 1)
   - `size`: 每页数量 (默认: 20)
+  - `keyword`: 搜索关键词 (可选)
   - `platform_id`: 平台 ID (可选)
+  - `status`: 状态 (可选: draft/published/archived)
 - 响应:
 
 ```json
@@ -362,13 +552,43 @@
     {
       "id": "string",
       "name": "string",
-      "platform_id": "string",
-      "version": "string",
+      "platform": {
+        "id": "string",
+        "name": "string"
+      },
+      "description": "string",
+      "coverImage": "string",
       "status": "string",
-      "created_at": "string",
-      "updated_at": "string"
+      "created_at": "string"
     }
   ]
+}
+```
+
+### 创建游戏卡片
+
+- 路径: `/cards`
+- 方法: POST
+- 请求头: `Authorization: Bearer <token>`
+- 请求体:
+
+```json
+{
+  "name": "string",
+  "platformId": "string",
+  "description": "string",
+  "coverImage": "string",
+  "status": "string"
+}
+```
+
+- 响应:
+
+```json
+{
+  "id": "string",
+  "name": "string",
+  "status": "string"
 }
 ```
 
@@ -383,20 +603,58 @@
 {
   "id": "string",
   "name": "string",
-  "platform_id": "string",
-  "version": "string",
+  "platform": {
+    "id": "string",
+    "name": "string",
+    "version": "string",
+    "os": "string",
+    "status": "string"
+  },
+  "description": "string",
+  "coverImage": "string",
   "status": "string",
-  "config": {},
-  "created_at": "string",
-  "updated_at": "string"
+  "created_at": "string"
 }
 ```
+
+### 更新游戏卡片
+
+- 路径: `/cards/{card_id}`
+- 方法: PUT
+- 请求头: `Authorization: Bearer <token>`
+- 请求体:
+
+```json
+{
+  "name": "string",
+  "description": "string",
+  "coverImage": "string",
+  "status": "string"
+}
+```
+
+- 响应: 204 No Content
+
+### 删除游戏卡片
+
+- 路径: `/cards/{card_id}`
+- 方法: DELETE
+- 请求头: `Authorization: Bearer <token>`
+- 响应: 204 No Content
 
 ### 安装游戏卡片
 
 - 路径: `/cards/{card_id}/install`
 - 方法: POST
 - 请求头: `Authorization: Bearer <token>`
+- 请求体:
+
+```json
+{
+  "node_id": "string"
+}
+```
+
 - 响应:
 
 ```json
@@ -411,6 +669,14 @@
 - 路径: `/cards/{card_id}/uninstall`
 - 方法: POST
 - 请求头: `Authorization: Bearer <token>`
+- 请求体:
+
+```json
+{
+  "node_id": "string"
+}
+```
+
 - 响应:
 
 ```json
@@ -422,6 +688,42 @@
 
 ## 游戏实例管理
 
+### 获取实例列表
+
+- 路径: `/instances`
+- 方法: GET
+- 请求头: `Authorization: Bearer <token>`
+- 查询参数:
+  - `page`: 页码 (默认: 1)
+  - `size`: 每页数量 (默认: 20)
+  - `keyword`: 搜索关键词 (可选)
+  - `game_card_id`: 游戏卡片ID (可选)
+  - `node_id`: 节点ID (可选)
+  - `status`: 状态 (可选: running/stopped/error)
+- 响应:
+
+```json
+{
+  "total": "integer",
+  "items": [
+    {
+      "id": "string",
+      "gameCard": {
+        "id": "string",
+        "name": "string"
+      },
+      "node": {
+        "id": "string",
+        "name": "string"
+      },
+      "status": "string",
+      "created_at": "string",
+      "updated_at": "string"
+    }
+  ]
+}
+```
+
 ### 创建游戏实例
 
 - 路径: `/instances`
@@ -431,9 +733,16 @@
 
 ```json
 {
-  "card_id": "string",
-  "platform_id": "string",
-  "config": {}
+  "gameCardId": "string",
+  "nodeId": "string",
+  "config": {
+    "maxPlayers": "integer",
+    "port": "integer",
+    "settings": {
+      "map": "string",
+      "difficulty": "string"
+    }
+  }
 }
 ```
 
@@ -444,6 +753,56 @@
   "id": "string",
   "status": "string",
   "task_id": "string"
+}
+```
+
+### 获取实例详情
+
+- 路径: `/instances/{instance_id}`
+- 方法: GET
+- 请求头: `Authorization: Bearer <token>`
+- 响应:
+
+```json
+{
+  "id": "string",
+  "gameCard": {
+    "id": "string",
+    "name": "string",
+    "platform": {
+      "id": "string",
+      "name": "string",
+      "version": "string",
+      "os": "string"
+    }
+  },
+  "node": {
+    "id": "string",
+    "name": "string",
+    "status": "string"
+  },
+  "status": "string",
+  "config": {
+    "maxPlayers": "integer",
+    "port": "integer",
+    "settings": {
+      "map": "string",
+      "difficulty": "string"
+    }
+  },
+  "metrics": {
+    "cpuUsage": "float",
+    "memoryUsage": "float",
+    "storageUsage": "float",
+    "gpuUsage": "float",
+    "networkUsage": "float",
+    "uptime": "integer",
+    "fps": "float",
+    "playerCount": "integer"
+  },
+  "logs": ["string"],
+  "created_at": "string",
+  "updated_at": "string"
 }
 ```
 
@@ -458,10 +817,15 @@
 {
   "id": "string",
   "status": "string",
-  "resources": {
-    "cpu": "float",
-    "memory": "float",
-    "disk": "float"
+  "metrics": {
+    "cpuUsage": "float",
+    "memoryUsage": "float",
+    "storageUsage": "float",
+    "gpuUsage": "float",
+    "networkUsage": "float",
+    "uptime": "integer",
+    "fps": "float",
+    "playerCount": "integer"
   },
   "created_at": "string",
   "updated_at": "string"
@@ -477,7 +841,7 @@
 
 ```json
 {
-  "action": "string" // start/stop/pause/resume
+  "action": "string" // start/stop/restart/pause/resume
 }
 ```
 
@@ -487,6 +851,22 @@
 {
   "status": "string",
   "task_id": "string"
+}
+```
+
+### 获取实例日志
+
+- 路径: `/instances/{instance_id}/logs`
+- 方法: GET
+- 请求头: `Authorization: Bearer <token>`
+- 查询参数:
+  - `lines`: 行数 (默认: 100)
+  - `since`: 开始时间 (可选)
+- 响应:
+
+```json
+{
+  "logs": ["string"]
 }
 ```
 
@@ -505,6 +885,33 @@
 ```
 
 ## 任务管理
+
+### 获取任务列表
+
+- 路径: `/tasks`
+- 方法: GET
+- 请求头: `Authorization: Bearer <token>`
+- 查询参数:
+  - `page`: 页码 (默认: 1)
+  - `size`: 每页数量 (默认: 20)
+  - `status`: 任务状态 (可选: pending/running/completed/failed)
+- 响应:
+
+```json
+{
+  "total": "integer",
+  "items": [
+    {
+      "id": "string",
+      "type": "string",
+      "status": "string",
+      "progress": "float",
+      "created_at": "string",
+      "updated_at": "string"
+    }
+  ]
+}
+```
 
 ### 获取任务状态
 
@@ -525,6 +932,13 @@
   "updated_at": "string"
 }
 ```
+
+### 取消任务
+
+- 路径: `/tasks/{task_id}/cancel`
+- 方法: POST
+- 请求头: `Authorization: Bearer <token>`
+- 响应: 204 No Content
 
 ## 错误响应
 

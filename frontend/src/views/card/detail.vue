@@ -213,7 +213,7 @@ const handleDelete = () => {
 
 // 查看实例
 const handleViewInstance = (instance: GameInstance) => {
-  router.push(`/instance/detail/${instance.id}`)
+  router.push(`/instances/detail/${instance.id}`)
 }
 
 // 启动实例

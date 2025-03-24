@@ -194,7 +194,7 @@ const handleCurrentChange = (val: number) => {
 
 // 查看详情
 const handleViewDetail = (row: GameInstance) => {
-  router.push(`/instance/detail/${row.id}`)
+  router.push(`/instances/detail/${row.id}`)
 }
 
 // 初始化数据

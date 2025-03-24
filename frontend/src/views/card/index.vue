@@ -522,7 +522,7 @@ const beforeCoverUpload = (file: File) => {
 
 // 查看详情
 const handleViewDetail = (row: GameCard) => {
-  router.push(`/card/detail/${row.id}`)
+  router.push(`/cards/detail/${row.id}`)
 }
 
 // 初始化数据

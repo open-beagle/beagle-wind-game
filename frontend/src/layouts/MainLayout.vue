@@ -2,8 +2,7 @@
   <el-container class="layout-container">
     <el-aside :width="isCollapse ? '64px' : '200px'" class="aside">
       <div class="logo">
-        <img src="../assets/logo.svg" alt="Beagle Wind Game" />
-        <span v-show="!isCollapse">Beagle Wind Game</span>
+        <img src="../assets/logo.png" alt="Beagle Wind Game" />
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -33,12 +32,12 @@
         </el-menu-item>
       </el-menu>
     </el-aside>
-    
+
     <el-container>
       <el-header class="header">
         <div class="header-left">
           <el-button
-            type="text"
+            type="default"
             :icon="isCollapse ? 'Expand' : 'Fold'"
             @click="toggleCollapse"
           />
@@ -46,20 +45,25 @@
         <div class="header-right">
           <el-dropdown>
             <span class="user-info">
-              <el-avatar :size="32" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
+              <el-avatar
+                :size="32"
+                src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"
+              />
               <span>管理员</span>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item>个人信息</el-dropdown-item>
                 <el-dropdown-item>修改密码</el-dropdown-item>
-                <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout"
+                  >退出登录</el-dropdown-item
+                >
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
       </el-header>
-      
+
       <el-main class="main">
         <router-view />
       </el-main>
@@ -68,8 +72,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, computed } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { ElMessageBox } from "element-plus";
 import {
   Monitor,
   Connection,
@@ -77,22 +82,22 @@ import {
   Grid,
   Box,
   Expand,
-  Fold
-} from '@element-plus/icons-vue'
+  Fold,
+} from "@element-plus/icons-vue";
 
-const router = useRouter()
-const route = useRoute()
-const isCollapse = ref(false)
-const activeMenu = computed(() => route.path)
+const router = useRouter();
+const route = useRoute();
+const isCollapse = ref(false);
+const activeMenu = computed(() => route.path);
 
 const toggleCollapse = () => {
-  isCollapse.value = !isCollapse.value
-}
+  isCollapse.value = !isCollapse.value;
+};
 
 const handleLogout = () => {
-  localStorage.removeItem('isAuthenticated')
-  router.push('/login')
-}
+  localStorage.removeItem("isAuthenticated");
+  router.push("/login");
+};
 </script>
 
 <style scoped>
@@ -112,19 +117,30 @@ const handleLogout = () => {
   height: 64px;
   display: flex;
   align-items: center;
-  padding: 0 24px;
+  justify-content: center;
+  padding: 0;
   color: #fff;
-  font-size: 18px;
-  font-weight: 600;
   background-color: #002140;
   box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  overflow: hidden;
 }
 
 .logo img {
-  width: 36px;
-  height: 36px;
-  margin-right: 12px;
+  width: 128px;
+  height: 128px;
   filter: drop-shadow(0 2px 4px rgba(0, 21, 41, 0.1));
+  object-fit: contain;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  overflow: hidden;
+}
+
+.logo-text div {
+  white-space: nowrap;
 }
 
 .menu {
@@ -162,20 +178,6 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   cursor: pointer;
-  padding: 0 12px;
-  height: 40px;
-  border-radius: 4px;
-  transition: all 0.3s;
-}
-
-.user-info:hover {
-  background-color: #f5f5f5;
-}
-
-.user-info span {
-  margin-left: 8px;
-  color: #262626;
-  font-size: 14px;
 }
 
 .main {
@@ -226,4 +228,4 @@ const handleLogout = () => {
 :deep(.el-menu--collapse .el-menu-item .el-icon) {
   margin-right: 0;
 }
-</style> 
+</style>
