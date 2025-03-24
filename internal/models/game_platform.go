@@ -15,8 +15,8 @@ type GamePlatform struct {
 	Config    map[string]string   `json:"config" yaml:"config"`       // 平台配置键值对
 	Files     []PlatformFile      `json:"files" yaml:"files"`         // 平台文件
 	Installer []PlatformInstaller `json:"installer" yaml:"installer"` // 安装步骤
-	CreatedAt time.Time           `json:"created_at"`
-	UpdatedAt time.Time           `json:"updated_at"`
+	CreatedAt time.Time           `json:"created_at" yaml:"created_at"`
+	UpdatedAt time.Time           `json:"updated_at" yaml:"updated_at"`
 }
 
 // PlatformFile 平台文件

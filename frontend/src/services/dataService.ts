@@ -65,6 +65,14 @@ export class DataService {
       }
     }
 
+    // 处理不同的响应数据结构
+    if (response.items && Array.isArray(response.items)) {
+      return {
+        list: response.items,
+        total: response.total || response.items.length
+      }
+    }
+
     if (Array.isArray(response)) {
       return {
         list: response,

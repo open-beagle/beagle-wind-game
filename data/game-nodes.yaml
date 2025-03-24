@@ -19,6 +19,8 @@
     Storage: "1.5TB Free"
   online: true
   last_online: "2024-03-21T10:00:00Z"
+  created_at: "2024-01-15T00:00:00Z"
+  updated_at: "2024-03-21T10:00:00Z"
 
 - id: "node-243"
   name: "游戏机-243"
@@ -41,6 +43,8 @@
     Storage: "1.6TB Free"
   online: true
   last_online: "2024-03-21T10:00:00Z"
+  created_at: "2024-01-20T00:00:00Z"
+  updated_at: "2024-03-21T10:00:00Z"
 
 - id: "node-246"
   name: "游戏机-246"
@@ -63,3 +67,5 @@
     Storage: "1.7TB Free"
   online: true
   last_online: "2024-03-21T10:00:00Z"
+  created_at: "2024-01-25T00:00:00Z"
+  updated_at: "2024-03-21T10:00:00Z"

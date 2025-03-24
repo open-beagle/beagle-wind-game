@@ -24,21 +24,27 @@ const (
 	NodeStatusOffline GameNodeStatus = "offline"
 	// NodeStatusMaintenance 维护中
 	NodeStatusMaintenance GameNodeStatus = "maintenance"
+	// NodeStatusReady 准备就绪
+	NodeStatusReady GameNodeStatus = "ready"
 )
 
 // GameNode 游戏节点
 type GameNode struct {
-	ID          string                 `json:"id" yaml:"id"`                               // 节点ID
-	Name        string                 `json:"name" yaml:"name"`                           // 节点名称
-	Description string                 `json:"description" yaml:"description"`             // 节点描述
-	Type        string                 `json:"type" yaml:"type"`                           // 节点类型（physical/virtual/container）
-	Status      string                 `json:"status" yaml:"status"`                       // 节点状态（online/offline/maintenance）
-	Resources   map[string]interface{} `json:"resources" yaml:"resources"`                 // 资源信息
-	Metrics     map[string]interface{} `json:"metrics" yaml:"metrics"`                     // 监控指标
-	Labels      map[string]string      `json:"labels" yaml:"labels"`                       // 节点标签
-	Network     map[string]interface{} `json:"network,omitempty" yaml:"network,omitempty"` // 网络信息
-	CreatedAt   time.Time              `json:"created_at"`                                 // 创建时间
-	UpdatedAt   time.Time              `json:"updated_at"`                                 // 更新时间
+	ID         string                 `json:"id" yaml:"id"`                   // 节点ID
+	Name       string                 `json:"name" yaml:"name"`               // 节点名称
+	Model      string                 `json:"model" yaml:"model"`             // 节点型号
+	Type       string                 `json:"type" yaml:"type"`               // 节点类型（physical/virtual/container）
+	Status     string                 `json:"status" yaml:"status"`           // 节点状态（online/offline/maintenance/ready）
+	Location   string                 `json:"location" yaml:"location"`       // 节点地理位置
+	Hardware   map[string]interface{} `json:"hardware" yaml:"hardware"`       // 硬件配置（CPU、RAM、GPU等）
+	Network    map[string]interface{} `json:"network" yaml:"network"`         // 网络信息（IP、速度等）
+	Resources  map[string]interface{} `json:"resources" yaml:"resources"`     // 资源使用情况
+	Metrics    map[string]interface{} `json:"metrics" yaml:"metrics"`         // 监控指标
+	Labels     map[string]string      `json:"labels" yaml:"labels"`           // 节点标签
+	Online     bool                   `json:"online" yaml:"online"`           // 是否在线
+	LastOnline time.Time              `json:"last_online" yaml:"last_online"` // 最后在线时间
+	CreatedAt  time.Time              `json:"created_at" yaml:"created_at"`   // 创建时间
+	UpdatedAt  time.Time              `json:"updated_at" yaml:"updated_at"`   // 更新时间
 }
 
 // TableName 返回表名

@@ -23,11 +23,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="name" label="名称" min-width="150" />
-        <el-table-column prop="type" label="类型" width="120">
-          <template #default="{ row }">
-            <el-tag type="info">{{ row.type }}</el-tag>
-          </template>
-        </el-table-column>
         <el-table-column prop="version" label="版本" width="120" />
         <el-table-column label="特性" min-width="200">
           <template #default="{ row }">
@@ -39,17 +34,6 @@
             >
               {{ feature }}
             </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="配置" min-width="200">
-          <template #default="{ row }">
-            <el-tooltip
-              :content="JSON.stringify(row.config, null, 2)"
-              placement="top"
-              :show-after="500"
-            >
-              <el-button link type="primary">查看配置</el-button>
-            </el-tooltip>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">

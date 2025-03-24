@@ -29,8 +29,8 @@ export const mockGamePlatforms: GamePlatform[] = [
       vkd3d: '2.9',
       python: '3.10'
     },
-    created_at: '2024-03-01T00:00:00Z',
-    updated_at: '2024-03-01T00:00:00Z'
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-03-15T10:30:00Z'
   },
   {
     id: 'steam',
@@ -61,8 +61,8 @@ export const mockGamePlatforms: GamePlatform[] = [
       'remote-play': 'enabled',
       broadcast: 'enabled'
     },
-    created_at: '2024-03-01T00:00:00Z',
-    updated_at: '2024-03-01T00:00:00Z'
+    created_at: '2024-01-15T00:00:00Z',
+    updated_at: '2024-03-15T11:30:00Z'
   },
   {
     id: 'switch',
@@ -130,7 +130,7 @@ export const mockGamePlatforms: GamePlatform[] = [
       },
       { command: 'ln -sf $GAMEDIR/yuzu-mainline-20240304-537296095.AppImage $HOME/.local/bin/yuzu' }
     ],
-    created_at: '2024-03-01T00:00:00Z',
-    updated_at: '2024-03-01T00:00:00Z'
+    created_at: '2024-02-01T00:00:00Z',
+    updated_at: '2024-03-15T12:30:00Z'
   }
 ]

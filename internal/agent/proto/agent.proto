@@ -1,0 +1,358 @@
+syntax = "proto3";
+
+package agent;
+
+option go_package = "github.com/open-beagle/beagle-wind-game/internal/agent/proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// AgentService 定义节点Agent的gRPC服务
+service AgentService {
+  // 节点注册与心跳
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  
+  // Pipeline管理
+  rpc ExecutePipeline(ExecutePipelineRequest) returns (ExecutePipelineResponse);
+  rpc GetPipelineStatus(PipelineStatusRequest) returns (PipelineStatusResponse);
+  rpc CancelPipeline(PipelineCancelRequest) returns (PipelineCancelResponse);
+  
+  // 容器管理
+  rpc StartContainer(StartContainerRequest) returns (StartContainerResponse);
+  rpc StopContainer(StopContainerRequest) returns (StopContainerResponse);
+  rpc RestartContainer(RestartContainerRequest) returns (RestartContainerResponse);
+  
+  // 状态监控
+  rpc GetNodeMetrics(NodeMetricsRequest) returns (NodeMetricsResponse);
+  rpc StreamNodeLogs(NodeLogsRequest) returns (stream LogEntry);
+  rpc StreamContainerLogs(ContainerLogsRequest) returns (stream LogEntry);
+  
+  // 事件流
+  rpc SubscribeEvents(EventSubscriptionRequest) returns (stream Event);
+}
+
+// 节点注册
+message RegisterRequest {
+  string node_id = 1;
+  string hostname = 2;
+  NodeInfo node_info = 3;
+}
+
+message RegisterResponse {
+  string session_id = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+// 心跳
+message HeartbeatRequest {
+  string node_id = 1;
+  string session_id = 2;
+  NodeMetrics metrics = 3;
+}
+
+message HeartbeatResponse {
+  bool success = 1;
+  google.protobuf.Timestamp server_time = 2;
+}
+
+// Pipeline执行
+message ExecutePipelineRequest {
+  string node_id = 1;
+  string pipeline_id = 2;
+  Pipeline pipeline = 3;
+}
+
+message ExecutePipelineResponse {
+  string execution_id = 1;
+  bool accepted = 2;
+  string message = 3;
+}
+
+message PipelineStatusRequest {
+  string node_id = 1;
+  string execution_id = 2;
+}
+
+message PipelineStatusResponse {
+  string execution_id = 1;
+  string status = 2;  // "pending", "running", "completed", "failed", "canceled"
+  int32 current_step = 3;
+  int32 total_steps = 4;
+  string current_step_description = 5;
+  float progress = 6;  // 0.0 - 1.0
+  string error_message = 7;
+  google.protobuf.Timestamp start_time = 8;
+  google.protobuf.Timestamp end_time = 9;
+}
+
+message PipelineCancelRequest {
+  string node_id = 1;
+  string execution_id = 2;
+  bool force = 3;
+}
+
+message PipelineCancelResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// 容器管理
+message StartContainerRequest {
+  string node_id = 1;
+  string container_id = 2;
+  ContainerConfig config = 3;
+}
+
+message StartContainerResponse {
+  bool success = 1;
+  string container_id = 2;
+  string message = 3;
+}
+
+message StopContainerRequest {
+  string node_id = 1;
+  string container_id = 2;
+  int32 timeout = 3;  // 停止容器的超时时间(秒)
+}
+
+message StopContainerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RestartContainerRequest {
+  string node_id = 1;
+  string container_id = 2;
+  int32 timeout = 3;  // 停止容器的超时时间(秒)
+}
+
+message RestartContainerResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// 状态监控
+message NodeMetricsRequest {
+  string node_id = 1;
+}
+
+message NodeMetricsResponse {
+  string node_id = 1;
+  NodeMetrics metrics = 2;
+  repeated ContainerMetrics container_metrics = 3;
+}
+
+message NodeLogsRequest {
+  string node_id = 1;
+  int32 tail_lines = 2;  // 返回最后的行数，0表示所有
+  bool follow = 3;       // 是否持续获取新日志
+}
+
+message ContainerLogsRequest {
+  string node_id = 1;
+  string container_id = 2;
+  int32 tail_lines = 3;  // 返回最后的行数，0表示所有
+  bool follow = 4;       // 是否持续获取新日志
+}
+
+message LogEntry {
+  string source = 1;      // "node", "container", "pipeline", etc.
+  string source_id = 2;   // node_id 或 container_id
+  string level = 3;       // "info", "warning", "error", "debug"
+  string content = 4;     // 日志内容
+  google.protobuf.Timestamp timestamp = 5;
+}
+
+// 事件订阅
+message EventSubscriptionRequest {
+  string node_id = 1;
+  repeated string event_types = 2; // 需要订阅的事件类型
+}
+
+message Event {
+  string type = 1;  // 事件类型
+  string node_id = 2;
+  string entity_id = 3; // container_id, pipeline_id 等
+  string status = 4;
+  string message = 5;
+  map<string, string> data = 6; // 事件相关的其他数据
+  google.protobuf.Timestamp timestamp = 7;
+}
+
+// 数据模型
+message NodeInfo {
+  string hostname = 1;
+  string ip = 2;
+  string os = 3;
+  string arch = 4;
+  string kernel = 5;
+  HardwareInfo hardware = 6;
+  map<string, string> labels = 7;
+}
+
+message HardwareInfo {
+  CpuInfo cpu = 1;
+  MemoryInfo memory = 2;
+  DiskInfo disk = 3;
+  repeated GpuInfo gpus = 4;
+  NetworkInfo network = 5;
+}
+
+message CpuInfo {
+  int32 cores = 1;
+  string model = 2;
+  float clock_speed = 3;  // GHz
+}
+
+message MemoryInfo {
+  int64 total = 1;  // 单位: 字节
+  string type = 2;  // DDR4, etc.
+}
+
+message DiskInfo {
+  int64 total = 1;  // 单位: 字节
+  string type = 2;  // SSD, HDD, etc.
+}
+
+message GpuInfo {
+  string model = 1;
+  int64 memory = 2;  // 显存，单位: 字节
+  string driver = 3;
+}
+
+message NetworkInfo {
+  string primary_interface = 1;
+  int32 bandwidth = 2;  // Mbps
+}
+
+message NodeMetrics {
+  float cpu_usage = 1;  // 百分比
+  float memory_usage = 2;  // 百分比
+  float disk_usage = 3;  // 百分比
+  repeated GpuMetrics gpu_metrics = 4;
+  NetworkMetrics network_metrics = 5;
+  int32 container_count = 6;
+  google.protobuf.Timestamp collected_at = 7;
+}
+
+message GpuMetrics {
+  int32 index = 1;
+  float usage = 2;  // 百分比
+  float memory_usage = 3;  // 百分比
+  float temperature = 4;  // 摄氏度
+}
+
+message NetworkMetrics {
+  float rx_bytes_per_sec = 1;  // 字节/秒
+  float tx_bytes_per_sec = 2;  // 字节/秒
+}
+
+message ContainerMetrics {
+  string container_id = 1;
+  float cpu_usage = 2;  // 百分比
+  float memory_usage = 3;  // 百分比
+  int64 memory_used = 4;  // 字节
+  NetworkMetrics network = 5;
+  google.protobuf.Timestamp collected_at = 6;
+}
+
+// Pipeline定义
+message Pipeline {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated PipelineStep steps = 4;
+  map<string, string> environment = 5;
+  ResourceRequirements resources = 6;
+}
+
+message PipelineStep {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  oneof action {
+    DownloadAction download = 4;
+    ExecuteAction execute = 5;
+    CopyAction copy = 6;
+    ContainerAction container = 7;
+  }
+  bool continue_on_error = 8;
+  int32 timeout = 9;  // 超时时间（秒）
+  map<string, string> environment = 10;
+}
+
+message DownloadAction {
+  string url = 1;
+  string destination = 2;
+  string checksum = 3;
+  string checksum_type = 4;  // "md5", "sha256", etc.
+}
+
+message ExecuteAction {
+  string command = 1;
+  repeated string args = 2;
+  string working_dir = 3;
+}
+
+message CopyAction {
+  string source = 1;
+  string destination = 2;
+}
+
+message ContainerAction {
+  string image = 1;
+  string name = 2;
+  repeated string command = 3;
+  map<string, string> environment = 4;
+  repeated PortMapping ports = 5;
+  repeated VolumeMapping volumes = 6;
+  ResourceRequirements resources = 7;
+}
+
+message PortMapping {
+  int32 host_port = 1;
+  int32 container_port = 2;
+  string protocol = 3;  // "tcp", "udp"
+}
+
+message VolumeMapping {
+  string host_path = 1;
+  string container_path = 2;
+  bool readonly = 3;
+}
+
+message ResourceRequirements {
+  float cpu = 1;  // CPU核心数
+  int64 memory = 2;  // 内存，单位: 字节
+  float gpu = 3;  // GPU数量
+  int64 disk = 4;  // 磁盘空间，单位: 字节
+}
+
+// 容器配置
+message ContainerConfig {
+  string image = 1;
+  string name = 2;
+  repeated string command = 3;
+  map<string, string> environment = 4;
+  repeated PortMapping ports = 5;
+  repeated VolumeMapping volumes = 6;
+  ResourceRequirements resources = 7;
+  bool remove_after_stop = 8;
+  map<string, string> labels = 9;
+  RestartPolicy restart_policy = 10;
+  NetworkConfig network = 11;
+}
+
+enum RestartPolicy {
+  NO = 0;
+  ALWAYS = 1;
+  ON_FAILURE = 2;
+  UNLESS_STOPPED = 3;
+}
+
+message NetworkConfig {
+  string network_mode = 1;  // "bridge", "host", "none", "container:<id>"
+  map<string, string> extra_hosts = 2;  // host:ip 映射
+} 
