@@ -1,46 +1,54 @@
-export interface PlatformFile {
+export type GamePlatformOS = 'Linux' | 'Windows' | 'macOS'
+export type GamePlatformStatus = 'active' | 'maintenance' | 'inactive'
+
+export interface GamePlatformFile {
   id: string
   type: string
   url: string
 }
 
-export type GamePlatformOS = 'Linux' | 'Windows' | 'macOS'
-export type GamePlatformStatus = 'active' | 'maintenance' | 'inactive'
+export interface GamePlatformInstallerCommand {
+  command?: string
+  move?: {
+    src: string
+    dst: string
+  }
+  chmodx?: string
+  extract?: {
+    file: string
+    dst: string
+  }
+}
 
 export interface GamePlatformConfig {
-  apiKey: string
-  apiUrl: string
-  callbackUrl: string
-}
-
-export interface GamePlatformEnvironment {
-  dockerImage: string
-  dockerTag: string
-  env: Record<string, string>
-  volumes: Record<string, string>
-}
-
-export interface GamePlatformFeatures {
-  gameTypes: string[]
-  platforms: string[]
+  wine?: string
+  dxvk?: string
+  vkd3d?: string
+  python?: string
+  proton?: string
+  'shader-cache'?: string
+  'remote-play'?: string
+  broadcast?: string
+  mode?: string
+  resolution?: string
+  wifi?: string
+  bluetooth?: string
 }
 
 export interface GamePlatform {
   id: string
   name: string
+  version: string
   os: GamePlatformOS
   status: GamePlatformStatus
   description: string
-  version: string
   image: string
-  resources: {
-    cpu: number
-    memory: number
-    storage: number
-  }
+  bin: string
+  data: string
+  files: GamePlatformFile[]
+  features: string[]
   config: GamePlatformConfig
-  environment: GamePlatformEnvironment
-  features: GamePlatformFeatures
+  installer?: GamePlatformInstallerCommand[]
   createdAt: string
   updatedAt: string
 }

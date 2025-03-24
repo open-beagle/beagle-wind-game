@@ -5,7 +5,9 @@
         <div class="card-header">
           <span>平台详情</span>
           <div class="header-actions">
-            <el-button type="primary" @click="handleEdit">编辑</el-button>
+            <el-button v-if="!isEditing" type="primary" @click="handleEdit">编辑</el-button>
+            <el-button v-if="isEditing" type="success" @click="handleSave">保存</el-button>
+            <el-button v-if="isEditing" type="info" @click="handleCancel">取消</el-button>
             <el-button type="danger" @click="handleDelete">删除</el-button>
           </div>
         </div>
@@ -14,134 +16,294 @@
       <div v-if="platform" class="detail-content">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="平台ID">{{ platform.id }}</el-descriptions-item>
-          <el-descriptions-item label="平台名称">{{ platform.name }}</el-descriptions-item>
+          <el-descriptions-item label="平台名称">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.name" />
+            </template>
+            <template v-else>
+              {{ platform.name }}
+            </template>
+          </el-descriptions-item>
           <el-descriptions-item label="操作系统">
-            <el-tag type="info">{{ platform.os }}</el-tag>
+            <template v-if="isEditing">
+              <el-select v-model="editForm.os">
+                <el-option label="Linux" value="Linux" />
+                <el-option label="Windows" value="Windows" />
+                <el-option label="macOS" value="macOS" />
+              </el-select>
+            </template>
+            <template v-else>
+              <el-tag type="info">{{ platform.os }}</el-tag>
+            </template>
           </el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="getStatusType(platform.status)">
-              {{ getStatusText(platform.status) }}
-            </el-tag>
+            <template v-if="isEditing">
+              <el-select v-model="editForm.status">
+                <el-option label="正常" value="active" />
+                <el-option label="维护中" value="maintenance" />
+                <el-option label="停用" value="inactive" />
+              </el-select>
+            </template>
+            <template v-else>
+              <el-tag :type="getStatusType(platform.status)">
+                {{ getStatusText(platform.status) }}
+              </el-tag>
+            </template>
           </el-descriptions-item>
-          <el-descriptions-item label="版本">{{ platform.version }}</el-descriptions-item>
-          <el-descriptions-item label="描述">{{ platform.description }}</el-descriptions-item>
+          <el-descriptions-item label="版本">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.version" />
+            </template>
+            <template v-else>
+              {{ platform.version }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="描述">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.description" />
+            </template>
+            <template v-else>
+              {{ platform.description }}
+            </template>
+          </el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ platform.createdAt }}</el-descriptions-item>
           <el-descriptions-item label="更新时间">{{ platform.updatedAt }}</el-descriptions-item>
         </el-descriptions>
 
         <div class="section-title">运行环境</div>
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="Docker镜像">{{ platform.image }}</el-descriptions-item>
-          <el-descriptions-item label="启动路径">{{ platform.bin }}</el-descriptions-item>
-          <el-descriptions-item label="数据目录">{{ platform.data }}</el-descriptions-item>
+          <el-descriptions-item label="Docker镜像">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.image" />
+            </template>
+            <template v-else>
+              {{ platform.image }}
+            </template>
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="启动路径">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.bin" />
+            </template>
+            <template v-else>
+              {{ platform.bin }}
+            </template>
+          </el-descriptions-item>
           <el-descriptions-item label="资源文件">
-            <el-tag v-for="file in platform.files" :key="file" class="file-tag">
-              {{ file }}
-            </el-tag>
+            <template v-if="isEditing">
+              <div v-for="(file, index) in editForm.files" :key="file.id" class="file-item">
+                <el-input v-model="file.type" placeholder="文件类型" style="width: 150px" />
+                <el-input v-model="file.url" placeholder="文件URL" />
+                <el-button type="danger" @click="removeFile(index)">删除</el-button>
+              </div>
+              <el-button type="primary" @click="addFile">添加文件</el-button>
+            </template>
+            <template v-else>
+              <div v-for="file in platform.files" :key="file.id" class="file-item">
+                <el-tag>{{ file.type }}</el-tag>
+                <span class="file-url">{{ file.url }}</span>
+              </div>
+            </template>
           </el-descriptions-item>
         </el-descriptions>
 
         <div class="section-title">平台特性</div>
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="支持的游戏类型">
-            <el-tag v-for="type in platform.features.gameTypes" :key="type" class="feature-tag">
-              {{ type }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="支持的平台">
-            <el-tag v-for="platform in platform.features.platforms" :key="platform" class="feature-tag">
-              {{ platform }}
-            </el-tag>
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="特性列表">
+            <template v-if="isEditing">
+              <div v-for="(feature, index) in editForm.features" :key="index" class="feature-item">
+                <el-input v-model="editForm.features[index]" />
+                <el-button type="danger" @click="removeFeature(index)">删除</el-button>
+              </div>
+              <el-button type="primary" @click="addFeature">添加特性</el-button>
+            </template>
+            <template v-else>
+              <div v-for="(feature, index) in platform.features" :key="index" class="feature-item">
+                {{ feature }}
+              </div>
+            </template>
           </el-descriptions-item>
         </el-descriptions>
 
         <div class="section-title">配置信息</div>
         <el-descriptions :column="1" border>
-          <el-descriptions-item label="API密钥">
-            <el-input v-model="platform.config.apiKey" readonly>
-              <template #append>
-                <el-button @click="handleCopyApiKey">复制</el-button>
-              </template>
-            </el-input>
+          <el-descriptions-item label="Wine版本" v-if="platform.config.wine">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.config.wine" />
+            </template>
+            <template v-else>
+              {{ platform.config.wine }}
+            </template>
           </el-descriptions-item>
-          <el-descriptions-item label="API地址">{{ platform.config.apiUrl }}</el-descriptions-item>
-          <el-descriptions-item label="回调地址">{{ platform.config.callbackUrl }}</el-descriptions-item>
-          <el-descriptions-item label="环境变量">
-            <el-tag v-for="(value, key) in platform.config.env" :key="key" class="env-tag">
-              {{ key }}: {{ value }}
-            </el-tag>
+          <el-descriptions-item label="DXVK版本" v-if="platform.config.dxvk">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.config.dxvk" />
+            </template>
+            <template v-else>
+              {{ platform.config.dxvk }}
+            </template>
           </el-descriptions-item>
-          <el-descriptions-item label="挂载目录">
-            <el-tag v-for="(value, key) in platform.config.volumes" :key="key" class="env-tag">
-              {{ key }}: {{ value }}
-            </el-tag>
+          <el-descriptions-item label="VKD3D版本" v-if="platform.config.vkd3d">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.config.vkd3d" />
+            </template>
+            <template v-else>
+              {{ platform.config.vkd3d }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="Python版本" v-if="platform.config.python">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.config.python" />
+            </template>
+            <template v-else>
+              {{ platform.config.python }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="Proton版本" v-if="platform.config.proton">
+            <template v-if="isEditing">
+              <el-input v-model="editForm.config.proton" />
+            </template>
+            <template v-else>
+              {{ platform.config.proton }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="着色器缓存" v-if="platform.config['shader-cache']">
+            <template v-if="isEditing">
+              <el-select v-model="editForm.config['shader-cache']">
+                <el-option label="启用" value="enabled" />
+                <el-option label="禁用" value="disabled" />
+              </el-select>
+            </template>
+            <template v-else>
+              {{ platform.config['shader-cache'] }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="远程游戏" v-if="platform.config['remote-play']">
+            <template v-if="isEditing">
+              <el-select v-model="editForm.config['remote-play']">
+                <el-option label="启用" value="enabled" />
+                <el-option label="禁用" value="disabled" />
+              </el-select>
+            </template>
+            <template v-else>
+              {{ platform.config['remote-play'] }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="广播" v-if="platform.config.broadcast">
+            <template v-if="isEditing">
+              <el-select v-model="editForm.config.broadcast">
+                <el-option label="启用" value="enabled" />
+                <el-option label="禁用" value="disabled" />
+              </el-select>
+            </template>
+            <template v-else>
+              {{ platform.config.broadcast }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="运行模式" v-if="platform.config.mode">
+            <template v-if="isEditing">
+              <el-select v-model="editForm.config.mode">
+                <el-option label="主机模式" value="docked" />
+                <el-option label="掌机模式" value="handheld" />
+              </el-select>
+            </template>
+            <template v-else>
+              {{ platform.config.mode }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="分辨率" v-if="platform.config.resolution">
+            <template v-if="isEditing">
+              <el-select v-model="editForm.config.resolution">
+                <el-option label="1080p" value="1080p" />
+                <el-option label="720p" value="720p" />
+                <el-option label="480p" value="480p" />
+              </el-select>
+            </template>
+            <template v-else>
+              {{ platform.config.resolution }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="WiFi" v-if="platform.config.wifi">
+            <template v-if="isEditing">
+              <el-select v-model="editForm.config.wifi">
+                <el-option label="启用" value="enabled" />
+                <el-option label="禁用" value="disabled" />
+              </el-select>
+            </template>
+            <template v-else>
+              {{ platform.config.wifi }}
+            </template>
+          </el-descriptions-item>
+          <el-descriptions-item label="蓝牙" v-if="platform.config.bluetooth">
+            <template v-if="isEditing">
+              <el-select v-model="editForm.config.bluetooth">
+                <el-option label="启用" value="enabled" />
+                <el-option label="禁用" value="disabled" />
+              </el-select>
+            </template>
+            <template v-else>
+              {{ platform.config.bluetooth }}
+            </template>
           </el-descriptions-item>
         </el-descriptions>
+
+        <div class="section-title">安装配置</div>
+        <div v-if="platform.installer">
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="安装命令">
+              <template v-if="isEditing">
+                <div v-for="(command, index) in editForm.installer" :key="index" class="installer-item">
+                  <el-select v-model="command.type" placeholder="选择命令类型">
+                    <el-option label="命令" value="command" />
+                    <el-option label="移动" value="move" />
+                    <el-option label="权限" value="chmodx" />
+                    <el-option label="解压" value="extract" />
+                  </el-select>
+                  <template v-if="command.type === 'command'">
+                    <el-input v-model="command.command" placeholder="输入命令" />
+                  </template>
+                  <template v-if="command.type === 'move'">
+                    <el-input v-model="command.move.src" placeholder="源文件" />
+                    <el-input v-model="command.move.dst" placeholder="目标路径" />
+                  </template>
+                  <template v-if="command.type === 'chmodx'">
+                    <el-input v-model="command.chmodx" placeholder="文件路径" />
+                  </template>
+                  <template v-if="command.type === 'extract'">
+                    <el-input v-model="command.extract.file" placeholder="压缩文件" />
+                    <el-input v-model="command.extract.dst" placeholder="解压目标" />
+                  </template>
+                  <el-button type="danger" @click="removeInstallerCommand(index)">删除</el-button>
+                </div>
+                <el-button type="primary" @click="addInstallerCommand">添加命令</el-button>
+              </template>
+              <template v-else>
+                <div v-for="(command, index) in platform.installer" :key="index" class="installer-item">
+                  <template v-if="command.command">
+                    <el-tag type="info">命令</el-tag>
+                    <span class="command-text">{{ command.command }}</span>
+                  </template>
+                  <template v-if="command.move">
+                    <el-tag type="success">移动</el-tag>
+                    <span class="command-text">从 {{ command.move.src }} 到 {{ command.move.dst }}</span>
+                  </template>
+                  <template v-if="command.chmodx">
+                    <el-tag type="warning">权限</el-tag>
+                    <span class="command-text">设置 {{ command.chmodx }} 可执行权限</span>
+                  </template>
+                  <template v-if="command.extract">
+                    <el-tag type="danger">解压</el-tag>
+                    <span class="command-text">解压 {{ command.extract.file }} 到 {{ command.extract.dst }}</span>
+                  </template>
+                </div>
+              </template>
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
       </div>
     </el-card>
-
-    <!-- 编辑对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      title="编辑平台"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="100px"
-      >
-        <el-form-item label="平台名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入平台名称" />
-        </el-form-item>
-        <el-form-item label="操作系统" prop="os">
-          <el-select v-model="form.os" placeholder="请选择操作系统">
-            <el-option label="Linux" value="Linux" />
-            <el-option label="Windows" value="Windows" />
-            <el-option label="macOS" value="macOS" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="form.status" placeholder="请选择状态">
-            <el-option label="正常" value="active" />
-            <el-option label="维护中" value="maintenance" />
-            <el-option label="停用" value="inactive" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="版本" prop="version">
-          <el-input v-model="form.version" placeholder="请输入版本号" />
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="form.description" placeholder="请输入描述" />
-        </el-form-item>
-        <el-form-item label="Docker镜像" prop="image">
-          <el-input v-model="form.image" placeholder="请输入Docker镜像" />
-        </el-form-item>
-        <el-form-item label="启动路径" prop="bin">
-          <el-input v-model="form.bin" placeholder="请输入启动路径" />
-        </el-form-item>
-        <el-form-item label="数据目录" prop="data">
-          <el-input v-model="form.data" placeholder="请输入数据目录" />
-        </el-form-item>
-        <el-form-item label="API密钥" prop="config.apiKey">
-          <el-input v-model="form.config.apiKey" placeholder="请输入API密钥" />
-        </el-form-item>
-        <el-form-item label="API地址" prop="config.apiUrl">
-          <el-input v-model="form.config.apiUrl" placeholder="请输入API地址" />
-        </el-form-item>
-        <el-form-item label="回调地址" prop="config.callbackUrl">
-          <el-input v-model="form.config.callbackUrl" placeholder="请输入回调地址" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -150,76 +312,14 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { mockGamePlatforms } from '@/mocks'
-import type { GamePlatform } from '@/types'
-import type { FormInstance, FormRules } from 'element-plus'
+import type { GamePlatform, GamePlatformFile, GamePlatformInstallerCommand } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const platform = ref<GamePlatform | null>(null)
-const dialogVisible = ref(false)
-const formRef = ref<FormInstance>()
-
-const form = ref({
-  id: '',
-  name: '',
-  os: 'Linux',
-  status: '',
-  version: '',
-  description: '',
-  image: '',
-  bin: '',
-  data: '',
-  files: [],
-  features: {
-    gameTypes: [],
-    platforms: []
-  },
-  config: {
-    apiKey: '',
-    apiUrl: '',
-    callbackUrl: '',
-    env: {},
-    volumes: {}
-  }
-})
-
-const rules: FormRules = {
-  name: [
-    { required: true, message: '请输入平台名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-  ],
-  os: [
-    { required: true, message: '请选择操作系统', trigger: 'change' }
-  ],
-  status: [
-    { required: true, message: '请选择状态', trigger: 'change' }
-  ],
-  version: [
-    { required: true, message: '请输入版本号', trigger: 'blur' }
-  ],
-  description: [
-    { required: true, message: '请输入描述', trigger: 'blur' }
-  ],
-  image: [
-    { required: true, message: '请输入Docker镜像', trigger: 'blur' }
-  ],
-  bin: [
-    { required: true, message: '请输入启动路径', trigger: 'blur' }
-  ],
-  data: [
-    { required: true, message: '请输入数据目录', trigger: 'blur' }
-  ],
-  'config.apiKey': [
-    { required: true, message: '请输入API密钥', trigger: 'blur' }
-  ],
-  'config.apiUrl': [
-    { required: true, message: '请输入API地址', trigger: 'blur' }
-  ],
-  'config.callbackUrl': [
-    { required: true, message: '请输入回调地址', trigger: 'blur' }
-  ]
-}
+const isEditing = ref(false)
+const editForm = ref<GamePlatform | null>(null)
 
 // 获取平台详情
 const getPlatformDetail = async () => {
@@ -258,30 +358,32 @@ const getStatusText = (status: string) => statusTextMap[status] || status
 // 编辑平台
 const handleEdit = () => {
   if (!platform.value) return
-  form.value = {
-    id: platform.value.id,
-    name: platform.value.name,
-    os: platform.value.os,
-    status: platform.value.status,
-    version: platform.value.version,
-    description: platform.value.description,
-    image: platform.value.image,
-    bin: platform.value.bin,
-    data: platform.value.data,
-    files: [...platform.value.files],
-    features: {
-      gameTypes: [...platform.value.features.gameTypes],
-      platforms: [...platform.value.features.platforms]
-    },
-    config: {
-      apiKey: platform.value.config.apiKey,
-      apiUrl: platform.value.config.apiUrl,
-      callbackUrl: platform.value.config.callbackUrl,
-      env: { ...platform.value.config.env },
-      volumes: { ...platform.value.config.volumes }
+  editForm.value = JSON.parse(JSON.stringify(platform.value))
+  isEditing.value = true
+}
+
+// 取消编辑
+const handleCancel = () => {
+  isEditing.value = false
+  editForm.value = null
+}
+
+// 保存编辑
+const handleSave = () => {
+  if (!editForm.value || !platform.value) return
+  
+  // 模拟更新
+  const index = mockGamePlatforms.findIndex(p => p.id === platform.value?.id)
+  if (index > -1) {
+    mockGamePlatforms[index] = {
+      ...editForm.value,
+      updatedAt: new Date().toISOString()
     }
+    platform.value = mockGamePlatforms[index]
+    ElMessage.success('更新成功')
+    isEditing.value = false
+    editForm.value = null
   }
-  dialogVisible.value = true
 }
 
 // 删除平台
@@ -299,56 +401,42 @@ const handleDelete = () => {
   })
 }
 
-// 提交表单
-const handleSubmit = async () => {
-  if (!formRef.value) return
-  
-  await formRef.value.validate((valid) => {
-    if (valid) {
-      // 模拟更新
-      const index = mockGamePlatforms.findIndex(p => p.id === form.value.id)
-      if (index > -1) {
-        mockGamePlatforms[index] = {
-          ...mockGamePlatforms[index],
-          name: form.value.name,
-          os: form.value.os,
-          status: form.value.status,
-          version: form.value.version,
-          description: form.value.description,
-          image: form.value.image,
-          bin: form.value.bin,
-          data: form.value.data,
-          files: [...form.value.files],
-          features: {
-            gameTypes: [...form.value.features.gameTypes],
-            platforms: [...form.value.features.platforms]
-          },
-          config: {
-            apiKey: form.value.config.apiKey,
-            apiUrl: form.value.config.apiUrl,
-            callbackUrl: form.value.config.callbackUrl,
-            env: { ...form.value.config.env },
-            volumes: { ...form.value.config.volumes }
-          }
-        }
-        ElMessage.success('更新成功')
-        dialogVisible.value = false
-        getPlatformDetail()
-      }
-    }
+// 文件操作
+const addFile = () => {
+  if (!editForm.value) return
+  editForm.value.files.push({
+    id: `file-${Date.now()}`,
+    type: '',
+    url: ''
   })
 }
 
-// 复制API密钥
-const handleCopyApiKey = () => {
-  if (!platform.value) return
-  navigator.clipboard.writeText(platform.value.config.apiKey)
-    .then(() => {
-      ElMessage.success('复制成功')
-    })
-    .catch(() => {
-      ElMessage.error('复制失败')
-    })
+const removeFile = (index: number) => {
+  if (!editForm.value) return
+  editForm.value.files.splice(index, 1)
+}
+
+// 特性操作
+const addFeature = () => {
+  if (!editForm.value) return
+  editForm.value.features.push('')
+}
+
+const removeFeature = (index: number) => {
+  if (!editForm.value) return
+  editForm.value.features.splice(index, 1)
+}
+
+// 安装命令操作
+const addInstallerCommand = () => {
+  if (!editForm.value) return
+  editForm.value.installer = editForm.value.installer || []
+  editForm.value.installer.push({})
+}
+
+const removeInstallerCommand = (index: number) => {
+  if (!editForm.value?.installer) return
+  editForm.value.installer.splice(index, 1)
 }
 
 onMounted(() => {
@@ -394,5 +482,31 @@ onMounted(() => {
 
 :deep(.el-descriptions__label) {
   width: 120px;
+}
+
+.file-item,
+.feature-item,
+.installer-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.file-url {
+  margin-left: 8px;
+  color: #666;
+  font-size: 14px;
+}
+
+.feature-item {
+  margin-bottom: 8px;
+  color: #666;
+}
+
+.command-text {
+  margin-left: 8px;
+  color: #666;
+  font-family: monospace;
 }
 </style> 
