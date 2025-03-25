@@ -1,6 +1,7 @@
 - id: "node-241"
   name: "游戏机-241"
   model: "Beagle-Wind-2024"
+  # 静态数据
   hardware:
     CPU: "Intel i9-13900K"
     RAM: "128GB DDR5-7000"
@@ -11,20 +12,48 @@
     IP: "192.168.1.241"
     Speed: "2.5Gbps"
   location: "北京比格"
-  status: "ready"
-  resources:
-    CPU_Usage: "5%"
-    RAM_Usage: "12%"
-    GPU_Usage: "0%"
-    Storage: "1.5TB Free"
-  online: true
-  last_online: "2024-03-21T10:00:00Z"
   created_at: "2024-01-15T00:00:00Z"
-  updated_at: "2024-03-21T10:00:00Z"
+  # 动态数据
+  status:
+    state: "ready"
+    online: true
+    last_online: "2024-03-21T10:00:00Z"
+    updated_at: "2024-03-21T10:00:00Z"
+    resources:
+      CPU_Usage: "5%"
+      RAM_Usage: "12%"
+      GPU_Usage: "0%"
+      Storage: "1.5TB Free"
+    metrics:
+      cpu:
+        usage: 5.0
+        cores: 24
+        temperature: 45.0
+      memory:
+        total: 128
+        used: 15.36
+        free: 112.64
+      gpu:
+        usage: 0.0
+        temperature: 35.0
+        memory:
+          total: 24
+          used: 0
+          free: 24
+      disk:
+        total: 2048
+        used: 512
+        free: 1536
+      network:
+        rx_bytes: 1024000
+        tx_bytes: 1024000
+        rx_packets: 1000
+        tx_packets: 1000
 
 - id: "node-243"
   name: "游戏机-243"
   model: "Beagle-Wind-2024"
+  # 静态数据
   hardware:
     CPU: "Intel i9-13900K"
     RAM: "128GB DDR5-7000"
@@ -35,20 +64,48 @@
     IP: "192.168.1.243"
     Speed: "2.5Gbps"
   location: "北京比格"
-  status: "ready"
-  resources:
-    CPU_Usage: "3%"
-    RAM_Usage: "10%"
-    GPU_Usage: "0%"
-    Storage: "1.6TB Free"
-  online: true
-  last_online: "2024-03-21T10:00:00Z"
   created_at: "2024-01-20T00:00:00Z"
-  updated_at: "2024-03-21T10:00:00Z"
+  # 动态数据
+  status:
+    state: "ready"
+    online: true
+    last_online: "2024-03-21T10:00:00Z"
+    updated_at: "2024-03-21T10:00:00Z"
+    resources:
+      CPU_Usage: "3%"
+      RAM_Usage: "10%"
+      GPU_Usage: "0%"
+      Storage: "1.6TB Free"
+    metrics:
+      cpu:
+        usage: 3.0
+        cores: 24
+        temperature: 42.0
+      memory:
+        total: 128
+        used: 12.8
+        free: 115.2
+      gpu:
+        usage: 0.0
+        temperature: 33.0
+        memory:
+          total: 24
+          used: 0
+          free: 24
+      disk:
+        total: 2048
+        used: 409.6
+        free: 1638.4
+      network:
+        rx_bytes: 1024000
+        tx_bytes: 1024000
+        rx_packets: 1000
+        tx_packets: 1000
 
 - id: "node-246"
   name: "游戏机-246"
   model: "Beagle-Wind-2024"
+  # 静态数据
   hardware:
     CPU: "Intel i9-13900K"
     RAM: "128GB DDR5-7000"
@@ -59,13 +116,40 @@
     IP: "192.168.1.246"
     Speed: "2.5Gbps"
   location: "北京比格"
-  status: "ready"
-  resources:
-    CPU_Usage: "3%"
-    RAM_Usage: "10%"
-    GPU_Usage: "0%"
-    Storage: "1.7TB Free"
-  online: true
-  last_online: "2024-03-21T10:00:00Z"
   created_at: "2024-01-25T00:00:00Z"
-  updated_at: "2024-03-21T10:00:00Z"
+  # 动态数据
+  status:
+    state: "ready"
+    online: true
+    last_online: "2024-03-21T10:00:00Z"
+    updated_at: "2024-03-21T10:00:00Z"
+    resources:
+      CPU_Usage: "3%"
+      RAM_Usage: "10%"
+      GPU_Usage: "0%"
+      Storage: "1.7TB Free"
+    metrics:
+      cpu:
+        usage: 3.0
+        cores: 24
+        temperature: 41.0
+      memory:
+        total: 128
+        used: 12.8
+        free: 115.2
+      gpu:
+        usage: 0.0
+        temperature: 32.0
+        memory:
+          total: 24
+          used: 0
+          free: 24
+      disk:
+        total: 2048
+        used: 307.2
+        free: 1740.8
+      network:
+        rx_bytes: 1024000
+        tx_bytes: 1024000
+        rx_packets: 1000
+        tx_packets: 1000

@@ -272,3 +272,11 @@ go run main.go
    log.SetLevel(log.DebugLevel)
    log.SetFormatter(&log.JSONFormatter{})
    ```
+
+## Protobuf 更新
+
+当修改了 `.proto` 文件后，需要重新生成 Go 代码：
+
+```bash
+protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative internal/agent/proto/agent.proto
+```

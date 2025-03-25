@@ -9,16 +9,30 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// NodeStore 游戏节点存储
-type NodeStore struct {
+// NodeStore 游戏节点存储接口
+type NodeStore interface {
+	// List 获取所有节点
+	List() ([]models.GameNode, error)
+	// Get 获取指定ID的节点
+	Get(id string) (models.GameNode, error)
+	// Add 添加节点
+	Add(node models.GameNode) error
+	// Update 更新节点信息
+	Update(node models.GameNode) error
+	// Delete 删除节点
+	Delete(id string) error
+}
+
+// YAMLNodeStore YAML文件存储实现
+type YAMLNodeStore struct {
 	dataFile string
 	nodes    []models.GameNode
 	mu       sync.RWMutex
 }
 
 // NewNodeStore 创建游戏节点存储
-func NewNodeStore(dataFile string) (*NodeStore, error) {
-	store := &NodeStore{
+func NewNodeStore(dataFile string) (NodeStore, error) {
+	store := &YAMLNodeStore{
 		dataFile: dataFile,
 	}
 
@@ -32,7 +46,7 @@ func NewNodeStore(dataFile string) (*NodeStore, error) {
 }
 
 // Load 加载节点数据
-func (s *NodeStore) Load() error {
+func (s *YAMLNodeStore) Load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -56,7 +70,7 @@ func (s *NodeStore) Load() error {
 }
 
 // Save 保存节点数据
-func (s *NodeStore) Save() error {
+func (s *YAMLNodeStore) Save() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -76,7 +90,7 @@ func (s *NodeStore) Save() error {
 }
 
 // List 获取所有节点
-func (s *NodeStore) List() ([]models.GameNode, error) {
+func (s *YAMLNodeStore) List() ([]models.GameNode, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -88,7 +102,7 @@ func (s *NodeStore) List() ([]models.GameNode, error) {
 }
 
 // Get 获取指定ID的节点
-func (s *NodeStore) Get(id string) (models.GameNode, error) {
+func (s *YAMLNodeStore) Get(id string) (models.GameNode, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -102,7 +116,7 @@ func (s *NodeStore) Get(id string) (models.GameNode, error) {
 }
 
 // Add 添加节点
-func (s *NodeStore) Add(node models.GameNode) error {
+func (s *YAMLNodeStore) Add(node models.GameNode) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -121,7 +135,7 @@ func (s *NodeStore) Add(node models.GameNode) error {
 }
 
 // Update 更新节点
-func (s *NodeStore) Update(node models.GameNode) error {
+func (s *YAMLNodeStore) Update(node models.GameNode) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -137,7 +151,7 @@ func (s *NodeStore) Update(node models.GameNode) error {
 }
 
 // Delete 删除节点
-func (s *NodeStore) Delete(id string) error {
+func (s *YAMLNodeStore) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

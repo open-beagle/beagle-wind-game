@@ -10,12 +10,12 @@ import (
 
 // NodeService 游戏节点服务
 type NodeService struct {
-	nodeStore     *store.NodeStore
-	instanceStore *store.InstanceStore
+	nodeStore     store.NodeStore
+	instanceStore store.InstanceStore
 }
 
 // NewNodeService 创建游戏节点服务
-func NewNodeService(nodeStore *store.NodeStore, instanceStore *store.InstanceStore) *NodeService {
+func NewNodeService(nodeStore store.NodeStore, instanceStore store.InstanceStore) *NodeService {
 	return &NodeService{
 		nodeStore:     nodeStore,
 		instanceStore: instanceStore,
@@ -50,14 +50,15 @@ func (s *NodeService) ListNodes(params NodeListParams) (NodeListResult, error) {
 		// 关键词过滤
 		if params.Keyword != "" {
 			// TODO: 实现关键词过滤
-		}
-
-		// 状态过滤
-		if params.Status != "" && node.Status != params.Status {
 			continue
 		}
 
-		// 如果没有过滤条件或者满足过滤条件，添加到结果中
+		// 状态过滤
+		if params.Status != "" && string(node.Status.State) != params.Status {
+			continue
+		}
+
+		// 如果满足所有条件，添加到结果中
 		filteredNodes = append(filteredNodes, node)
 	}
 
@@ -90,42 +91,36 @@ func (s *NodeService) ListNodes(params NodeListParams) (NodeListResult, error) {
 	}, nil
 }
 
-// GetNode 获取节点详情
-func (s *NodeService) GetNode(id string) (models.GameNode, error) {
-	// 获取节点基本信息
+// GetNode 获取节点信息
+func (s *NodeService) GetNode(id string) (*models.GameNode, error) {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
-		return models.GameNode{}, err
+		return nil, err
 	}
-
-	// 获取节点上的实例信息
-	_, err = s.instanceStore.FindByNodeID(id)
-	if err != nil {
-		return models.GameNode{}, fmt.Errorf("获取实例信息失败: %w", err)
-	}
-
-	// TODO: 构建实例信息摘要，添加到节点对象中
-
-	return node, nil
+	return &node, nil
 }
 
-// CreateNode 创建节点
-func (s *NodeService) CreateNode(node models.GameNode) (string, error) {
+// CreateNode 创建游戏节点
+func (s *NodeService) CreateNode(node models.GameNode) error {
 	// 设置创建时间和更新时间
 	now := time.Now()
 	node.CreatedAt = now
 	node.UpdatedAt = now
 
-	// 保存节点
-	err := s.nodeStore.Add(node)
-	if err != nil {
-		return "", err
+	// 设置初始状态
+	node.Status = models.GameNodeStatus{
+		State:      models.GameNodeStateOffline,
+		Online:     false,
+		LastOnline: now,
+		UpdatedAt:  now,
+		Resources:  make(map[string]string),
+		Metrics:    make(map[string]interface{}),
 	}
 
-	return node.ID, nil
+	return s.nodeStore.Add(node)
 }
 
-// UpdateNode 更新节点
+// UpdateNode 更新游戏节点
 func (s *NodeService) UpdateNode(id string, node models.GameNode) error {
 	// 检查节点是否存在
 	existingNode, err := s.nodeStore.Get(id)
@@ -140,11 +135,10 @@ func (s *NodeService) UpdateNode(id string, node models.GameNode) error {
 	// 确保ID一致
 	node.ID = id
 
-	// 更新节点
 	return s.nodeStore.Update(node)
 }
 
-// DeleteNode 删除节点
+// DeleteNode 删除游戏节点
 func (s *NodeService) DeleteNode(id string) error {
 	// 检查节点是否存在
 	_, err := s.nodeStore.Get(id)
@@ -152,33 +146,87 @@ func (s *NodeService) DeleteNode(id string) error {
 		return err
 	}
 
-	// 检查节点上是否有运行中的实例
+	// 检查是否有实例使用该节点
 	instances, err := s.instanceStore.FindByNodeID(id)
 	if err != nil {
 		return fmt.Errorf("检查实例失败: %w", err)
 	}
 
 	if len(instances) > 0 {
-		return fmt.Errorf("节点上有%d个实例，无法删除", len(instances))
+		return fmt.Errorf("有%d个实例正在使用该节点，无法删除", len(instances))
 	}
 
-	// 删除节点
 	return s.nodeStore.Delete(id)
 }
 
 // UpdateNodeStatus 更新节点状态
-func (s *NodeService) UpdateNodeStatus(id string, status string, reason string) error {
-	// 获取节点
+func (s *NodeService) UpdateNodeStatus(id string, status string) error {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
 		return err
 	}
 
-	// 更新状态
-	node.Status = status
-	// TODO: 记录状态变更原因
+	node.Status.State = models.GameNodeState(status)
+	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
-	// 更新节点
+	return s.nodeStore.Update(node)
+}
+
+// UpdateNodeMetrics 更新节点指标
+func (s *NodeService) UpdateNodeMetrics(id string, metrics map[string]interface{}) error {
+	node, err := s.nodeStore.Get(id)
+	if err != nil {
+		return err
+	}
+
+	node.Status.Metrics = metrics
+	node.Status.UpdatedAt = time.Now()
+	node.UpdatedAt = time.Now()
+
+	return s.nodeStore.Update(node)
+}
+
+// UpdateNodeResources 更新节点资源使用情况
+func (s *NodeService) UpdateNodeResources(id string, resources map[string]interface{}) error {
+	node, err := s.nodeStore.Get(id)
+	if err != nil {
+		return err
+	}
+
+	// 转换资源使用情况为字符串格式
+	stringResources := make(map[string]string)
+	for k, v := range resources {
+		if str, ok := v.(string); ok {
+			stringResources[k] = str
+		} else {
+			stringResources[k] = fmt.Sprintf("%v", v)
+		}
+	}
+
+	node.Status.Resources = stringResources
+	node.Status.UpdatedAt = time.Now()
+	node.UpdatedAt = time.Now()
+
+	return s.nodeStore.Update(node)
+}
+
+// UpdateNodeOnlineStatus 更新节点在线状态
+func (s *NodeService) UpdateNodeOnlineStatus(id string, online bool) error {
+	node, err := s.nodeStore.Get(id)
+	if err != nil {
+		return err
+	}
+
+	node.Status.Online = online
+	if online {
+		node.Status.LastOnline = time.Now()
+		node.Status.State = models.GameNodeStateOnline
+	} else {
+		node.Status.State = models.GameNodeStateOffline
+	}
+	node.Status.UpdatedAt = time.Now()
+	node.UpdatedAt = time.Now()
+
 	return s.nodeStore.Update(node)
 }

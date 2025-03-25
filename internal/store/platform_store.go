@@ -9,16 +9,30 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// PlatformStore 游戏平台存储，从配置文件读取静态数据
-type PlatformStore struct {
+// PlatformStore 游戏平台存储接口
+type PlatformStore interface {
+	// List 获取所有平台
+	List() ([]models.GamePlatform, error)
+	// Get 获取指定ID的平台
+	Get(id string) (models.GamePlatform, error)
+	// Add 添加平台
+	Add(platform models.GamePlatform) error
+	// Update 更新平台信息
+	Update(platform models.GamePlatform) error
+	// Delete 删除平台
+	Delete(id string) error
+}
+
+// YAMLPlatformStore YAML文件存储实现
+type YAMLPlatformStore struct {
 	configFile string
 	platforms  []models.GamePlatform
 	mu         sync.RWMutex
 }
 
 // NewPlatformStore 创建游戏平台存储
-func NewPlatformStore(configFile string) (*PlatformStore, error) {
-	store := &PlatformStore{
+func NewPlatformStore(configFile string) (PlatformStore, error) {
+	store := &YAMLPlatformStore{
 		configFile: configFile,
 	}
 
@@ -32,7 +46,7 @@ func NewPlatformStore(configFile string) (*PlatformStore, error) {
 }
 
 // Load 加载平台数据
-func (s *PlatformStore) Load() error {
+func (s *YAMLPlatformStore) Load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -53,34 +67,8 @@ func (s *PlatformStore) Load() error {
 	return nil
 }
 
-// List 获取所有平台
-func (s *PlatformStore) List() ([]models.GamePlatform, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	// 创建副本避免修改原始数据
-	platforms := make([]models.GamePlatform, len(s.platforms))
-	copy(platforms, s.platforms)
-
-	return platforms, nil
-}
-
-// Get 获取指定ID的平台
-func (s *PlatformStore) Get(id string) (models.GamePlatform, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for _, platform := range s.platforms {
-		if platform.ID == id {
-			return platform, nil
-		}
-	}
-
-	return models.GamePlatform{}, fmt.Errorf("平台不存在: %s", id)
-}
-
 // Save 保存平台配置到文件
-func (s *PlatformStore) Save() error {
+func (s *YAMLPlatformStore) Save() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -99,8 +87,34 @@ func (s *PlatformStore) Save() error {
 	return nil
 }
 
+// List 获取所有平台
+func (s *YAMLPlatformStore) List() ([]models.GamePlatform, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// 创建副本避免修改原始数据
+	platforms := make([]models.GamePlatform, len(s.platforms))
+	copy(platforms, s.platforms)
+
+	return platforms, nil
+}
+
+// Get 获取指定ID的平台
+func (s *YAMLPlatformStore) Get(id string) (models.GamePlatform, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, platform := range s.platforms {
+		if platform.ID == id {
+			return platform, nil
+		}
+	}
+
+	return models.GamePlatform{}, fmt.Errorf("平台不存在: %s", id)
+}
+
 // Update 更新平台信息
-func (s *PlatformStore) Update(platform models.GamePlatform) error {
+func (s *YAMLPlatformStore) Update(platform models.GamePlatform) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -123,7 +137,7 @@ func (s *PlatformStore) Update(platform models.GamePlatform) error {
 }
 
 // Add 添加平台
-func (s *PlatformStore) Add(platform models.GamePlatform) error {
+func (s *YAMLPlatformStore) Add(platform models.GamePlatform) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -142,7 +156,7 @@ func (s *PlatformStore) Add(platform models.GamePlatform) error {
 }
 
 // Delete 删除平台
-func (s *PlatformStore) Delete(id string) error {
+func (s *YAMLPlatformStore) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

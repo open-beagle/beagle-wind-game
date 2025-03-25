@@ -10,9 +10,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/open-beagle/beagle-wind-game/internal/agent/proto"
+	"github.com/open-beagle/beagle-wind-game/internal/models"
 )
 
 // AgentServer 实现节点Agent的gRPC服务端
@@ -22,6 +24,7 @@ type AgentServer struct {
 	server           *grpc.Server
 	nodeConnections  map[string]*nodeConnection
 	connectionsMutex sync.RWMutex
+	nodeManager      NodeManager
 }
 
 // 节点连接信息
@@ -52,10 +55,11 @@ var DefaultServerOptions = ServerOptions{
 }
 
 // NewAgentServer 创建新的Agent服务器实例
-func NewAgentServer(opts ServerOptions) *AgentServer {
+func NewAgentServer(opts ServerOptions, nodeManager NodeManager) *AgentServer {
 	return &AgentServer{
 		opts:            opts,
 		nodeConnections: make(map[string]*nodeConnection),
+		nodeManager:     nodeManager,
 	}
 }
 
@@ -86,6 +90,9 @@ func (s *AgentServer) Start() error {
 	// 创建gRPC服务器
 	s.server = grpc.NewServer(serverOpts...)
 	proto.RegisterAgentServiceServer(s.server, s)
+
+	// 启用反射服务
+	reflection.Register(s.server)
 
 	// 监听网络端口
 	lis, err := net.Listen("tcp", s.opts.ListenAddr)
@@ -140,7 +147,33 @@ func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) 
 		return &proto.RegisterResponse{
 			Success: false,
 			Message: "节点ID不能为空",
-		}, nil
+		}, fmt.Errorf("节点ID不能为空")
+	}
+
+	// 验证节点管理器
+	if s.nodeManager == nil {
+		return &proto.RegisterResponse{
+			Success: false,
+			Message: "节点管理器未初始化",
+		}, fmt.Errorf("节点管理器未初始化")
+	}
+
+	// 获取节点信息
+	_, err := s.nodeManager.GetNode(req.NodeId)
+	if err != nil {
+		return &proto.RegisterResponse{
+			Success: false,
+			Message: fmt.Sprintf("获取节点信息失败: %v", err),
+		}, fmt.Errorf("获取节点信息失败: %w", err)
+	}
+
+	// 更新节点状态
+	err = s.nodeManager.UpdateNodeStatus(req.NodeId, string(models.GameNodeStateReady))
+	if err != nil {
+		return &proto.RegisterResponse{
+			Success: false,
+			Message: fmt.Sprintf("更新节点状态失败: %v", err),
+		}, fmt.Errorf("更新节点状态失败: %w", err)
 	}
 
 	// 生成会话ID
@@ -391,8 +424,6 @@ func (s *AgentServer) StreamNodeLogs(req *proto.NodeLogsRequest, stream proto.Ag
 			// 发送示例日志
 			err := stream.Send(&proto.LogEntry{
 				Source:    "node",
-				SourceId:  req.NodeId,
-				Level:     "info",
 				Content:   "示例节点日志",
 				Timestamp: timestamppb.Now(),
 			})
@@ -424,8 +455,6 @@ func (s *AgentServer) StreamContainerLogs(req *proto.ContainerLogsRequest, strea
 			// 发送示例日志
 			err := stream.Send(&proto.LogEntry{
 				Source:    "container",
-				SourceId:  req.ContainerId,
-				Level:     "info",
 				Content:   "示例容器日志",
 				Timestamp: timestamppb.Now(),
 			})

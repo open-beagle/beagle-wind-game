@@ -9,11 +9,11 @@ import (
 
 // PlatformService 游戏平台服务
 type PlatformService struct {
-	platformStore *store.PlatformStore
+	platformStore store.PlatformStore
 }
 
 // NewPlatformService 创建游戏平台服务
-func NewPlatformService(platformStore *store.PlatformStore) *PlatformService {
+func NewPlatformService(platformStore store.PlatformStore) *PlatformService {
 	return &PlatformService{
 		platformStore: platformStore,
 	}

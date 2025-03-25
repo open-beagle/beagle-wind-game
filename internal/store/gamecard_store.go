@@ -9,16 +9,30 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// GameCardStore 游戏卡片存储
-type GameCardStore struct {
+// GameCardStore 游戏卡片存储接口
+type GameCardStore interface {
+	// List 获取所有游戏卡片
+	List() ([]models.GameCard, error)
+	// Get 获取指定ID的游戏卡片
+	Get(id string) (models.GameCard, error)
+	// Add 添加游戏卡片
+	Add(card models.GameCard) error
+	// Update 更新游戏卡片信息
+	Update(card models.GameCard) error
+	// Delete 删除游戏卡片
+	Delete(id string) error
+}
+
+// YAMLGameCardStore YAML文件存储实现
+type YAMLGameCardStore struct {
 	dataFile string
 	cards    []models.GameCard
 	mu       sync.RWMutex
 }
 
 // NewGameCardStore 创建游戏卡片存储
-func NewGameCardStore(dataFile string) (*GameCardStore, error) {
-	store := &GameCardStore{
+func NewGameCardStore(dataFile string) (GameCardStore, error) {
+	store := &YAMLGameCardStore{
 		dataFile: dataFile,
 	}
 
@@ -32,7 +46,7 @@ func NewGameCardStore(dataFile string) (*GameCardStore, error) {
 }
 
 // Load 加载游戏卡片数据
-func (s *GameCardStore) Load() error {
+func (s *YAMLGameCardStore) Load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -56,7 +70,7 @@ func (s *GameCardStore) Load() error {
 }
 
 // Save 保存游戏卡片数据到文件
-func (s *GameCardStore) Save() error {
+func (s *YAMLGameCardStore) Save() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -76,7 +90,7 @@ func (s *GameCardStore) Save() error {
 }
 
 // List 获取所有卡片
-func (s *GameCardStore) List() ([]models.GameCard, error) {
+func (s *YAMLGameCardStore) List() ([]models.GameCard, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -88,7 +102,7 @@ func (s *GameCardStore) List() ([]models.GameCard, error) {
 }
 
 // Get 获取指定ID的卡片
-func (s *GameCardStore) Get(id string) (models.GameCard, error) {
+func (s *YAMLGameCardStore) Get(id string) (models.GameCard, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -102,7 +116,7 @@ func (s *GameCardStore) Get(id string) (models.GameCard, error) {
 }
 
 // Add 添加卡片
-func (s *GameCardStore) Add(card models.GameCard) error {
+func (s *YAMLGameCardStore) Add(card models.GameCard) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -121,7 +135,7 @@ func (s *GameCardStore) Add(card models.GameCard) error {
 }
 
 // Update 更新卡片
-func (s *GameCardStore) Update(card models.GameCard) error {
+func (s *YAMLGameCardStore) Update(card models.GameCard) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -137,7 +151,7 @@ func (s *GameCardStore) Update(card models.GameCard) error {
 }
 
 // Delete 删除卡片
-func (s *GameCardStore) Delete(id string) error {
+func (s *YAMLGameCardStore) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

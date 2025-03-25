@@ -3,33 +3,54 @@ tables:
   # 游戏平台表 - 已移除，改为使用 data/platforms/example.yaml 作为静态配置
 
   # 游戏节点表
-  nodes:
+  game_nodes:
     - name: id                  # 节点ID
       type: TEXT PRIMARY KEY
     - name: name               # 节点名称
       type: TEXT
-    - name: hardware           # 硬件配置 (JSON)
+    - name: model              # 节点型号
+      type: TEXT
+    - name: type              # 节点类型 (physical/virtual)
+      type: TEXT
+    - name: location          # 节点位置
+      type: TEXT
+    - name: hardware          # 硬件配置 (JSON)
       type: TEXT
     - name: network           # 网络配置 (JSON)
       type: TEXT
-    - name: status            # 状态
+    - name: labels            # 标签 (JSON)
       type: TEXT
-    - name: location          # 位置
+    - name: status            # 节点状态信息 (JSON)
       type: TEXT
     - name: created_at        # 创建时间
       type: DATETIME
     - name: updated_at        # 更新时间
       type: DATETIME
 
+  # 游戏平台表
+  game_platforms:
+    - name: id                # 平台ID
+      type: TEXT PRIMARY KEY
+    - name: name              # 平台名称
+      type: TEXT
+    - name: version           # 平台版本
+      type: TEXT
+    - name: type             # 平台类型
+      type: TEXT
+    - name: created_at       # 创建时间
+      type: DATETIME
+    - name: updated_at       # 更新时间
+      type: DATETIME
+
   # 游戏卡表
-  cards:
+  game_cards:
     - name: id                # 卡片ID
       type: TEXT PRIMARY KEY
     - name: name              # 游戏名称
       type: TEXT
-    - name: platform_id       # 平台ID（关联platforms.yaml中的id）
+    - name: platform_id       # 平台ID（关联game_platforms表）
       type: TEXT
-    - name: node_id          # 节点ID（关联nodes表）
+    - name: node_id          # 节点ID（关联game_nodes表）
       type: TEXT
     - name: status           # 状态
       type: TEXT
@@ -42,7 +63,9 @@ tables:
 
 # 外键关系
 foreign_keys:
-  - table: cards
+  - table: game_cards
     columns:
+      - name: platform_id
+        references: game_platforms(id)
       - name: node_id
-        references: nodes(id) 
+        references: game_nodes(id) 

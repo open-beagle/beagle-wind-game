@@ -10,13 +10,13 @@ import (
 
 // GameCardService 游戏卡片服务
 type GameCardService struct {
-	cardStore     *store.GameCardStore
-	platformStore *store.PlatformStore
-	instanceStore *store.InstanceStore
+	cardStore     store.GameCardStore
+	platformStore store.PlatformStore
+	instanceStore store.InstanceStore
 }
 
 // NewGameCardService 创建游戏卡片服务
-func NewGameCardService(cardStore *store.GameCardStore, platformStore *store.PlatformStore, instanceStore *store.InstanceStore) *GameCardService {
+func NewGameCardService(cardStore store.GameCardStore, platformStore store.PlatformStore, instanceStore store.InstanceStore) *GameCardService {
 	return &GameCardService{
 		cardStore:     cardStore,
 		platformStore: platformStore,

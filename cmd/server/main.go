@@ -1,75 +1,97 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
-	"path/filepath"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"github.com/open-beagle/beagle-wind-game/internal/agent/server"
 	"github.com/open-beagle/beagle-wind-game/internal/api"
 	"github.com/open-beagle/beagle-wind-game/internal/config"
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 	"github.com/open-beagle/beagle-wind-game/internal/store"
-	"github.com/open-beagle/beagle-wind-game/pkg/middleware"
 )
 
 func main() {
+	// 解析命令行参数
+	grpcAddr := flag.String("grpc-addr", ":50051", "gRPC服务监听地址")
+	httpAddr := flag.String("http-addr", ":8080", "HTTP服务监听地址")
+	tlsCertFile := flag.String("tls-cert", "", "TLS证书文件路径")
+	tlsKeyFile := flag.String("tls-key", "", "TLS密钥文件路径")
+	flag.Parse()
+
 	// 加载配置
-	cfg, err := config.LoadConfig()
+	_, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Fatalf("加载配置失败: %v", err)
 	}
 
-	// 初始化存储
-	platformStore, nodeStore, cardStore, instanceStore, err := initStores(cfg)
+	// 创建存储实例
+	platformStore, err := store.NewPlatformStore("config/platforms.yaml")
 	if err != nil {
-		log.Fatalf("Failed to initialize stores: %v", err)
+		log.Fatalf("创建平台存储失败: %v", err)
 	}
 
-	// 初始化服务
+	nodeStore, err := store.NewNodeStore("data/nodes.yaml")
+	if err != nil {
+		log.Fatalf("创建节点存储失败: %v", err)
+	}
+
+	gameCardStore, err := store.NewGameCardStore("data/game_cards.yaml")
+	if err != nil {
+		log.Fatalf("创建游戏卡片存储失败: %v", err)
+	}
+
+	instanceStore, err := store.NewInstanceStore("data/instances.yaml")
+	if err != nil {
+		log.Fatalf("创建实例存储失败: %v", err)
+	}
+
+	// 创建服务实例
 	platformService := service.NewPlatformService(platformStore)
 	nodeService := service.NewNodeService(nodeStore, instanceStore)
-	gameCardService := service.NewGameCardService(cardStore, platformStore, instanceStore)
-	instanceService := service.NewInstanceService(instanceStore, nodeStore, cardStore, platformStore)
+	gameCardService := service.NewGameCardService(gameCardStore, platformStore, instanceStore)
+	instanceService := service.NewInstanceService(instanceStore, nodeStore, gameCardStore, platformStore)
 
-	// 设置路由
-	r := api.SetupRouter(platformService, nodeService, gameCardService, instanceService)
-
-	// 添加中间件
-	r.Use(middleware.Logger())
-
-	// 启动服务器
-	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
-	log.Printf("Starting server on %s", addr)
-	if err := r.Run(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	// 创建并启动 gRPC 服务器
+	grpcOpts := server.ServerOptions{
+		ListenAddr:   *grpcAddr,
+		TLSCertFile:  *tlsCertFile,
+		TLSKeyFile:   *tlsKeyFile,
+		MaxHeartbeat: 30 * time.Second,
 	}
-}
+	agentServer := server.NewAgentServer(grpcOpts, nodeService)
 
-// initStores 初始化所有存储
-func initStores(cfg *config.Config) (*store.PlatformStore, *store.NodeStore, *store.GameCardStore, *store.InstanceStore, error) {
-	// 初始化平台存储
-	platformStore, err := store.NewPlatformStore(filepath.Join("config", "platforms.yaml"))
-	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("初始化平台存储失败: %w", err)
-	}
+	// 设置 HTTP 路由
+	router := api.SetupRouter(platformService, nodeService, gameCardService, instanceService)
 
-	// 初始化节点存储
-	nodeStore, err := store.NewNodeStore(filepath.Join("data", "game-nodes.yaml"))
-	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("初始化节点存储失败: %w", err)
-	}
+	// 启动 gRPC 服务器
+	go func() {
+		fmt.Printf("gRPC服务器正在监听 %s\n", *grpcAddr)
+		if err := agentServer.Start(); err != nil {
+			log.Fatalf("gRPC服务器运行失败: %v", err)
+		}
+	}()
 
-	// 初始化游戏卡片存储
-	cardStore, err := store.NewGameCardStore(filepath.Join("data", "game-cards.yaml"))
-	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("初始化游戏卡片存储失败: %w", err)
-	}
+	// 启动 HTTP 服务器
+	go func() {
+		fmt.Printf("HTTP服务器正在监听 %s\n", *httpAddr)
+		if err := router.Run(*httpAddr); err != nil {
+			log.Fatalf("HTTP服务器运行失败: %v", err)
+		}
+	}()
 
-	// 初始化游戏实例存储
-	instanceStore, err := store.NewInstanceStore(filepath.Join("data", "game-instances.yaml"))
-	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("初始化游戏实例存储失败: %w", err)
-	}
+	// 等待信号
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	<-sigCh
 
-	return platformStore, nodeStore, cardStore, instanceStore, nil
+	// 优雅关闭
+	fmt.Println("正在关闭服务器...")
+	agentServer.Stop()
+	fmt.Println("服务器已关闭")
 }

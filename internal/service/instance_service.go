@@ -8,17 +8,26 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/store"
 )
 
+// 错误常量定义
+var (
+	ErrInstanceNotFound       = fmt.Errorf("实例不存在")
+	ErrInstanceAlreadyRunning = fmt.Errorf("实例已经在运行中")
+	ErrInstanceNotRunning     = fmt.Errorf("实例未在运行中")
+	ErrNodeNotFound           = fmt.Errorf("节点不存在")
+	ErrNodeNotReady           = fmt.Errorf("节点未就绪")
+)
+
 // InstanceService 游戏实例服务
 type InstanceService struct {
-	instanceStore *store.InstanceStore
-	nodeStore     *store.NodeStore
-	cardStore     *store.GameCardStore
-	platformStore *store.PlatformStore
+	instanceStore store.InstanceStore
+	nodeStore     store.NodeStore
+	cardStore     store.GameCardStore
+	platformStore store.PlatformStore
 }
 
 // NewInstanceService 创建游戏实例服务
-func NewInstanceService(instanceStore *store.InstanceStore, nodeStore *store.NodeStore,
-	cardStore *store.GameCardStore, platformStore *store.PlatformStore) *InstanceService {
+func NewInstanceService(instanceStore store.InstanceStore, nodeStore store.NodeStore,
+	cardStore store.GameCardStore, platformStore store.PlatformStore) *InstanceService {
 	return &InstanceService{
 		instanceStore: instanceStore,
 		nodeStore:     nodeStore,
@@ -136,8 +145,8 @@ func (s *InstanceService) CreateInstance(params CreateInstanceParams) (string, e
 	}
 
 	// 验证节点状态
-	if node.Status != "ready" {
-		return "", fmt.Errorf("节点状态不正确: %s", node.Status)
+	if node.Status.State != models.GameNodeStateReady {
+		return "", fmt.Errorf("节点状态不正确: %s", node.Status.State)
 	}
 
 	// 验证平台是否存在
@@ -251,10 +260,27 @@ func (s *InstanceService) DeleteInstance(id string) error {
 
 // StartInstance 启动游戏实例
 func (s *InstanceService) StartInstance(id string) error {
-	// 获取实例
+	// 获取实例信息
 	instance, err := s.instanceStore.Get(id)
 	if err != nil {
-		return fmt.Errorf("获取实例失败: %w", err)
+		return err
+	}
+
+	// 获取节点信息
+	node, err := s.nodeStore.Get(instance.NodeID)
+	if err != nil {
+		return err
+	}
+
+	// 检查节点状态
+	if node.Status.State != models.GameNodeStateReady {
+		return fmt.Errorf("节点状态不正确: %s", node.Status.State)
+	}
+
+	// 获取平台信息
+	_, err = s.platformStore.Get(instance.PlatformID)
+	if err != nil {
+		return err
 	}
 
 	// 检查实例状态

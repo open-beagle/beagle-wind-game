@@ -9,16 +9,34 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// InstanceStore 游戏实例存储
-type InstanceStore struct {
+// InstanceStore 游戏实例存储接口
+type InstanceStore interface {
+	// List 获取所有实例
+	List() ([]models.GameInstance, error)
+	// Get 获取指定ID的实例
+	Get(id string) (models.GameInstance, error)
+	// Add 添加实例
+	Add(instance models.GameInstance) error
+	// Update 更新实例信息
+	Update(instance models.GameInstance) error
+	// Delete 删除实例
+	Delete(id string) error
+	// FindByNodeID 根据节点ID查找实例
+	FindByNodeID(nodeID string) ([]models.GameInstance, error)
+	// FindByCardID 根据卡片ID查找实例
+	FindByCardID(cardID string) ([]models.GameInstance, error)
+}
+
+// YAMLInstanceStore YAML文件存储实现
+type YAMLInstanceStore struct {
 	dataFile  string
 	instances []models.GameInstance
 	mu        sync.RWMutex
 }
 
 // NewInstanceStore 创建游戏实例存储
-func NewInstanceStore(dataFile string) (*InstanceStore, error) {
-	store := &InstanceStore{
+func NewInstanceStore(dataFile string) (InstanceStore, error) {
+	store := &YAMLInstanceStore{
 		dataFile: dataFile,
 	}
 
@@ -32,7 +50,7 @@ func NewInstanceStore(dataFile string) (*InstanceStore, error) {
 }
 
 // Load 加载实例数据
-func (s *InstanceStore) Load() error {
+func (s *YAMLInstanceStore) Load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -56,7 +74,7 @@ func (s *InstanceStore) Load() error {
 }
 
 // Save 保存实例数据
-func (s *InstanceStore) Save() error {
+func (s *YAMLInstanceStore) Save() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -76,7 +94,7 @@ func (s *InstanceStore) Save() error {
 }
 
 // List 获取所有实例
-func (s *InstanceStore) List() ([]models.GameInstance, error) {
+func (s *YAMLInstanceStore) List() ([]models.GameInstance, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -88,7 +106,7 @@ func (s *InstanceStore) List() ([]models.GameInstance, error) {
 }
 
 // Get 获取指定ID的实例
-func (s *InstanceStore) Get(id string) (models.GameInstance, error) {
+func (s *YAMLInstanceStore) Get(id string) (models.GameInstance, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -102,7 +120,7 @@ func (s *InstanceStore) Get(id string) (models.GameInstance, error) {
 }
 
 // Add 添加实例
-func (s *InstanceStore) Add(instance models.GameInstance) error {
+func (s *YAMLInstanceStore) Add(instance models.GameInstance) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -121,7 +139,7 @@ func (s *InstanceStore) Add(instance models.GameInstance) error {
 }
 
 // Update 更新实例
-func (s *InstanceStore) Update(instance models.GameInstance) error {
+func (s *YAMLInstanceStore) Update(instance models.GameInstance) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -137,7 +155,7 @@ func (s *InstanceStore) Update(instance models.GameInstance) error {
 }
 
 // Delete 删除实例
-func (s *InstanceStore) Delete(id string) error {
+func (s *YAMLInstanceStore) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -154,7 +172,7 @@ func (s *InstanceStore) Delete(id string) error {
 }
 
 // FindByNodeID 根据节点ID查找实例
-func (s *InstanceStore) FindByNodeID(nodeID string) ([]models.GameInstance, error) {
+func (s *YAMLInstanceStore) FindByNodeID(nodeID string) ([]models.GameInstance, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -169,7 +187,7 @@ func (s *InstanceStore) FindByNodeID(nodeID string) ([]models.GameInstance, erro
 }
 
 // FindByCardID 根据卡片ID查找实例
-func (s *InstanceStore) FindByCardID(cardID string) ([]models.GameInstance, error) {
+func (s *YAMLInstanceStore) FindByCardID(cardID string) ([]models.GameInstance, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

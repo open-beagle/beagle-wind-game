@@ -4,6 +4,37 @@
 
 Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多平台游戏运行和管理。
 
+## 命名规范
+
+### 核心业务领域命名
+
+项目采用领域驱动设计(DDD)的思想，所有命名都应反映核心业务领域：
+
+1. 游戏节点相关
+
+   - 类型命名：以 `GameNode` 开头，如 `GameNode`、`GameNodeType`、`GameNodeState`
+   - 常量命名：以 `GameNode` 开头，如 `GameNodeTypePhysical`、`GameNodeStateOnline`
+   - 表名：使用小写下划线，如 `game_nodes`
+
+2. 游戏平台相关
+
+   - 类型命名：以 `GamePlatform` 开头，如 `GamePlatform`、`GamePlatformType`
+   - 常量命名：以 `GamePlatform` 开头，如 `GamePlatformTypeSteam`
+   - 表名：使用小写下划线，如 `game_platforms`
+
+3. 游戏卡相关
+   - 类型命名：以 `GameCard` 开头，如 `GameCard`、`GameCardType`
+   - 常量命名：以 `GameCard` 开头，如 `GameCardTypeNormal`
+   - 表名：使用小写下划线，如 `game_cards`
+
+### 命名原则
+
+1. 所有核心业务类型必须使用领域前缀（GameNode/GamePlatform/GameCard）
+2. 避免使用通用名称（如 Node、Platform、Card）
+3. 数据库表名统一使用小写下划线命名法
+4. 常量值使用领域前缀 + 类型 + 具体值的形式
+5. 接口命名应反映其业务职责，如 `GameNodeManager`、`GamePlatformService`
+
 ## 系统架构
 
 ### 核心组件
@@ -55,12 +86,14 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 ### 第一阶段：基础框架搭建
 
 1. 后端框架搭建
+
    - [x] 项目结构设计
    - [x] 数据库设计
    - [x] 基础中间件
    - [x] API 路由设计
 
 2. 前端框架搭建
+
    - [x] 项目初始化
    - [x] 组件库集成
    - [x] 路由配置
@@ -75,12 +108,14 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 ### 第二阶段：核心功能开发
 
 1. 用户系统
+
    - [ ] 认证授权
    - [ ] 权限管理
    - [ ] 会话管理
    - [ ] 操作日志
 
 2. 游戏管理
+
    - [x] 游戏平台管理
      - [x] 平台列表
      - [x] 平台配置
@@ -114,12 +149,14 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 ### 第三阶段：功能完善
 
 1. 监控系统
+
    - [ ] 性能监控
    - [ ] 资源监控
    - [ ] 告警系统
    - [ ] 统计分析
 
 2. 运维工具
+
    - [ ] 部署脚本
    - [ ] 备份工具
    - [ ] 诊断工具
@@ -138,29 +175,32 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 ## 当前开发重点
 
 1. 监控功能开发
+
    - [ ] 节点监控系统
    - [ ] 实例监控系统
    - [ ] 资源使用统计
    - [ ] 性能指标展示
 
 2. 用户系统实现
+
    - [ ] 登录认证
    - [ ] 权限控制
    - [ ] 用户管理
    - [ ] 操作审计
 
 3. API 对接
+
    - [x] 接口规范定义
    - [ ] 请求响应封装
    - [ ] 错误处理机制
    - [ ] 数据验证
-   - [x] 后端API实现与前端联调 (进行中)
-     - [ ] **高优先级**: 游戏平台API（平台列表、详情、远程访问）
-     - [ ] **高优先级**: 游戏节点API（节点列表、详情）
-     - [ ] **中优先级**: 游戏卡片API（卡片列表、详情）
-     - [ ] **中优先级**: 游戏实例API（实例列表、控制、状态）
-     - [ ] **低优先级**: 用户认证API（登录、登出）
-     - [ ] **低优先级**: 任务管理API（任务列表、状态）
+   - [x] 后端 API 实现与前端联调 (进行中)
+     - [ ] **高优先级**: 游戏平台 API（平台列表、详情、远程访问）
+     - [ ] **高优先级**: 游戏节点 API（节点列表、详情）
+     - [ ] **中优先级**: 游戏卡片 API（卡片列表、详情）
+     - [ ] **中优先级**: 游戏实例 API（实例列表、控制、状态）
+     - [ ] **低优先级**: 用户认证 API（登录、登出）
+     - [ ] **低优先级**: 任务管理 API（任务列表、状态）
 
 4. 性能优化
    - [ ] 前端构建优化
@@ -170,15 +210,36 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 
 ## 文档
 
+### 系统设计
+
+- [系统总体设计](docs/design/summary.md)
+- [节点 Agent 通信设计](docs/design/agent_communication.md)
+- [Pipeline 系统设计](docs/pipeline.md)
+- [节点管理设计](docs/design/node_management.md)
 - [数据模型设计](docs/models.md)
 - [工作流程设计](docs/workflow.md)
-- [部署文档](docs/deploy.md)
-- [开发指南](docs/development.md)
-- [API 文档](docs/api.md)
+
+### API 文档
+
+- [API 接口文档](docs/api.md)
 - [数据验证规则](docs/validation.md)
+
+### 开发文档
+
 - [前端开发文档](docs/frontend.md)
 - [详情页开发文档](docs/detail-pages.md)
+- [数据处理文档](docs/data.md)
+- [数据库设计](docs/database.yaml)
+
+### 指南文档
+
+- [开发指南](docs/development.md)
 - [系统调试指南](docs/debug.md)
+
+### 其他文档
+
+- [Logo 设计](docs/logo-design.md)
+- [原型反馈](docs/prototype-feedback.md)
 
 ## 贡献指南
 
