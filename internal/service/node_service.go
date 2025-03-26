@@ -10,15 +10,13 @@ import (
 
 // NodeService 游戏节点服务
 type NodeService struct {
-	nodeStore     store.NodeStore
-	instanceStore store.InstanceStore
+	nodeStore store.NodeStore
 }
 
 // NewNodeService 创建游戏节点服务
-func NewNodeService(nodeStore store.NodeStore, instanceStore store.InstanceStore) *NodeService {
+func NewNodeService(nodeStore store.NodeStore) *NodeService {
 	return &NodeService{
-		nodeStore:     nodeStore,
-		instanceStore: instanceStore,
+		nodeStore: nodeStore,
 	}
 }
 
@@ -97,6 +95,12 @@ func (s *NodeService) GetNode(id string) (*models.GameNode, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 如果节点不存在，返回 nil
+	if node.ID == "" {
+		return nil, nil
+	}
+
 	return &node, nil
 }
 
@@ -140,22 +144,6 @@ func (s *NodeService) UpdateNode(id string, node models.GameNode) error {
 
 // DeleteNode 删除游戏节点
 func (s *NodeService) DeleteNode(id string) error {
-	// 检查节点是否存在
-	_, err := s.nodeStore.Get(id)
-	if err != nil {
-		return err
-	}
-
-	// 检查是否有实例使用该节点
-	instances, err := s.instanceStore.FindByNodeID(id)
-	if err != nil {
-		return fmt.Errorf("检查实例失败: %w", err)
-	}
-
-	if len(instances) > 0 {
-		return fmt.Errorf("有%d个实例正在使用该节点，无法删除", len(instances))
-	}
-
 	return s.nodeStore.Delete(id)
 }
 

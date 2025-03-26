@@ -21,6 +21,8 @@ type PlatformStore interface {
 	Update(platform models.GamePlatform) error
 	// Delete 删除平台
 	Delete(id string) error
+	// Cleanup 清理测试文件
+	Cleanup() error
 }
 
 // YAMLPlatformStore YAML文件存储实现
@@ -47,12 +49,14 @@ func NewPlatformStore(configFile string) (PlatformStore, error) {
 
 // Load 加载平台数据
 func (s *YAMLPlatformStore) Load() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// 读取配置文件
 	data, err := os.ReadFile(s.configFile)
 	if err != nil {
+		if os.IsNotExist(err) {
+			// 如果文件不存在，创建空文件
+			s.platforms = make([]models.GamePlatform, 0)
+			return s.Save()
+		}
 		return fmt.Errorf("读取平台配置文件失败: %w", err)
 	}
 
@@ -69,9 +73,6 @@ func (s *YAMLPlatformStore) Load() error {
 
 // Save 保存平台配置到文件
 func (s *YAMLPlatformStore) Save() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// 将平台数据序列化为YAML
 	data, err := yaml.Marshal(s.platforms)
 	if err != nil {
@@ -89,31 +90,42 @@ func (s *YAMLPlatformStore) Save() error {
 
 // List 获取所有平台
 func (s *YAMLPlatformStore) List() ([]models.GamePlatform, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	// 创建副本避免修改原始数据
 	platforms := make([]models.GamePlatform, len(s.platforms))
 	copy(platforms, s.platforms)
-
 	return platforms, nil
 }
 
 // Get 获取指定ID的平台
 func (s *YAMLPlatformStore) Get(id string) (models.GamePlatform, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	for _, platform := range s.platforms {
 		if platform.ID == id {
 			return platform, nil
 		}
 	}
-
 	return models.GamePlatform{}, fmt.Errorf("平台不存在: %s", id)
 }
 
-// Update 更新平台信息
+// Add 添加平台
+func (s *YAMLPlatformStore) Add(platform models.GamePlatform) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// 检查ID是否已存在
+	for _, p := range s.platforms {
+		if p.ID == platform.ID {
+			return fmt.Errorf("平台ID已存在: %s", platform.ID)
+		}
+	}
+
+	// 添加平台
+	s.platforms = append(s.platforms, platform)
+
+	// 保存更改到文件
+	return s.Save()
+}
+
+// Update 更新平台
 func (s *YAMLPlatformStore) Update(platform models.GamePlatform) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -131,25 +143,6 @@ func (s *YAMLPlatformStore) Update(platform models.GamePlatform) error {
 	if !found {
 		return fmt.Errorf("平台不存在: %s", platform.ID)
 	}
-
-	// 保存更改到文件
-	return s.Save()
-}
-
-// Add 添加平台
-func (s *YAMLPlatformStore) Add(platform models.GamePlatform) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// 检查ID是否已存在
-	for _, p := range s.platforms {
-		if p.ID == platform.ID {
-			return fmt.Errorf("平台ID已存在: %s", platform.ID)
-		}
-	}
-
-	// 添加平台
-	s.platforms = append(s.platforms, platform)
 
 	// 保存更改到文件
 	return s.Save()
@@ -177,4 +170,9 @@ func (s *YAMLPlatformStore) Delete(id string) error {
 
 	// 保存更改到文件
 	return s.Save()
+}
+
+// Cleanup 清理测试文件
+func (s *YAMLPlatformStore) Cleanup() error {
+	return os.Remove(s.configFile)
 }

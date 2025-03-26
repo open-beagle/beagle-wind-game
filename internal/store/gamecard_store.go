@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
@@ -21,6 +22,8 @@ type GameCardStore interface {
 	Update(card models.GameCard) error
 	// Delete 删除游戏卡片
 	Delete(id string) error
+	// Cleanup 清理测试文件
+	Cleanup() error
 }
 
 // YAMLGameCardStore YAML文件存储实现
@@ -47,15 +50,22 @@ func NewGameCardStore(dataFile string) (GameCardStore, error) {
 
 // Load 加载游戏卡片数据
 func (s *YAMLGameCardStore) Load() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// 确保目录存在
+	dir := filepath.Dir(s.dataFile)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("创建目录失败: %w", err)
+	}
 
 	// 读取数据文件
 	data, err := os.ReadFile(s.dataFile)
 	if err != nil {
-		// 如果文件不存在，创建一个空的卡片列表
-		s.cards = []models.GameCard{}
-		return s.Save()
+		if os.IsNotExist(err) {
+			// 如果文件不存在，创建一个空的卡片列表
+			s.cards = []models.GameCard{}
+			// 直接调用Save，不需要加锁
+			return s.Save()
+		}
+		return fmt.Errorf("读取数据文件失败: %w", err)
 	}
 
 	// 解析YAML
@@ -71,9 +81,6 @@ func (s *YAMLGameCardStore) Load() error {
 
 // Save 保存游戏卡片数据到文件
 func (s *YAMLGameCardStore) Save() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// 序列化为YAML
 	data, err := yaml.Marshal(s.cards)
 	if err != nil {
@@ -91,27 +98,19 @@ func (s *YAMLGameCardStore) Save() error {
 
 // List 获取所有卡片
 func (s *YAMLGameCardStore) List() ([]models.GameCard, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	// 创建副本避免修改原始数据
 	cards := make([]models.GameCard, len(s.cards))
 	copy(cards, s.cards)
-
 	return cards, nil
 }
 
 // Get 获取指定ID的卡片
 func (s *YAMLGameCardStore) Get(id string) (models.GameCard, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	for _, card := range s.cards {
 		if card.ID == id {
 			return card, nil
 		}
 	}
-
 	return models.GameCard{}, fmt.Errorf("卡片不存在: %s", id)
 }
 
@@ -165,4 +164,9 @@ func (s *YAMLGameCardStore) Delete(id string) error {
 	}
 
 	return fmt.Errorf("卡片不存在: %s", id)
+}
+
+// Cleanup 清理测试文件
+func (s *YAMLGameCardStore) Cleanup() error {
+	return os.Remove(s.dataFile)
 }

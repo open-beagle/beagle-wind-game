@@ -25,6 +25,8 @@ type InstanceStore interface {
 	FindByNodeID(nodeID string) ([]models.GameInstance, error)
 	// FindByCardID 根据卡片ID查找实例
 	FindByCardID(cardID string) ([]models.GameInstance, error)
+	// Cleanup 清理测试文件
+	Cleanup() error
 }
 
 // YAMLInstanceStore YAML文件存储实现
@@ -51,15 +53,15 @@ func NewInstanceStore(dataFile string) (InstanceStore, error) {
 
 // Load 加载实例数据
 func (s *YAMLInstanceStore) Load() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// 读取数据文件
 	data, err := os.ReadFile(s.dataFile)
 	if err != nil {
-		// 如果文件不存在，创建一个空的实例列表
-		s.instances = []models.GameInstance{}
-		return s.Save()
+		if os.IsNotExist(err) {
+			// 如果文件不存在，创建空文件
+			s.instances = make([]models.GameInstance, 0)
+			return s.Save()
+		}
+		return fmt.Errorf("读取实例数据文件失败: %w", err)
 	}
 
 	// 解析YAML
@@ -75,9 +77,6 @@ func (s *YAMLInstanceStore) Load() error {
 
 // Save 保存实例数据
 func (s *YAMLInstanceStore) Save() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// 序列化为YAML
 	data, err := yaml.Marshal(s.instances)
 	if err != nil {
@@ -95,27 +94,19 @@ func (s *YAMLInstanceStore) Save() error {
 
 // List 获取所有实例
 func (s *YAMLInstanceStore) List() ([]models.GameInstance, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	// 创建副本避免修改原始数据
 	instances := make([]models.GameInstance, len(s.instances))
 	copy(instances, s.instances)
-
 	return instances, nil
 }
 
 // Get 获取指定ID的实例
 func (s *YAMLInstanceStore) Get(id string) (models.GameInstance, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	for _, instance := range s.instances {
 		if instance.ID == id {
 			return instance, nil
 		}
 	}
-
 	return models.GameInstance{}, fmt.Errorf("实例不存在: %s", id)
 }
 
@@ -173,30 +164,27 @@ func (s *YAMLInstanceStore) Delete(id string) error {
 
 // FindByNodeID 根据节点ID查找实例
 func (s *YAMLInstanceStore) FindByNodeID(nodeID string) ([]models.GameInstance, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var result []models.GameInstance
 	for _, instance := range s.instances {
 		if instance.NodeID == nodeID {
 			result = append(result, instance)
 		}
 	}
-
 	return result, nil
 }
 
 // FindByCardID 根据卡片ID查找实例
 func (s *YAMLInstanceStore) FindByCardID(cardID string) ([]models.GameInstance, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var result []models.GameInstance
 	for _, instance := range s.instances {
 		if instance.CardID == cardID {
 			result = append(result, instance)
 		}
 	}
-
 	return result, nil
+}
+
+// Cleanup 清理测试文件
+func (s *YAMLInstanceStore) Cleanup() error {
+	return os.Remove(s.dataFile)
 }

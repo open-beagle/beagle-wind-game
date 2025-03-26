@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
@@ -10,17 +9,13 @@ import (
 
 // GameCardService 游戏卡片服务
 type GameCardService struct {
-	cardStore     store.GameCardStore
-	platformStore store.PlatformStore
-	instanceStore store.InstanceStore
+	cardStore store.GameCardStore
 }
 
 // NewGameCardService 创建游戏卡片服务
-func NewGameCardService(cardStore store.GameCardStore, platformStore store.PlatformStore, instanceStore store.InstanceStore) *GameCardService {
+func NewGameCardService(cardStore store.GameCardStore) *GameCardService {
 	return &GameCardService{
-		cardStore:     cardStore,
-		platformStore: platformStore,
-		instanceStore: instanceStore,
+		cardStore: cardStore,
 	}
 }
 
@@ -99,26 +94,23 @@ func (s *GameCardService) ListGameCards(params GameCardListParams) (GameCardList
 }
 
 // GetGameCard 获取游戏卡片详情
-func (s *GameCardService) GetGameCard(id string) (models.GameCard, error) {
+func (s *GameCardService) GetGameCard(id string) (*models.GameCard, error) {
 	// 从存储获取卡片详情
 	card, err := s.cardStore.Get(id)
 	if err != nil {
-		return models.GameCard{}, err
+		return nil, err
 	}
 
-	return card, nil
+	// 如果卡片不存在，返回 nil
+	if card.ID == "" {
+		return nil, nil
+	}
+
+	return &card, nil
 }
 
 // CreateGameCard 创建游戏卡片
 func (s *GameCardService) CreateGameCard(card models.GameCard) (string, error) {
-	// 检查关联的平台是否存在
-	if card.PlatformID != "" {
-		_, err := s.platformStore.Get(card.PlatformID)
-		if err != nil {
-			return "", fmt.Errorf("关联的平台不存在: %w", err)
-		}
-	}
-
 	// 设置创建时间和更新时间
 	now := time.Now()
 	card.CreatedAt = now
@@ -141,14 +133,6 @@ func (s *GameCardService) UpdateGameCard(id string, card models.GameCard) error 
 		return err
 	}
 
-	// 检查关联的平台是否存在
-	if card.PlatformID != "" && card.PlatformID != existingCard.PlatformID {
-		_, err := s.platformStore.Get(card.PlatformID)
-		if err != nil {
-			return fmt.Errorf("关联的平台不存在: %w", err)
-		}
-	}
-
 	// 保留创建时间
 	card.CreatedAt = existingCard.CreatedAt
 	// 更新更新时间
@@ -162,22 +146,5 @@ func (s *GameCardService) UpdateGameCard(id string, card models.GameCard) error 
 
 // DeleteGameCard 删除游戏卡片
 func (s *GameCardService) DeleteGameCard(id string) error {
-	// 检查卡片是否存在
-	_, err := s.cardStore.Get(id)
-	if err != nil {
-		return err
-	}
-
-	// 检查是否有实例使用该卡片
-	instances, err := s.instanceStore.FindByCardID(id)
-	if err != nil {
-		return fmt.Errorf("检查实例失败: %w", err)
-	}
-
-	if len(instances) > 0 {
-		return fmt.Errorf("有%d个实例正在使用该卡片，无法删除", len(instances))
-	}
-
-	// 删除卡片
 	return s.cardStore.Delete(id)
 }

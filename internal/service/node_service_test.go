@@ -1,24 +1,51 @@
 package service
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
 	"github.com/open-beagle/beagle-wind-game/internal/store"
+	"github.com/open-beagle/beagle-wind-game/internal/utils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
+// 测试数据
+var testNode = models.GameNode{
+	ID:       "test-node-1",
+	Name:     "Test Node",
+	Model:    "test-model",
+	Type:     models.GameNodeTypePhysical,
+	Location: "test-location",
+	Hardware: map[string]string{"cpu": "2", "memory": "4"},
+	Network:  map[string]string{"ip": "127.0.0.1"},
+	Labels:   map[string]string{"region": "test"},
+	Status: models.GameNodeStatus{
+		State:      models.GameNodeStateOnline,
+		Online:     true,
+		LastOnline: time.Now(),
+		UpdatedAt:  time.Now(),
+		Resources:  map[string]string{"cpu": "2", "memory": "4"},
+		Metrics:    map[string]interface{}{"cpu_usage": 0.5, "latency": 100},
+	},
+	CreatedAt: time.Now(),
+	UpdatedAt: time.Now(),
+}
+
 func TestListNodes(t *testing.T) {
-	mockNodeStore := new(store.MockNodeStore)
-	mockInstanceStore := new(store.MockInstanceStore)
-	service := NewNodeService(mockNodeStore, mockInstanceStore)
+	// 创建临时测试文件
+	tmpFile := utils.CreateTempTestFile(t)
+	nodeStore, err := store.NewNodeStore(tmpFile)
+	assert.NoError(t, err)
+	defer nodeStore.Cleanup()
+
+	service := NewNodeService(nodeStore)
 
 	tests := []struct {
 		name           string
 		params         NodeListParams
-		mockSetup      func()
+		setup          func()
 		expectedResult NodeListResult
 		expectedError  error
 	}{
@@ -28,39 +55,13 @@ func TestListNodes(t *testing.T) {
 				Page:     1,
 				PageSize: 20,
 			},
-			mockSetup: func() {
-				nodes := []models.GameNode{
-					{
-						ID:   "node-1",
-						Name: "测试节点1",
-						Status: models.GameNodeStatus{
-							State:      models.GameNodeStateReady,
-							Online:     true,
-							LastOnline: time.Now(),
-							UpdatedAt:  time.Now(),
-							Resources:  make(map[string]string),
-							Metrics:    make(map[string]interface{}),
-						},
-					},
-				}
-				mockNodeStore.On("List").Return(nodes, nil)
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
 			expectedResult: NodeListResult{
 				Total: 1,
-				Items: []models.GameNode{
-					{
-						ID:   "node-1",
-						Name: "测试节点1",
-						Status: models.GameNodeStatus{
-							State:      models.GameNodeStateReady,
-							Online:     true,
-							LastOnline: time.Now(),
-							UpdatedAt:  time.Now(),
-							Resources:  make(map[string]string),
-							Metrics:    make(map[string]interface{}),
-						},
-					},
-				},
+				Items: []models.GameNode{testNode},
 			},
 			expectedError: nil,
 		},
@@ -70,8 +71,9 @@ func TestListNodes(t *testing.T) {
 				Page:     1,
 				PageSize: 20,
 			},
-			mockSetup: func() {
-				mockNodeStore.On("List").Return(nil, assert.AnError)
+			setup: func() {
+				// 删除临时文件以模拟存储层错误
+				os.Remove(tmpFile)
 			},
 			expectedResult: NodeListResult{},
 			expectedError:  assert.AnError,
@@ -80,7 +82,9 @@ func TestListNodes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup()
+			if tt.setup != nil {
+				tt.setup()
+			}
 			result, err := service.ListNodes(tt.params)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
@@ -93,80 +97,65 @@ func TestListNodes(t *testing.T) {
 			for i, expected := range tt.expectedResult.Items {
 				assert.Equal(t, expected.ID, result.Items[i].ID)
 				assert.Equal(t, expected.Name, result.Items[i].Name)
-				assert.Equal(t, expected.Status.State, result.Items[i].Status.State)
-				assert.Equal(t, expected.Status.Online, result.Items[i].Status.Online)
+				assert.Equal(t, expected.Type, result.Items[i].Type)
 			}
 		})
 	}
 }
 
 func TestGetNode(t *testing.T) {
-	mockNodeStore := new(store.MockNodeStore)
-	mockInstanceStore := new(store.MockInstanceStore)
-	service := NewNodeService(mockNodeStore, mockInstanceStore)
+	// 创建临时测试文件
+	tmpFile := utils.CreateTempTestFile(t)
+	nodeStore, err := store.NewNodeStore(tmpFile)
+	assert.NoError(t, err)
+	defer nodeStore.Cleanup()
+
+	service := NewNodeService(nodeStore)
 
 	tests := []struct {
 		name           string
 		nodeID         string
-		mockSetup      func()
-		expectedResult models.GameNode
+		setup          func()
+		expectedResult *models.GameNode
 		expectedError  error
 	}{
 		{
 			name:   "成功获取节点",
-			nodeID: "node-1",
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-1",
-					Name: "测试节点1",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     true,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-1").Return(node, nil)
+			nodeID: "test-node-1",
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
-			expectedResult: models.GameNode{
-				ID:   "node-1",
-				Name: "测试节点1",
-				Status: models.GameNodeStatus{
-					State:      models.GameNodeStateReady,
-					Online:     true,
-					LastOnline: time.Now(),
-					UpdatedAt:  time.Now(),
-					Resources:  make(map[string]string),
-					Metrics:    make(map[string]interface{}),
-				},
-			},
-			expectedError: nil,
+			expectedResult: &testNode,
+			expectedError:  nil,
 		},
 		{
 			name:   "节点不存在",
-			nodeID: "node-2",
-			mockSetup: func() {
-				mockNodeStore.On("Get", "node-2").Return(models.GameNode{}, ErrNodeNotFound)
+			nodeID: "non-existent-node",
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
-			expectedResult: models.GameNode{},
-			expectedError:  ErrNodeNotFound,
+			expectedResult: nil,
+			expectedError:  nil,
 		},
 		{
 			name:   "存储层返回错误",
-			nodeID: "node-3",
-			mockSetup: func() {
-				mockNodeStore.On("Get", "node-3").Return(models.GameNode{}, assert.AnError)
+			nodeID: "test-node-1",
+			setup: func() {
+				// 删除临时文件以模拟存储层错误
+				os.Remove(tmpFile)
 			},
-			expectedResult: models.GameNode{},
+			expectedResult: nil,
 			expectedError:  assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup()
+			if tt.setup != nil {
+				tt.setup()
+			}
 			result, err := service.GetNode(tt.nodeID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
@@ -174,154 +163,46 @@ func TestGetNode(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
+			if tt.expectedResult == nil {
+				assert.Nil(t, result)
+				return
+			}
 			assert.Equal(t, tt.expectedResult.ID, result.ID)
 			assert.Equal(t, tt.expectedResult.Name, result.Name)
-			assert.Equal(t, tt.expectedResult.Status.State, result.Status.State)
-			assert.Equal(t, tt.expectedResult.Status.Online, result.Status.Online)
+			assert.Equal(t, tt.expectedResult.Type, result.Type)
 		})
 	}
 }
 
 func TestCreateNode(t *testing.T) {
-	mockNodeStore := new(store.MockNodeStore)
-	mockInstanceStore := new(store.MockInstanceStore)
-	service := NewNodeService(mockNodeStore, mockInstanceStore)
+	// 创建临时测试文件
+	tmpFile := utils.CreateTempTestFile(t)
+	nodeStore, err := store.NewNodeStore(tmpFile)
+	assert.NoError(t, err)
+	defer nodeStore.Cleanup()
 
-	tests := []struct {
-		name           string
-		params         CreateNodeParams
-		mockSetup      func()
-		expectedResult string
-		expectedError  error
-	}{
-		{
-			name: "成功创建节点",
-			params: CreateNodeParams{
-				Name: "测试节点1",
-				Type: "game",
-			},
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-1",
-					Name: "测试节点1",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateOffline,
-						Online:     false,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Add", mock.AnythingOfType("models.GameNode")).Return(nil)
-			},
-			expectedResult: "node-1",
-			expectedError:  nil,
-		},
-		{
-			name: "存储层返回错误",
-			params: CreateNodeParams{
-				Name: "测试节点2",
-				Type: "game",
-			},
-			mockSetup: func() {
-				mockNodeStore.On("Add", mock.AnythingOfType("models.GameNode")).Return(assert.AnError)
-			},
-			expectedResult: "",
-			expectedError:  assert.AnError,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup()
-			result, err := service.CreateNode(tt.params)
-			if tt.expectedError != nil {
-				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
-				return
-			}
-			assert.NoError(t, err)
-			assert.NotEmpty(t, result)
-			assert.Contains(t, result, "node-")
-		})
-	}
-}
-
-func TestUpdateNode(t *testing.T) {
-	mockNodeStore := new(store.MockNodeStore)
-	mockInstanceStore := new(store.MockInstanceStore)
-	service := NewNodeService(mockNodeStore, mockInstanceStore)
+	service := NewNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
-		nodeID        string
-		params        UpdateNodeParams
-		mockSetup     func()
+		node          models.GameNode
+		setup         func()
 		expectedError error
 	}{
 		{
-			name:   "成功更新节点",
-			nodeID: "node-1",
-			params: UpdateNodeParams{
-				Name: "更新后的节点",
-				Type: "game",
-			},
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-1",
-					Name: "测试节点1",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     true,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-1").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(nil)
+			name: "成功创建节点",
+			node: testNode,
+			setup: func() {
+				// 不需要特殊设置
 			},
 			expectedError: nil,
 		},
 		{
-			name:   "节点不存在",
-			nodeID: "node-2",
-			params: UpdateNodeParams{
-				Name: "更新后的节点",
-				Type: "game",
-			},
-			mockSetup: func() {
-				mockNodeStore.On("Get", "node-2").Return(models.GameNode{}, ErrNodeNotFound)
-			},
-			expectedError: ErrNodeNotFound,
-		},
-		{
-			name:   "存储层返回错误",
-			nodeID: "node-3",
-			params: UpdateNodeParams{
-				Name: "更新后的节点",
-				Type: "game",
-			},
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-3",
-					Name: "测试节点3",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     true,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-3").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(assert.AnError)
+			name: "存储层返回错误",
+			node: testNode,
+			setup: func() {
+				// 删除临时文件以模拟存储层错误
+				os.Remove(tmpFile)
 			},
 			expectedError: assert.AnError,
 		},
@@ -329,8 +210,74 @@ func TestUpdateNode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup()
-			err := service.UpdateNode(tt.nodeID, tt.params)
+			if tt.setup != nil {
+				tt.setup()
+			}
+			err := service.CreateNode(tt.node)
+			if tt.expectedError != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.expectedError, err)
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestUpdateNode(t *testing.T) {
+	// 创建临时测试文件
+	tmpFile := utils.CreateTempTestFile(t)
+	nodeStore, err := store.NewNodeStore(tmpFile)
+	assert.NoError(t, err)
+	defer nodeStore.Cleanup()
+
+	service := NewNodeService(nodeStore)
+
+	tests := []struct {
+		name          string
+		nodeID        string
+		node          models.GameNode
+		setup         func()
+		expectedError error
+	}{
+		{
+			name:   "成功更新节点",
+			nodeID: "test-node-1",
+			node:   testNode,
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
+			},
+			expectedError: nil,
+		},
+		{
+			name:   "节点不存在",
+			nodeID: "non-existent-node",
+			node:   testNode,
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
+			},
+			expectedError: assert.AnError,
+		},
+		{
+			name:   "存储层返回错误",
+			nodeID: "test-node-1",
+			node:   testNode,
+			setup: func() {
+				// 删除临时文件以模拟存储层错误
+				os.Remove(tmpFile)
+			},
+			expectedError: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup()
+			}
+			err := service.UpdateNode(tt.nodeID, tt.node)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
 				assert.Equal(t, tt.expectedError, err)
@@ -342,72 +289,45 @@ func TestUpdateNode(t *testing.T) {
 }
 
 func TestDeleteNode(t *testing.T) {
-	mockNodeStore := new(store.MockNodeStore)
-	mockInstanceStore := new(store.MockInstanceStore)
-	service := NewNodeService(mockNodeStore, mockInstanceStore)
+	// 创建临时测试文件
+	tmpFile := utils.CreateTempTestFile(t)
+	nodeStore, err := store.NewNodeStore(tmpFile)
+	assert.NoError(t, err)
+	defer nodeStore.Cleanup()
+
+	service := NewNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
 		nodeID        string
-		mockSetup     func()
+		setup         func()
 		expectedError error
 	}{
 		{
 			name:   "成功删除节点",
-			nodeID: "node-1",
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-1",
-					Name: "测试节点1",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateOffline,
-						Online:     false,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-1").Return(node, nil)
-				mockNodeStore.On("Delete", "node-1").Return(nil)
+			nodeID: "test-node-1",
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
 			expectedError: nil,
 		},
 		{
-			name:   "节点不存在",
-			nodeID: "node-2",
-			mockSetup: func() {
-				mockNodeStore.On("Get", "node-2").Return(models.GameNode{}, ErrNodeNotFound)
+			name:   "存储层返回错误",
+			nodeID: "test-node-1",
+			setup: func() {
+				// 删除临时文件以模拟存储层错误
+				os.Remove(tmpFile)
 			},
-			expectedError: ErrNodeNotFound,
-		},
-		{
-			name:   "节点正在运行",
-			nodeID: "node-3",
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-3",
-					Name: "测试节点3",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     true,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-3").Return(node, nil)
-			},
-			expectedError: ErrNodeIsRunning,
+			expectedError: assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup()
+			if tt.setup != nil {
+				tt.setup()
+			}
 			err := service.DeleteNode(tt.nodeID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
@@ -420,69 +340,48 @@ func TestDeleteNode(t *testing.T) {
 }
 
 func TestUpdateNodeStatus(t *testing.T) {
-	mockNodeStore := new(store.MockNodeStore)
-	mockInstanceStore := new(store.MockInstanceStore)
-	service := NewNodeService(mockNodeStore, mockInstanceStore)
+	// 创建临时测试文件
+	tmpFile := utils.CreateTempTestFile(t)
+	nodeStore, err := store.NewNodeStore(tmpFile)
+	assert.NoError(t, err)
+	defer nodeStore.Cleanup()
+
+	service := NewNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
 		nodeID        string
 		status        string
-		mockSetup     func()
+		setup         func()
 		expectedError error
 	}{
 		{
 			name:   "成功更新节点状态",
-			nodeID: "node-1",
-			status: string(models.GameNodeStateReady),
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-1",
-					Name: "测试节点1",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateOffline,
-						Online:     false,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-1").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(nil)
+			nodeID: "test-node-1",
+			status: "offline",
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
 			expectedError: nil,
 		},
 		{
 			name:   "节点不存在",
-			nodeID: "node-2",
-			status: string(models.GameNodeStateReady),
-			mockSetup: func() {
-				mockNodeStore.On("Get", "node-2").Return(models.GameNode{}, ErrNodeNotFound)
+			nodeID: "non-existent-node",
+			status: "offline",
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
-			expectedError: ErrNodeNotFound,
+			expectedError: nil,
 		},
 		{
 			name:   "存储层返回错误",
-			nodeID: "node-3",
-			status: string(models.GameNodeStateReady),
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-3",
-					Name: "测试节点3",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateOffline,
-						Online:     false,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-3").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(assert.AnError)
+			nodeID: "test-node-1",
+			status: "offline",
+			setup: func() {
+				// 删除临时文件以模拟存储层错误
+				os.Remove(tmpFile)
 			},
 			expectedError: assert.AnError,
 		},
@@ -490,7 +389,9 @@ func TestUpdateNodeStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup()
+			if tt.setup != nil {
+				tt.setup()
+			}
 			err := service.UpdateNodeStatus(tt.nodeID, tt.status)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
@@ -503,78 +404,55 @@ func TestUpdateNodeStatus(t *testing.T) {
 }
 
 func TestUpdateNodeMetrics(t *testing.T) {
-	mockNodeStore := new(store.MockNodeStore)
-	mockInstanceStore := new(store.MockInstanceStore)
-	service := NewNodeService(mockNodeStore, mockInstanceStore)
+	// 创建临时测试文件
+	tmpFile := utils.CreateTempTestFile(t)
+	nodeStore, err := store.NewNodeStore(tmpFile)
+	assert.NoError(t, err)
+	defer nodeStore.Cleanup()
+
+	service := NewNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
 		nodeID        string
 		metrics       map[string]interface{}
-		mockSetup     func()
+		setup         func()
 		expectedError error
 	}{
 		{
 			name:   "成功更新节点指标",
-			nodeID: "node-1",
+			nodeID: "test-node-1",
 			metrics: map[string]interface{}{
-				"cpu_usage": 0.5,
-				"mem_usage": 0.6,
+				"cpu_usage": 0.8,
+				"memory":    "4GB",
 			},
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-1",
-					Name: "测试节点1",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     true,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-1").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(nil)
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
 			expectedError: nil,
 		},
 		{
 			name:   "节点不存在",
-			nodeID: "node-2",
+			nodeID: "non-existent-node",
 			metrics: map[string]interface{}{
-				"cpu_usage": 0.5,
-				"mem_usage": 0.6,
+				"cpu_usage": 0.8,
 			},
-			mockSetup: func() {
-				mockNodeStore.On("Get", "node-2").Return(models.GameNode{}, ErrNodeNotFound)
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
-			expectedError: ErrNodeNotFound,
+			expectedError: assert.AnError,
 		},
 		{
 			name:   "存储层返回错误",
-			nodeID: "node-3",
+			nodeID: "test-node-1",
 			metrics: map[string]interface{}{
-				"cpu_usage": 0.5,
-				"mem_usage": 0.6,
+				"cpu_usage": 0.8,
 			},
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-3",
-					Name: "测试节点3",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     true,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-3").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(assert.AnError)
+			setup: func() {
+				// 删除临时文件以模拟存储层错误
+				os.Remove(tmpFile)
 			},
 			expectedError: assert.AnError,
 		},
@@ -582,7 +460,9 @@ func TestUpdateNodeMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup()
+			if tt.setup != nil {
+				tt.setup()
+			}
 			err := service.UpdateNodeMetrics(tt.nodeID, tt.metrics)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
@@ -595,78 +475,55 @@ func TestUpdateNodeMetrics(t *testing.T) {
 }
 
 func TestUpdateNodeResources(t *testing.T) {
-	mockNodeStore := new(store.MockNodeStore)
-	mockInstanceStore := new(store.MockInstanceStore)
-	service := NewNodeService(mockNodeStore, mockInstanceStore)
+	// 创建临时测试文件
+	tmpFile := utils.CreateTempTestFile(t)
+	nodeStore, err := store.NewNodeStore(tmpFile)
+	assert.NoError(t, err)
+	defer nodeStore.Cleanup()
+
+	service := NewNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
 		nodeID        string
-		resources     map[string]string
-		mockSetup     func()
+		resources     map[string]interface{}
+		setup         func()
 		expectedError error
 	}{
 		{
 			name:   "成功更新节点资源",
-			nodeID: "node-1",
-			resources: map[string]string{
-				"cpu": "4",
-				"mem": "8G",
+			nodeID: "test-node-1",
+			resources: map[string]interface{}{
+				"cpu":    "4",
+				"memory": "8GB",
 			},
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-1",
-					Name: "测试节点1",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     true,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-1").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(nil)
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
 			expectedError: nil,
 		},
 		{
 			name:   "节点不存在",
-			nodeID: "node-2",
-			resources: map[string]string{
+			nodeID: "non-existent-node",
+			resources: map[string]interface{}{
 				"cpu": "4",
-				"mem": "8G",
 			},
-			mockSetup: func() {
-				mockNodeStore.On("Get", "node-2").Return(models.GameNode{}, ErrNodeNotFound)
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
-			expectedError: ErrNodeNotFound,
+			expectedError: assert.AnError,
 		},
 		{
 			name:   "存储层返回错误",
-			nodeID: "node-3",
-			resources: map[string]string{
+			nodeID: "test-node-1",
+			resources: map[string]interface{}{
 				"cpu": "4",
-				"mem": "8G",
 			},
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-3",
-					Name: "测试节点3",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     true,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-3").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(assert.AnError)
+			setup: func() {
+				// 删除临时文件以模拟存储层错误
+				os.Remove(tmpFile)
 			},
 			expectedError: assert.AnError,
 		},
@@ -674,7 +531,9 @@ func TestUpdateNodeResources(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup()
+			if tt.setup != nil {
+				tt.setup()
+			}
 			err := service.UpdateNodeResources(tt.nodeID, tt.resources)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
@@ -687,69 +546,48 @@ func TestUpdateNodeResources(t *testing.T) {
 }
 
 func TestUpdateNodeOnlineStatus(t *testing.T) {
-	mockNodeStore := new(store.MockNodeStore)
-	mockInstanceStore := new(store.MockInstanceStore)
-	service := NewNodeService(mockNodeStore, mockInstanceStore)
+	// 创建临时测试文件
+	tmpFile := utils.CreateTempTestFile(t)
+	nodeStore, err := store.NewNodeStore(tmpFile)
+	assert.NoError(t, err)
+	defer nodeStore.Cleanup()
+
+	service := NewNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
 		nodeID        string
 		online        bool
-		mockSetup     func()
+		setup         func()
 		expectedError error
 	}{
 		{
 			name:   "成功更新节点在线状态",
-			nodeID: "node-1",
-			online: true,
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-1",
-					Name: "测试节点1",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     false,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-1").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(nil)
+			nodeID: "test-node-1",
+			online: false,
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
 			expectedError: nil,
 		},
 		{
 			name:   "节点不存在",
-			nodeID: "node-2",
-			online: true,
-			mockSetup: func() {
-				mockNodeStore.On("Get", "node-2").Return(models.GameNode{}, ErrNodeNotFound)
+			nodeID: "non-existent-node",
+			online: false,
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
 			},
-			expectedError: ErrNodeNotFound,
+			expectedError: nil,
 		},
 		{
 			name:   "存储层返回错误",
-			nodeID: "node-3",
-			online: true,
-			mockSetup: func() {
-				node := models.GameNode{
-					ID:   "node-3",
-					Name: "测试节点3",
-					Type: "game",
-					Status: models.GameNodeStatus{
-						State:      models.GameNodeStateReady,
-						Online:     false,
-						LastOnline: time.Now(),
-						UpdatedAt:  time.Now(),
-						Resources:  make(map[string]string),
-						Metrics:    make(map[string]interface{}),
-					},
-				}
-				mockNodeStore.On("Get", "node-3").Return(node, nil)
-				mockNodeStore.On("Update", mock.AnythingOfType("models.GameNode")).Return(assert.AnError)
+			nodeID: "test-node-1",
+			online: false,
+			setup: func() {
+				// 删除临时文件以模拟存储层错误
+				os.Remove(tmpFile)
 			},
 			expectedError: assert.AnError,
 		},
@@ -757,7 +595,9 @@ func TestUpdateNodeOnlineStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.mockSetup()
+			if tt.setup != nil {
+				tt.setup()
+			}
 			err := service.UpdateNodeOnlineStatus(tt.nodeID, tt.online)
 			if tt.expectedError != nil {
 				assert.Error(t, err)

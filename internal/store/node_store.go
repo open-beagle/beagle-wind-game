@@ -21,6 +21,8 @@ type NodeStore interface {
 	Update(node models.GameNode) error
 	// Delete 删除节点
 	Delete(id string) error
+	// Cleanup 清理测试文件
+	Cleanup() error
 }
 
 // YAMLNodeStore YAML文件存储实现
@@ -30,7 +32,7 @@ type YAMLNodeStore struct {
 	mu       sync.RWMutex
 }
 
-// NewNodeStore 创建游戏节点存储
+// NewNodeStore 创建新的节点存储实例
 func NewNodeStore(dataFile string) (NodeStore, error) {
 	store := &YAMLNodeStore{
 		dataFile: dataFile,
@@ -45,45 +47,41 @@ func NewNodeStore(dataFile string) (NodeStore, error) {
 	return store, nil
 }
 
-// Load 加载节点数据
+// Load 从文件加载节点数据
 func (s *YAMLNodeStore) Load() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// 读取数据文件
+	// 读取文件内容
 	data, err := os.ReadFile(s.dataFile)
 	if err != nil {
-		// 如果文件不存在，创建一个空的节点列表
-		s.nodes = []models.GameNode{}
-		return s.Save()
+		if os.IsNotExist(err) {
+			// 如果文件不存在，创建空文件
+			s.nodes = make([]models.GameNode, 0)
+			return s.Save()
+		}
+		return fmt.Errorf("读取文件失败: %w", err)
 	}
 
 	// 解析YAML
 	var nodes []models.GameNode
 	err = yaml.Unmarshal(data, &nodes)
 	if err != nil {
-		return fmt.Errorf("解析节点数据文件失败: %w", err)
+		return fmt.Errorf("解析YAML失败: %w", err)
 	}
 
 	s.nodes = nodes
 	return nil
 }
 
-// Save 保存节点数据
+// Save 保存节点数据到文件
 func (s *YAMLNodeStore) Save() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	// 序列化为YAML
 	data, err := yaml.Marshal(s.nodes)
 	if err != nil {
-		return fmt.Errorf("序列化节点数据失败: %w", err)
+		return fmt.Errorf("序列化YAML失败: %w", err)
 	}
 
 	// 写入文件
-	err = os.WriteFile(s.dataFile, data, 0644)
-	if err != nil {
-		return fmt.Errorf("写入节点数据文件失败: %w", err)
+	if err := os.WriteFile(s.dataFile, data, 0644); err != nil {
+		return fmt.Errorf("写入文件失败: %w", err)
 	}
 
 	return nil
@@ -91,27 +89,19 @@ func (s *YAMLNodeStore) Save() error {
 
 // List 获取所有节点
 func (s *YAMLNodeStore) List() ([]models.GameNode, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	// 创建副本避免修改原始数据
 	nodes := make([]models.GameNode, len(s.nodes))
 	copy(nodes, s.nodes)
-
 	return nodes, nil
 }
 
 // Get 获取指定ID的节点
 func (s *YAMLNodeStore) Get(id string) (models.GameNode, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	for _, node := range s.nodes {
 		if node.ID == id {
 			return node, nil
 		}
 	}
-
 	return models.GameNode{}, fmt.Errorf("节点不存在: %s", id)
 }
 
@@ -121,16 +111,13 @@ func (s *YAMLNodeStore) Add(node models.GameNode) error {
 	defer s.mu.Unlock()
 
 	// 检查ID是否已存在
-	for _, n := range s.nodes {
-		if n.ID == node.ID {
-			return fmt.Errorf("节点ID已存在: %s", node.ID)
+	for _, existing := range s.nodes {
+		if existing.ID == node.ID {
+			return fmt.Errorf("节点已存在: %s", node.ID)
 		}
 	}
 
-	// 添加节点
 	s.nodes = append(s.nodes, node)
-
-	// 保存数据
 	return s.Save()
 }
 
@@ -140,13 +127,12 @@ func (s *YAMLNodeStore) Update(node models.GameNode) error {
 	defer s.mu.Unlock()
 
 	// 查找并更新节点
-	for i, n := range s.nodes {
-		if n.ID == node.ID {
+	for i, existing := range s.nodes {
+		if existing.ID == node.ID {
 			s.nodes[i] = node
 			return s.Save()
 		}
 	}
-
 	return fmt.Errorf("节点不存在: %s", node.ID)
 }
 
@@ -158,11 +144,14 @@ func (s *YAMLNodeStore) Delete(id string) error {
 	// 查找并删除节点
 	for i, node := range s.nodes {
 		if node.ID == id {
-			// 从切片中删除节点
 			s.nodes = append(s.nodes[:i], s.nodes[i+1:]...)
 			return s.Save()
 		}
 	}
-
 	return fmt.Errorf("节点不存在: %s", id)
+}
+
+// Cleanup 清理存储文件
+func (s *YAMLNodeStore) Cleanup() error {
+	return os.Remove(s.dataFile)
 }
