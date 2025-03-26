@@ -173,6 +173,6 @@ export const createPlatform = (data: any) => platformService.create(data);
 export const updatePlatform = (id: string, data: any) =>
   platformService.update(id, data);
 export const deletePlatform = (id: string) => platformService.delete(id);
-export const getPlatformAccess = (id: string) => platformService.getAccess(id);
+export const GetAccess = (id: string) => platformService.getAccess(id);
 export const refreshPlatformAccess = (id: string) =>
   platformService.refreshAccess(id);

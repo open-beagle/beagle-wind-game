@@ -8,19 +8,19 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 )
 
-// NodeHandler 节点API处理器
-type NodeHandler struct {
-	nodeService *service.GameNodeService
+// GameNodeHandler 节点API处理器
+type GameNodeHandler struct {
+	service *service.GameNodeService
 }
 
-// NewNodeHandler 创建节点API处理器
-func NewNodeHandler(nodeService *service.GameNodeService) *NodeHandler {
-	return &NodeHandler{
-		nodeService: nodeService,
+// NewGameNodeHandler 创建节点API处理器
+func NewGameNodeHandler(service *service.GameNodeService) *GameNodeHandler {
+	return &GameNodeHandler{
+		service: service,
 	}
 }
 
-// ListNodes 获取节点列表
+// List 获取节点列表
 // @Summary 获取节点列表
 // @Description 获取游戏节点列表，支持分页、搜索和状态筛选
 // @Tags 游戏节点
@@ -32,7 +32,7 @@ func NewNodeHandler(nodeService *service.GameNodeService) *NodeHandler {
 // @Param status query string false "节点状态(online/offline/maintenance)"
 // @Success 200 {object} service.GameNodeListResult "节点列表"
 // @Router /api/v1/game-nodes [get]
-func (h *NodeHandler) ListNodes(c *gin.Context) {
+func (h *GameNodeHandler) List(c *gin.Context) {
 	var params service.GameNodeListParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -47,7 +47,7 @@ func (h *NodeHandler) ListNodes(c *gin.Context) {
 		params.PageSize = 20
 	}
 
-	result, err := h.nodeService.ListNodes(params)
+	result, err := h.service.List(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -56,7 +56,7 @@ func (h *NodeHandler) ListNodes(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// GetNode 获取节点详情
+// Get 获取节点详情
 // @Summary 获取节点详情
 // @Description 根据节点ID获取游戏节点详情
 // @Tags 游戏节点
@@ -65,14 +65,14 @@ func (h *NodeHandler) ListNodes(c *gin.Context) {
 // @Param id path string true "节点ID"
 // @Success 200 {object} models.GameNode "节点详情"
 // @Router /api/v1/game-nodes/{id} [get]
-func (h *NodeHandler) GetNode(c *gin.Context) {
+func (h *GameNodeHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "节点ID不能为空"})
 		return
 	}
 
-	node, err := h.nodeService.GetNode(id)
+	node, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -86,7 +86,7 @@ func (h *NodeHandler) GetNode(c *gin.Context) {
 	c.JSON(http.StatusOK, node)
 }
 
-// UpdateNodeStatus 更新节点状态
+// UpdateStatusState 更新节点状态
 // @Summary 更新节点状态
 // @Description 更新游戏节点的状态
 // @Tags 游戏节点
@@ -96,7 +96,7 @@ func (h *NodeHandler) GetNode(c *gin.Context) {
 // @Param body body struct{Status string `json:"status"`;Reason string `json:"reason,omitempty"`} true "状态信息"
 // @Success 204 "无内容"
 // @Router /api/v1/game-nodes/{id}/status [put]
-func (h *NodeHandler) UpdateNodeStatus(c *gin.Context) {
+func (h *GameNodeHandler) UpdateStatusState(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "节点ID不能为空"})
@@ -114,7 +114,7 @@ func (h *NodeHandler) UpdateNodeStatus(c *gin.Context) {
 	}
 
 	// 验证节点是否存在
-	node, err := h.nodeService.GetNode(id)
+	node, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -125,7 +125,7 @@ func (h *NodeHandler) UpdateNodeStatus(c *gin.Context) {
 		return
 	}
 
-	err = h.nodeService.UpdateNodeStatus(id, req.Status)
+	err = h.service.UpdateStatusState(id, req.Status)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -134,7 +134,7 @@ func (h *NodeHandler) UpdateNodeStatus(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// CreateNode 创建节点
+// Create 创建节点
 // @Summary 创建节点
 // @Description 创建新的游戏节点
 // @Tags 游戏节点
@@ -143,18 +143,18 @@ func (h *NodeHandler) UpdateNodeStatus(c *gin.Context) {
 // @Param body body models.GameNode true "节点信息"
 // @Success 201 {object} gin.H "包含新创建的节点ID"
 // @Router /api/v1/game-nodes [post]
-func (h *NodeHandler) CreateNode(c *gin.Context) {
+func (h *GameNodeHandler) Create(c *gin.Context) {
 	var node models.GameNode
 	if err := c.ShouldBindJSON(&node); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	id := h.nodeService.CreateNode(node)
+	id := h.service.Create(node)
 	c.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
-// UpdateNode 更新节点
+// Update 更新节点
 // @Summary 更新节点
 // @Description 更新现有的游戏节点
 // @Tags 游戏节点
@@ -164,7 +164,7 @@ func (h *NodeHandler) CreateNode(c *gin.Context) {
 // @Param body body models.GameNode true "节点信息"
 // @Success 204 "无内容"
 // @Router /api/v1/game-nodes/{id} [put]
-func (h *NodeHandler) UpdateNode(c *gin.Context) {
+func (h *GameNodeHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "节点ID不能为空"})
@@ -172,7 +172,7 @@ func (h *NodeHandler) UpdateNode(c *gin.Context) {
 	}
 
 	// 验证节点是否存在
-	node, err := h.nodeService.GetNode(id)
+	node, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -192,7 +192,7 @@ func (h *NodeHandler) UpdateNode(c *gin.Context) {
 	// 确保ID一致
 	updatedNode.ID = id
 
-	err = h.nodeService.UpdateNode(id, updatedNode)
+	err = h.service.Update(id, updatedNode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -201,7 +201,7 @@ func (h *NodeHandler) UpdateNode(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// DeleteNode 删除节点
+// Delete 删除节点
 // @Summary 删除节点
 // @Description 删除指定的游戏节点
 // @Tags 游戏节点
@@ -210,7 +210,7 @@ func (h *NodeHandler) UpdateNode(c *gin.Context) {
 // @Param id path string true "节点ID"
 // @Success 204 "无内容"
 // @Router /api/v1/game-nodes/{id} [delete]
-func (h *NodeHandler) DeleteNode(c *gin.Context) {
+func (h *GameNodeHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "节点ID不能为空"})
@@ -218,7 +218,7 @@ func (h *NodeHandler) DeleteNode(c *gin.Context) {
 	}
 
 	// 验证节点是否存在
-	node, err := h.nodeService.GetNode(id)
+	node, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -229,7 +229,7 @@ func (h *NodeHandler) DeleteNode(c *gin.Context) {
 		return
 	}
 
-	err = h.nodeService.DeleteNode(id)
+	err = h.service.Delete(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

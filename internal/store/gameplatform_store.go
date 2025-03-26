@@ -85,6 +85,10 @@ func (s *YAMLGamePlatformStore) Save() error {
 
 // List 获取所有平台
 func (s *YAMLGamePlatformStore) List() ([]models.GamePlatform, error) {
+	// 检查是否已加载数据
+	if s.platforms == nil {
+		return nil, fmt.Errorf("存储层错误")
+	}
 	// 创建副本避免修改原始数据
 	platforms := make([]models.GamePlatform, len(s.platforms))
 	copy(platforms, s.platforms)

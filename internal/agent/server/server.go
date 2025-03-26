@@ -24,7 +24,7 @@ type AgentServer struct {
 	server           *grpc.Server
 	nodeConnections  map[string]*nodeConnection
 	connectionsMutex sync.RWMutex
-	nodeManager      GameNodeManager
+	manager          GameNodeManager
 }
 
 // 节点连接信息
@@ -55,11 +55,11 @@ var DefaultServerOptions = ServerOptions{
 }
 
 // NewAgentServer 创建新的Agent服务器实例
-func NewAgentServer(opts ServerOptions, nodeManager GameNodeManager) *AgentServer {
+func NewAgentServer(opts ServerOptions, manager GameNodeManager) *AgentServer {
 	return &AgentServer{
 		opts:            opts,
+		manager:         manager,
 		nodeConnections: make(map[string]*nodeConnection),
-		nodeManager:     nodeManager,
 	}
 }
 
@@ -151,7 +151,7 @@ func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) 
 	}
 
 	// 验证节点管理器
-	if s.nodeManager == nil {
+	if s.manager == nil {
 		return &proto.RegisterResponse{
 			Success: false,
 			Message: "节点管理器未初始化",
@@ -159,7 +159,7 @@ func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) 
 	}
 
 	// 获取节点信息
-	_, err := s.nodeManager.GetNode(req.NodeId)
+	_, err := s.manager.Get(req.NodeId)
 	if err != nil {
 		return &proto.RegisterResponse{
 			Success: false,
@@ -168,7 +168,7 @@ func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) 
 	}
 
 	// 更新节点状态
-	err = s.nodeManager.UpdateNodeStatus(req.NodeId, string(models.GameNodeStateReady))
+	err = s.manager.UpdateStatusState(req.NodeId, string(models.GameNodeStateReady))
 	if err != nil {
 		return &proto.RegisterResponse{
 			Success: false,

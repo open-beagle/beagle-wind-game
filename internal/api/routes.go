@@ -6,8 +6,8 @@ import (
 )
 
 // SetupRouter 设置路由
-func SetupRouter(platformService *service.GamePlatformService, nodeService *service.GameNodeService,
-	gameCardService *service.GameCardService, instanceService *service.GameInstanceService) *gin.Engine {
+func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeService *service.GameNodeService,
+	gameCardService *service.GameCardService, gameinstanceService *service.GameInstanceService) *gin.Engine {
 	// 创建默认的gin引擎
 	r := gin.Default()
 
@@ -26,10 +26,10 @@ func SetupRouter(platformService *service.GamePlatformService, nodeService *serv
 	})
 
 	// 创建处理器
-	platformHandler := NewPlatformHandler(platformService)
-	nodeHandler := NewNodeHandler(nodeService)
+	gameplatformHandler := NewGamePlatformHandler(gameplatformService)
+	gamenodeHandler := NewGameNodeHandler(gamenodeService)
 	gameCardHandler := NewGameCardHandler(gameCardService)
-	instanceHandler := NewInstanceHandler(instanceService)
+	gameinstanceHandler := NewGameInstanceHandler(gameinstanceService)
 
 	// API v1 路由组
 	v1 := r.Group("/api/v1")
@@ -37,49 +37,44 @@ func SetupRouter(platformService *service.GamePlatformService, nodeService *serv
 		// 游戏节点管理
 		nodes := v1.Group("/nodes")
 		{
-			nodes.GET("", nodeHandler.ListNodes)
-			nodes.POST("", nodeHandler.CreateNode)
-			nodes.GET("/:id", nodeHandler.GetNode)
-			nodes.PUT("/:id", nodeHandler.UpdateNode)
-			nodes.DELETE("/:id", nodeHandler.DeleteNode)
-			// 更新节点状态
-			nodes.PUT("/:id/status", nodeHandler.UpdateNodeStatus)
+			nodes.GET("", gamenodeHandler.List)
+			nodes.GET("/:id", gamenodeHandler.Get)
+			nodes.POST("/:id/create", gamenodeHandler.Create)
+			nodes.POST("/:id/update", gamenodeHandler.Update)
+			nodes.POST("/:id/delete", gamenodeHandler.Delete)
 		}
 
 		// 游戏平台管理
 		platforms := v1.Group("/platforms")
 		{
-			platforms.GET("", platformHandler.ListPlatforms)
-			platforms.POST("", platformHandler.CreatePlatform)
-			platforms.GET("/:id", platformHandler.GetPlatform)
-			platforms.PUT("/:id", platformHandler.UpdatePlatform)
-			platforms.DELETE("/:id", platformHandler.DeletePlatform)
-			// 远程访问
-			platforms.GET("/:id/access", platformHandler.GetPlatformAccess)
-			platforms.POST("/:id/access/refresh", platformHandler.RefreshPlatformAccess)
+			platforms.GET("", gameplatformHandler.List)
+			platforms.GET("/:id", gameplatformHandler.Get)
+			platforms.POST("/:id/create", gameplatformHandler.Create)
+			platforms.POST("/:id/update", gameplatformHandler.Update)
+			platforms.POST("/:id/delete", gameplatformHandler.Delete)
 		}
 
 		// 游戏卡片管理
 		cards := v1.Group("/cards")
 		{
-			cards.GET("", gameCardHandler.ListGameCards)
-			cards.POST("", gameCardHandler.CreateGameCard)
-			cards.GET("/:id", gameCardHandler.GetGameCard)
-			cards.PUT("/:id", gameCardHandler.UpdateGameCard)
-			cards.DELETE("/:id", gameCardHandler.DeleteGameCard)
+			cards.GET("", gameCardHandler.List)
+			cards.GET("/:id", gameCardHandler.Get)
+			cards.POST("/:id/create", gameCardHandler.Create)
+			cards.POST("/:id/update", gameCardHandler.Update)
+			cards.POST("/:id/delete", gameCardHandler.Delete)
 		}
 
 		// 游戏实例管理
 		instances := v1.Group("/instances")
 		{
-			instances.GET("", instanceHandler.ListInstances)
-			instances.POST("", instanceHandler.CreateInstance)
-			instances.GET("/:id", instanceHandler.GetInstance)
-			instances.PUT("/:id", instanceHandler.UpdateInstance)
-			instances.DELETE("/:id", instanceHandler.DeleteInstance)
+			instances.GET("", gameinstanceHandler.List)
+			instances.GET("/:id", gameinstanceHandler.Get)
+			instances.POST("/:id/create", gameinstanceHandler.Create)
+			instances.POST("/:id/update", gameinstanceHandler.Update)
+			instances.POST("/:id/delete", gameinstanceHandler.Delete)
 			// 实例操作
-			instances.POST("/:id/start", instanceHandler.StartInstance)
-			instances.POST("/:id/stop", instanceHandler.StopInstance)
+			instances.POST("/:id/start", gameinstanceHandler.Start)
+			instances.POST("/:id/stop", gameinstanceHandler.Stop)
 		}
 	}
 

@@ -8,19 +8,19 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 )
 
-// InstanceHandler 游戏实例API处理器
-type InstanceHandler struct {
-	instanceService *service.GameInstanceService
+// GameInstanceHandler 游戏实例API处理器
+type GameInstanceHandler struct {
+	service *service.GameInstanceService
 }
 
-// NewInstanceHandler 创建游戏实例API处理器
-func NewInstanceHandler(instanceService *service.GameInstanceService) *InstanceHandler {
-	return &InstanceHandler{
-		instanceService: instanceService,
+// NewGameInstanceHandler 创建游戏实例API处理器
+func NewGameInstanceHandler(service *service.GameInstanceService) *GameInstanceHandler {
+	return &GameInstanceHandler{
+		service: service,
 	}
 }
 
-// ListInstances 获取实例列表
+// List 获取实例列表
 // @Summary 获取实例列表
 // @Description 获取游戏实例列表，支持分页和筛选
 // @Tags 游戏实例
@@ -35,8 +35,8 @@ func NewInstanceHandler(instanceService *service.GameInstanceService) *InstanceH
 // @Param platform_id query string false "平台ID"
 // @Success 200 {object} service.InstanceListResult "实例列表"
 // @Router /api/v1/instances [get]
-func (h *InstanceHandler) ListInstances(c *gin.Context) {
-	var params service.InstanceListParams
+func (h *GameInstanceHandler) List(c *gin.Context) {
+	var params service.GameInstanceListParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -50,7 +50,7 @@ func (h *InstanceHandler) ListInstances(c *gin.Context) {
 		params.PageSize = 20
 	}
 
-	result, err := h.instanceService.ListInstances(params)
+	result, err := h.service.List(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -59,7 +59,7 @@ func (h *InstanceHandler) ListInstances(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// GetInstance 获取实例详情
+// Get 获取实例详情
 // @Summary 获取实例详情
 // @Description, 根据实例ID获取游戏实例详情
 // @Tags 游戏实例
@@ -68,14 +68,14 @@ func (h *InstanceHandler) ListInstances(c *gin.Context) {
 // @Param id path string true "实例ID"
 // @Success 200 {object} models.GameInstance "实例详情"
 // @Router /api/v1/instances/{id} [get]
-func (h *InstanceHandler) GetInstance(c *gin.Context) {
+func (h *GameInstanceHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "实例ID不能为空"})
 		return
 	}
 
-	instance, err := h.instanceService.GetInstance(id)
+	instance, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -89,7 +89,7 @@ func (h *InstanceHandler) GetInstance(c *gin.Context) {
 	c.JSON(http.StatusOK, instance)
 }
 
-// CreateInstance 创建实例
+// Create 创建实例
 // @Summary 创建实例
 // @Description 创建新的游戏实例
 // @Tags 游戏实例
@@ -98,14 +98,14 @@ func (h *InstanceHandler) GetInstance(c *gin.Context) {
 // @Param body body service.CreateInstanceParams true "创建实例参数"
 // @Success 201 {object} gin.H "包含新创建的实例ID"
 // @Router /api/v1/instances [post]
-func (h *InstanceHandler) CreateInstance(c *gin.Context) {
+func (h *GameInstanceHandler) Create(c *gin.Context) {
 	var params service.CreateInstanceParams
 	if err := c.ShouldBindJSON(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	id, err := h.instanceService.CreateInstance(params)
+	id, err := h.service.Create(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -114,7 +114,7 @@ func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
-// UpdateInstance 更新实例
+// Update 更新实例
 // @Summary 更新实例
 // @Description 更新游戏实例信息
 // @Tags 游戏实例
@@ -124,7 +124,7 @@ func (h *InstanceHandler) CreateInstance(c *gin.Context) {
 // @Param body body service.UpdateInstanceParams true "更新实例参数"
 // @Success 204 "无内容"
 // @Router /api/v1/instances/{id} [put]
-func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
+func (h *GameInstanceHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "实例ID不能为空"})
@@ -132,7 +132,7 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	}
 
 	// 验证实例是否存在
-	instance, err := h.instanceService.GetInstance(id)
+	instance, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -160,7 +160,7 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 		Backup:      params.Backup,
 	}
 
-	err = h.instanceService.UpdateInstance(id, instance)
+	err = h.service.Update(id, instance)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -169,7 +169,7 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// DeleteInstance 删除实例
+// Delete 删除实例
 // @Summary 删除实例
 // @Description 删除指定的游戏实例
 // @Tags 游戏实例
@@ -178,7 +178,7 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 // @Param id path string true "实例ID"
 // @Success 204 "无内容"
 // @Router /api/v1/instances/{id} [delete]
-func (h *InstanceHandler) DeleteInstance(c *gin.Context) {
+func (h *GameInstanceHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "实例ID不能为空"})
@@ -186,7 +186,7 @@ func (h *InstanceHandler) DeleteInstance(c *gin.Context) {
 	}
 
 	// 验证实例是否存在
-	instance, err := h.instanceService.GetInstance(id)
+	instance, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -197,7 +197,7 @@ func (h *InstanceHandler) DeleteInstance(c *gin.Context) {
 		return
 	}
 
-	err = h.instanceService.DeleteInstance(id)
+	err = h.service.Delete(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -206,7 +206,7 @@ func (h *InstanceHandler) DeleteInstance(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// StartInstance 启动实例
+// Start 启动实例
 // @Summary 启动实例
 // @Description 启动指定的游戏实例
 // @Tags 游戏实例
@@ -215,7 +215,7 @@ func (h *InstanceHandler) DeleteInstance(c *gin.Context) {
 // @Param id path string true "实例ID"
 // @Success 204 "无内容"
 // @Router /api/v1/instances/{id}/start [post]
-func (h *InstanceHandler) StartInstance(c *gin.Context) {
+func (h *GameInstanceHandler) Start(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "实例ID不能为空"})
@@ -223,7 +223,7 @@ func (h *InstanceHandler) StartInstance(c *gin.Context) {
 	}
 
 	// 验证实例是否存在
-	instance, err := h.instanceService.GetInstance(id)
+	instance, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -234,7 +234,7 @@ func (h *InstanceHandler) StartInstance(c *gin.Context) {
 		return
 	}
 
-	err = h.instanceService.StartInstance(id)
+	err = h.service.Start(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -243,7 +243,7 @@ func (h *InstanceHandler) StartInstance(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// StopInstance 停止实例
+// Stop 停止实例
 // @Summary 停止实例
 // @Description 停止指定的游戏实例
 // @Tags 游戏实例
@@ -252,7 +252,7 @@ func (h *InstanceHandler) StartInstance(c *gin.Context) {
 // @Param id path string true "实例ID"
 // @Success 204 "无内容"
 // @Router /api/v1/instances/{id}/stop [post]
-func (h *InstanceHandler) StopInstance(c *gin.Context) {
+func (h *GameInstanceHandler) Stop(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "实例ID不能为空"})
@@ -260,7 +260,7 @@ func (h *InstanceHandler) StopInstance(c *gin.Context) {
 	}
 
 	// 验证实例是否存在
-	instance, err := h.instanceService.GetInstance(id)
+	instance, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -271,7 +271,7 @@ func (h *InstanceHandler) StopInstance(c *gin.Context) {
 		return
 	}
 
-	err = h.instanceService.StopInstance(id)
+	err = h.service.Stop(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

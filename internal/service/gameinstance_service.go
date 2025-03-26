@@ -30,8 +30,8 @@ func NewGameInstanceService(GameInstanceStore store.GameInstanceStore) *GameInst
 	}
 }
 
-// InstanceListParams 实例列表查询参数
-type InstanceListParams struct {
+// GameInstanceListParams 实例列表查询参数
+type GameInstanceListParams struct {
 	Page       int    `form:"page" binding:"omitempty,min=1"`
 	PageSize   int    `form:"size" binding:"omitempty,min=1,max=100"`
 	Keyword    string `form:"keyword" binding:"omitempty"`
@@ -47,15 +47,12 @@ type InstanceListResult struct {
 	Items []models.GameInstance `json:"items"`
 }
 
-// ListInstances 获取游戏实例列表
-func (s *GameInstanceService) ListInstances(params InstanceListParams) (InstanceListResult, error) {
+// List 获取游戏实例列表
+func (s *GameInstanceService) List(params GameInstanceListParams) (*InstanceListResult, error) {
 	// 从存储获取实例列表
 	instances, err := s.GameInstanceStore.List()
 	if err != nil {
-		if strings.Contains(err.Error(), "目标是一个目录") {
-			return InstanceListResult{}, fmt.Errorf("存储层错误")
-		}
-		return InstanceListResult{}, err
+		return nil, fmt.Errorf("存储层错误: %w", err)
 	}
 
 	// 过滤和分页
@@ -108,7 +105,7 @@ func (s *GameInstanceService) ListInstances(params InstanceListParams) (Instance
 	start := (params.Page - 1) * params.PageSize
 	end := start + params.PageSize
 	if start >= total {
-		return InstanceListResult{
+		return &InstanceListResult{
 			Total: total,
 			Items: []models.GameInstance{},
 		}, nil
@@ -117,14 +114,14 @@ func (s *GameInstanceService) ListInstances(params InstanceListParams) (Instance
 		end = total
 	}
 
-	return InstanceListResult{
+	return &InstanceListResult{
 		Total: total,
 		Items: filteredInstances[start:end],
 	}, nil
 }
 
-// GetInstance 获取实例详情
-func (s *GameInstanceService) GetInstance(id string) (models.GameInstance, error) {
+// Get 获取实例详情
+func (s *GameInstanceService) Get(id string) (models.GameInstance, error) {
 	// 从存储获取实例详情
 	instance, err := s.GameInstanceStore.Get(id)
 	if err != nil {
@@ -152,12 +149,12 @@ type CreateInstanceParams struct {
 	Config     string `json:"config,omitempty"` // 自定义配置
 }
 
-// CreateInstance 创建游戏实例
-func (s *GameInstanceService) CreateInstance(params CreateInstanceParams) (string, error) {
+// Create 创建游戏实例
+func (s *GameInstanceService) Create(params CreateInstanceParams) (string, error) {
 	// 创建实例
 	now := time.Now()
 	instance := models.GameInstance{
-		ID:         fmt.Sprintf("inst-%s-%s-%d", params.NodeID, params.CardID, now.Unix()),
+		ID:         params.NodeID + "-" + params.CardID,
 		NodeID:     params.NodeID,
 		PlatformID: params.PlatformID,
 		CardID:     params.CardID,
@@ -171,13 +168,8 @@ func (s *GameInstanceService) CreateInstance(params CreateInstanceParams) (strin
 
 	// 检查实例是否已存在
 	existingInstance, err := s.GameInstanceStore.Get(instance.ID)
-	if err != nil {
-		if strings.Contains(err.Error(), "目标是一个目录") {
-			return "", fmt.Errorf("存储层错误")
-		}
-		if !strings.Contains(err.Error(), "实例不存在") {
-			return "", err
-		}
+	if err != nil && !strings.Contains(err.Error(), "实例不存在") {
+		return "", fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingInstance.ID != "" {
 		return "", fmt.Errorf("实例ID已存在: %s", instance.ID)
@@ -186,10 +178,7 @@ func (s *GameInstanceService) CreateInstance(params CreateInstanceParams) (strin
 	// 保存实例
 	err = s.GameInstanceStore.Add(instance)
 	if err != nil {
-		if strings.Contains(err.Error(), "目标是一个目录") {
-			return "", fmt.Errorf("存储层错误")
-		}
-		return "", err
+		return "", fmt.Errorf("存储层错误: %w", err)
 	}
 
 	return instance.ID, nil
@@ -205,8 +194,8 @@ type UpdateInstanceParams struct {
 	Backup      string `json:"backup,omitempty"`
 }
 
-// UpdateInstance 更新游戏实例
-func (s *GameInstanceService) UpdateInstance(id string, instance models.GameInstance) error {
+// Update 更新游戏实例
+func (s *GameInstanceService) Update(id string, instance models.GameInstance) error {
 	// 检查实例是否存在
 	existingInstance, err := s.GameInstanceStore.Get(id)
 	if err != nil {
@@ -238,8 +227,8 @@ func (s *GameInstanceService) UpdateInstance(id string, instance models.GameInst
 	return nil
 }
 
-// DeleteInstance 删除游戏实例
-func (s *GameInstanceService) DeleteInstance(id string) error {
+// Delete 删除游戏实例
+func (s *GameInstanceService) Delete(id string) error {
 	// 检查实例是否存在
 	existingInstance, err := s.GameInstanceStore.Get(id)
 	if err != nil {
@@ -264,8 +253,8 @@ func (s *GameInstanceService) DeleteInstance(id string) error {
 	return nil
 }
 
-// StartInstance 启动游戏实例
-func (s *GameInstanceService) StartInstance(id string) error {
+// Start 启动游戏实例
+func (s *GameInstanceService) Start(id string) error {
 	// 获取实例
 	instance, err := s.GameInstanceStore.Get(id)
 	if err != nil {
@@ -304,8 +293,8 @@ func (s *GameInstanceService) StartInstance(id string) error {
 	return nil
 }
 
-// StopInstance 停止游戏实例
-func (s *GameInstanceService) StopInstance(id string) error {
+// Stop 停止游戏实例
+func (s *GameInstanceService) Stop(id string) error {
 	// 获取实例
 	instance, err := s.GameInstanceStore.Get(id)
 	if err != nil {

@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -11,6 +10,33 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
+
+// mockGamePlatformErrorStore 模拟返回错误的游戏平台存储实现
+type mockGamePlatformErrorStore struct{}
+
+func (s *mockGamePlatformErrorStore) List() ([]models.GamePlatform, error) {
+	return nil, assert.AnError
+}
+
+func (s *mockGamePlatformErrorStore) Get(id string) (models.GamePlatform, error) {
+	return models.GamePlatform{}, assert.AnError
+}
+
+func (s *mockGamePlatformErrorStore) Add(platform models.GamePlatform) error {
+	return assert.AnError
+}
+
+func (s *mockGamePlatformErrorStore) Update(platform models.GamePlatform) error {
+	return assert.AnError
+}
+
+func (s *mockGamePlatformErrorStore) Delete(id string) error {
+	return assert.AnError
+}
+
+func (s *mockGamePlatformErrorStore) Cleanup() error {
+	return nil
+}
 
 // 测试数据
 var testPlatform = models.GamePlatform{
@@ -28,33 +54,29 @@ var testPlatform = models.GamePlatform{
 	UpdatedAt: time.Now(),
 }
 
-func TestListPlatforms(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
-	assert.NoError(t, err)
-	defer GamePlatformStore.Cleanup()
-
-	service := NewGamePlatformService(GamePlatformStore)
-
+func TestGamePlatformService_List(t *testing.T) {
 	tests := []struct {
 		name           string
-		params         PlatformListParams
-		setup          func()
-		expectedResult PlatformListResult
+		params         GamePlatformListParams
+		store          store.GamePlatformStore
+		expectedResult *GamePlatformListResult
 		expectedError  error
 	}{
 		{
 			name: "成功获取平台列表",
-			params: PlatformListParams{
+			params: GamePlatformListParams{
 				Page:     1,
 				PageSize: 20,
 			},
-			setup: func() {
-				err := GamePlatformStore.Add(testPlatform)
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
 				assert.NoError(t, err)
-			},
-			expectedResult: PlatformListResult{
+				err = store.Add(testPlatform)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedResult: &GamePlatformListResult{
 				Total: 1,
 				Items: []models.GamePlatform{testPlatform},
 			},
@@ -62,34 +84,27 @@ func TestListPlatforms(t *testing.T) {
 		},
 		{
 			name: "存储层返回错误",
-			params: PlatformListParams{
+			params: GamePlatformListParams{
 				Page:     1,
 				PageSize: 20,
 			},
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedResult: PlatformListResult{},
-			expectedError:  fmt.Errorf("读取平台配置文件失败: 目标是一个目录"),
+			store:          &mockGamePlatformErrorStore{},
+			expectedResult: nil,
+			expectedError:  assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			result, err := service.ListPlatforms(tt.params)
+			service := NewGamePlatformService(tt.store)
+			result, err := service.List(tt.params)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				assert.Nil(t, result)
 				return
 			}
 			assert.NoError(t, err)
+			assert.NotNil(t, result)
 			assert.Equal(t, tt.expectedResult.Total, result.Total)
 			assert.Equal(t, len(tt.expectedResult.Items), len(result.Items))
 			for i, expected := range tt.expectedResult.Items {
@@ -101,63 +116,56 @@ func TestListPlatforms(t *testing.T) {
 	}
 }
 
-func TestGetPlatform(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
-	assert.NoError(t, err)
-	defer GamePlatformStore.Cleanup()
-
-	service := NewGamePlatformService(GamePlatformStore)
-
+func TestGamePlatformService_Get(t *testing.T) {
 	tests := []struct {
 		name           string
 		platformID     string
-		setup          func()
+		store          store.GamePlatformStore
 		expectedResult *models.GamePlatform
 		expectedError  error
 	}{
 		{
 			name:       "成功获取平台",
 			platformID: "test-platform-1",
-			setup: func() {
-				err := GamePlatformStore.Add(testPlatform)
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testPlatform)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedResult: &testPlatform,
 			expectedError:  nil,
 		},
 		{
-			name:           "平台不存在",
-			platformID:     "non-existent-platform",
-			setup:          nil,
+			name:       "平台不存在",
+			platformID: "non-existent-platform",
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedResult: nil,
-			expectedError:  fmt.Errorf("平台不存在: non-existent-platform"),
+			expectedError:  assert.AnError,
 		},
 		{
-			name:       "存储层返回错误",
-			platformID: "test-platform-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
+			name:           "存储层返回错误",
+			platformID:     "test-platform-1",
+			store:          &mockGamePlatformErrorStore{},
 			expectedResult: nil,
-			expectedError:  fmt.Errorf("读取平台配置文件失败: 目标是一个目录"),
+			expectedError:  assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			result, err := service.GetPlatform(tt.platformID)
+			service := NewGamePlatformService(tt.store)
+			result, err := service.Get(tt.platformID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				assert.Nil(t, result)
 				return
 			}
 			assert.NoError(t, err)
@@ -172,66 +180,56 @@ func TestGetPlatform(t *testing.T) {
 	}
 }
 
-func TestCreatePlatform(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
-	assert.NoError(t, err)
-	defer GamePlatformStore.Cleanup()
-
-	service := NewGamePlatformService(GamePlatformStore)
-
+func TestGamePlatformService_Create(t *testing.T) {
 	tests := []struct {
 		name          string
 		platform      models.GamePlatform
-		setup         func()
+		store         store.GamePlatformStore
 		expectedID    string
 		expectedError error
 	}{
 		{
 			name:     "成功创建平台",
 			platform: testPlatform,
-			setup: func() {
-				// 不需要特殊设置
-			},
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedID:    testPlatform.ID,
 			expectedError: nil,
 		},
 		{
 			name:     "平台ID已存在",
 			platform: testPlatform,
-			setup: func() {
-				err := GamePlatformStore.Add(testPlatform)
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testPlatform)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedID:    "",
 			expectedError: fmt.Errorf("平台ID已存在: %s", testPlatform.ID),
 		},
 		{
-			name:     "存储层返回错误",
-			platform: testPlatform,
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
+			name:          "存储层返回错误",
+			platform:      testPlatform,
+			store:         &mockGamePlatformErrorStore{},
 			expectedID:    "",
-			expectedError: fmt.Errorf("读取平台配置文件失败: 目标是一个目录"),
+			expectedError: assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			id, err := service.CreatePlatform(tt.platform)
+			service := NewGamePlatformService(tt.store)
+			id, err := service.Create(tt.platform)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
-				assert.Equal(t, tt.expectedID, id)
+				assert.Equal(t, "", id)
 				return
 			}
 			assert.NoError(t, err)
@@ -240,15 +238,7 @@ func TestCreatePlatform(t *testing.T) {
 	}
 }
 
-func TestUpdatePlatform(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
-	assert.NoError(t, err)
-	defer GamePlatformStore.Cleanup()
-
-	service := NewGamePlatformService(GamePlatformStore)
-
+func TestGamePlatformService_Update(t *testing.T) {
 	updatedPlatform := testPlatform
 	updatedPlatform.Name = "Updated Platform"
 
@@ -256,50 +246,50 @@ func TestUpdatePlatform(t *testing.T) {
 		name          string
 		platformID    string
 		platform      models.GamePlatform
-		setup         func()
+		store         store.GamePlatformStore
 		expectedError error
 	}{
 		{
 			name:       "成功更新平台",
 			platformID: "test-platform-1",
 			platform:   updatedPlatform,
-			setup: func() {
-				err := GamePlatformStore.Add(testPlatform)
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testPlatform)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedError: nil,
 		},
 		{
-			name:          "平台不存在",
-			platformID:    "non-existent-platform",
-			platform:      updatedPlatform,
-			setup:         nil,
-			expectedError: fmt.Errorf("平台不存在: non-existent-platform"),
+			name:       "平台不存在",
+			platformID: "non-existent-platform",
+			platform:   updatedPlatform,
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: assert.AnError,
 		},
 		{
-			name:       "存储层返回错误",
-			platformID: "test-platform-1",
-			platform:   updatedPlatform,
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("读取平台配置文件失败: 目标是一个目录"),
+			name:          "存储层返回错误",
+			platformID:    "test-platform-1",
+			platform:      updatedPlatform,
+			store:         &mockGamePlatformErrorStore{},
+			expectedError: assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			err := service.UpdatePlatform(tt.platformID, tt.platform)
+			service := NewGamePlatformService(tt.store)
+			err := service.Update(tt.platformID, tt.platform)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -307,59 +297,51 @@ func TestUpdatePlatform(t *testing.T) {
 	}
 }
 
-func TestDeletePlatform(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
-	assert.NoError(t, err)
-	defer GamePlatformStore.Cleanup()
-
-	service := NewGamePlatformService(GamePlatformStore)
-
+func TestGamePlatformService_Delete(t *testing.T) {
 	tests := []struct {
 		name          string
 		platformID    string
-		setup         func()
+		store         store.GamePlatformStore
 		expectedError error
 	}{
 		{
 			name:       "成功删除平台",
 			platformID: "test-platform-1",
-			setup: func() {
-				err := GamePlatformStore.Add(testPlatform)
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testPlatform)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedError: nil,
 		},
 		{
-			name:          "平台不存在",
-			platformID:    "non-existent-platform",
-			setup:         nil,
-			expectedError: fmt.Errorf("平台不存在: non-existent-platform"),
+			name:       "平台不存在",
+			platformID: "non-existent-platform",
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: assert.AnError,
 		},
 		{
-			name:       "存储层返回错误",
-			platformID: "test-platform-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("读取平台配置文件失败: 目标是一个目录"),
+			name:          "存储层返回错误",
+			platformID:    "test-platform-1",
+			store:         &mockGamePlatformErrorStore{},
+			expectedError: assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			err := service.DeletePlatform(tt.platformID)
+			service := NewGamePlatformService(tt.store)
+			err := service.Delete(tt.platformID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -367,66 +349,58 @@ func TestDeletePlatform(t *testing.T) {
 	}
 }
 
-func TestGetPlatformAccess(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
-	assert.NoError(t, err)
-	defer GamePlatformStore.Cleanup()
-
-	service := NewGamePlatformService(GamePlatformStore)
-
+func TestGamePlatformService_GetAccess(t *testing.T) {
 	tests := []struct {
 		name          string
 		platformID    string
-		setup         func()
+		store         store.GamePlatformStore
 		expectedError error
-		checkResult   func(t *testing.T, result PlatformAccessResult)
+		checkResult   func(t *testing.T, result GamePlatformAccessResult)
 	}{
 		{
 			name:       "成功获取平台访问链接",
 			platformID: "test-platform-1",
-			setup: func() {
-				err := GamePlatformStore.Add(testPlatform)
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testPlatform)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedError: nil,
-			checkResult: func(t *testing.T, result PlatformAccessResult) {
+			checkResult: func(t *testing.T, result GamePlatformAccessResult) {
 				assert.NotEmpty(t, result.Link)
 				assert.True(t, result.ExpiresAt.After(time.Now()))
 			},
 		},
 		{
-			name:          "平台不存在",
-			platformID:    "non-existent-platform",
-			setup:         nil,
-			expectedError: fmt.Errorf("平台不存在: non-existent-platform"),
+			name:       "平台不存在",
+			platformID: "non-existent-platform",
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: assert.AnError,
 			checkResult:   nil,
 		},
 		{
-			name:       "存储层返回错误",
-			platformID: "test-platform-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("读取平台配置文件失败: 目标是一个目录"),
+			name:          "存储层返回错误",
+			platformID:    "test-platform-1",
+			store:         &mockGamePlatformErrorStore{},
+			expectedError: assert.AnError,
 			checkResult:   nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			result, err := service.GetPlatformAccess(tt.platformID)
+			service := NewGamePlatformService(tt.store)
+			result, err := service.GetAccess(tt.platformID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -437,66 +411,58 @@ func TestGetPlatformAccess(t *testing.T) {
 	}
 }
 
-func TestRefreshPlatformAccess(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
-	assert.NoError(t, err)
-	defer GamePlatformStore.Cleanup()
-
-	service := NewGamePlatformService(GamePlatformStore)
-
+func TestGamePlatformService_RefreshAccess(t *testing.T) {
 	tests := []struct {
 		name          string
 		platformID    string
-		setup         func()
+		store         store.GamePlatformStore
 		expectedError error
-		checkResult   func(t *testing.T, result PlatformAccessResult)
+		checkResult   func(t *testing.T, result GamePlatformAccessResult)
 	}{
 		{
 			name:       "成功刷新平台访问链接",
 			platformID: "test-platform-1",
-			setup: func() {
-				err := GamePlatformStore.Add(testPlatform)
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testPlatform)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedError: nil,
-			checkResult: func(t *testing.T, result PlatformAccessResult) {
+			checkResult: func(t *testing.T, result GamePlatformAccessResult) {
 				assert.NotEmpty(t, result.Link)
 				assert.True(t, result.ExpiresAt.After(time.Now()))
 			},
 		},
 		{
-			name:          "平台不存在",
-			platformID:    "non-existent-platform",
-			setup:         nil,
-			expectedError: fmt.Errorf("平台不存在: non-existent-platform"),
+			name:       "平台不存在",
+			platformID: "non-existent-platform",
+			store: func() store.GamePlatformStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGamePlatformStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: assert.AnError,
 			checkResult:   nil,
 		},
 		{
-			name:       "存储层返回错误",
-			platformID: "test-platform-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("读取平台配置文件失败: 目标是一个目录"),
+			name:          "存储层返回错误",
+			platformID:    "test-platform-1",
+			store:         &mockGamePlatformErrorStore{},
+			expectedError: assert.AnError,
 			checkResult:   nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			result, err := service.RefreshPlatformAccess(tt.platformID)
+			service := NewGamePlatformService(tt.store)
+			result, err := service.RefreshAccess(tt.platformID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)

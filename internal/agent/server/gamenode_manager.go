@@ -9,25 +9,25 @@ import (
 
 // NodeManager 节点管理器接口
 type GameNodeManager interface {
-	GetNode(id string) (*models.GameNode, error)
-	UpdateNodeStatus(id string, status string) error
-	UpdateNodeMetrics(id string, metrics map[string]interface{}) error
-	UpdateNodeResources(id string, resources map[string]interface{}) error
-	UpdateNodeOnlineStatus(id string, online bool) error
+	Get(id string) (*models.GameNode, error)
+	UpdateStatusState(id string, status string) error
+	UpdateStatusMetrics(id string, metrics map[string]interface{}) error
+	UpdateStatusResources(id string, resources map[string]interface{}) error
+	UpdateStatusOnlineStatus(id string, online bool) error
 }
 
-// updateNodeStatus 更新节点状态
-func (s *AgentServer) updateNodeStatus(nodeID string, status string) error {
-	if s.nodeManager == nil {
+// UpdateStatusState 更新节点状态
+func (s *AgentServer) updateStatusState(nodeID string, status string) error {
+	if s.manager == nil {
 		return fmt.Errorf("节点管理器未初始化")
 	}
 
-	return s.nodeManager.UpdateNodeStatus(nodeID, status)
+	return s.manager.UpdateStatusState(nodeID, status)
 }
 
-// updateNodeMetrics 更新节点指标
-func (s *AgentServer) updateNodeMetrics(nodeID string, metrics *pb.NodeMetrics) error {
-	if s.nodeManager == nil {
+// updateMetrics 更新节点指标
+func (s *AgentServer) updateStatusMetrics(nodeID string, metrics *pb.NodeMetrics) error {
+	if s.manager == nil {
 		return fmt.Errorf("节点管理器未初始化")
 	}
 
@@ -71,12 +71,12 @@ func (s *AgentServer) updateNodeMetrics(nodeID string, metrics *pb.NodeMetrics) 
 		}
 	}
 
-	return s.nodeManager.UpdateNodeMetrics(nodeID, nodeMetrics)
+	return s.manager.UpdateStatusMetrics(nodeID, nodeMetrics)
 }
 
-// updateNodeResources 更新节点资源使用情况
-func (s *AgentServer) updateNodeResources(nodeID string, metrics *pb.NodeMetrics) error {
-	if s.nodeManager == nil {
+// updateResources 更新节点资源使用情况
+func (s *AgentServer) updateStatusResources(nodeID string, metrics *pb.NodeMetrics) error {
+	if s.manager == nil {
 		return fmt.Errorf("节点管理器未初始化")
 	}
 
@@ -91,61 +91,61 @@ func (s *AgentServer) updateNodeResources(nodeID string, metrics *pb.NodeMetrics
 		resources["GPU_Usage"] = fmt.Sprintf("%.1f%%", metrics.GpuMetrics[0].Usage)
 	}
 
-	return s.nodeManager.UpdateNodeResources(nodeID, resources)
+	return s.manager.UpdateStatusResources(nodeID, resources)
 }
 
-// handleNodeHeartbeat 处理节点心跳
-func (s *AgentServer) handleNodeHeartbeat(nodeID string, metrics *pb.NodeMetrics) error {
-	if s.nodeManager == nil {
+// handleHeartbeat 处理节点心跳
+func (s *AgentServer) handleHeartbeat(nodeID string, metrics *pb.NodeMetrics) error {
+	if s.manager == nil {
 		return fmt.Errorf("节点管理器未初始化")
 	}
 
 	// 更新节点在线状态
-	if err := s.nodeManager.UpdateNodeOnlineStatus(nodeID, true); err != nil {
+	if err := s.manager.UpdateStatusOnlineStatus(nodeID, true); err != nil {
 		return fmt.Errorf("更新节点在线状态失败: %v", err)
 	}
 
 	// 更新节点指标
-	if err := s.updateNodeMetrics(nodeID, metrics); err != nil {
+	if err := s.updateStatusMetrics(nodeID, metrics); err != nil {
 		return fmt.Errorf("更新节点指标失败: %v", err)
 	}
 
 	// 更新节点资源使用情况
-	if err := s.updateNodeResources(nodeID, metrics); err != nil {
+	if err := s.updateStatusResources(nodeID, metrics); err != nil {
 		return fmt.Errorf("更新节点资源使用情况失败: %v", err)
 	}
 
 	return nil
 }
 
-// handleNodeRegistration 处理节点注册
-func (s *AgentServer) handleNodeRegistration(nodeID string, info *pb.NodeInfo) error {
-	if s.nodeManager == nil {
+// handleRegistration 处理节点注册
+func (s *AgentServer) handleRegistration(nodeID string, info *pb.NodeInfo) error {
+	if s.manager == nil {
 		return fmt.Errorf("节点管理器未初始化")
 	}
 
 	// 检查节点是否存在
-	_, err := s.nodeManager.GetNode(nodeID)
+	_, err := s.manager.Get(nodeID)
 	if err != nil {
 		return fmt.Errorf("获取节点信息失败: %v", err)
 	}
 
 	// 更新节点状态
-	if err := s.nodeManager.UpdateNodeStatus(nodeID, string(models.GameNodeStateReady)); err != nil {
+	if err := s.manager.UpdateStatusState(nodeID, string(models.GameNodeStateReady)); err != nil {
 		return fmt.Errorf("更新节点状态失败: %v", err)
 	}
 
 	return nil
 }
 
-// handleNodeDisconnection 处理节点断开连接
-func (s *AgentServer) handleNodeDisconnection(nodeID string) error {
-	if s.nodeManager == nil {
+// handleDisconnection 处理节点断开连接
+func (s *AgentServer) handleDisconnection(nodeID string) error {
+	if s.manager == nil {
 		return fmt.Errorf("节点管理器未初始化")
 	}
 
 	// 更新节点在线状态
-	if err := s.nodeManager.UpdateNodeOnlineStatus(nodeID, false); err != nil {
+	if err := s.manager.UpdateStatusOnlineStatus(nodeID, false); err != nil {
 		return fmt.Errorf("更新节点在线状态失败: %v", err)
 	}
 

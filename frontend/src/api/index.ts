@@ -110,7 +110,7 @@ export const nodeApi = {
   // 删除节点
   delete: (id: string) => api.delete(`/nodes/${id}`),
   // 更新节点状态
-  updateStatus: (id: string, data: any) => api.put(`/nodes/${id}/status`, data)
+  UpdateStatusState: (id: string, data: any) => api.put(`/nodes/${id}/status`, data)
 }
 
 // 游戏卡片相关API

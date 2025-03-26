@@ -10,17 +10,17 @@ import (
 
 // GameCardHandler 游戏卡片API处理器
 type GameCardHandler struct {
-	gameCardService *service.GameCardService
+	service *service.GameCardService
 }
 
 // NewGameCardHandler 创建游戏卡片API处理器
-func NewGameCardHandler(gameCardService *service.GameCardService) *GameCardHandler {
+func NewGameCardHandler(service *service.GameCardService) *GameCardHandler {
 	return &GameCardHandler{
-		gameCardService: gameCardService,
+		service: service,
 	}
 }
 
-// ListGameCards 获取游戏卡片列表
+// List 获取游戏卡片列表
 // @Summary 获取游戏卡片列表
 // @Description 获取游戏卡片列表，支持分页、搜索和筛选
 // @Tags 游戏卡片
@@ -33,7 +33,7 @@ func NewGameCardHandler(gameCardService *service.GameCardService) *GameCardHandl
 // @Param category query string false "游戏分类"
 // @Success 200 {object} service.GameCardListResult "游戏卡片列表"
 // @Router /api/v1/game-cards [get]
-func (h *GameCardHandler) ListGameCards(c *gin.Context) {
+func (h *GameCardHandler) List(c *gin.Context) {
 	var params service.GameCardListParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -48,7 +48,7 @@ func (h *GameCardHandler) ListGameCards(c *gin.Context) {
 		params.PageSize = 20
 	}
 
-	result, err := h.gameCardService.ListGameCards(params)
+	result, err := h.service.List(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -57,7 +57,7 @@ func (h *GameCardHandler) ListGameCards(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// GetGameCard 获取游戏卡片详情
+// Get 获取游戏卡片详情
 // @Summary 获取游戏卡片详情
 // @Description 根据游戏卡片ID获取详情
 // @Tags 游戏卡片
@@ -66,14 +66,14 @@ func (h *GameCardHandler) ListGameCards(c *gin.Context) {
 // @Param id path string true "游戏卡片ID"
 // @Success 200 {object} models.GameCard "游戏卡片详情"
 // @Router /api/v1/game-cards/{id} [get]
-func (h *GameCardHandler) GetGameCard(c *gin.Context) {
+func (h *GameCardHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "游戏卡片ID不能为空"})
 		return
 	}
 
-	card, err := h.gameCardService.GetGameCard(id)
+	card, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -87,7 +87,7 @@ func (h *GameCardHandler) GetGameCard(c *gin.Context) {
 	c.JSON(http.StatusOK, card)
 }
 
-// CreateGameCard 创建游戏卡片
+// Create 创建游戏卡片
 // @Summary 创建游戏卡片
 // @Description 创建新的游戏卡片
 // @Tags 游戏卡片
@@ -96,14 +96,14 @@ func (h *GameCardHandler) GetGameCard(c *gin.Context) {
 // @Param body body models.GameCard true "游戏卡片信息"
 // @Success 201 {object} gin.H "包含新创建的游戏卡片ID"
 // @Router /api/v1/game-cards [post]
-func (h *GameCardHandler) CreateGameCard(c *gin.Context) {
+func (h *GameCardHandler) Create(c *gin.Context) {
 	var card models.GameCard
 	if err := c.ShouldBindJSON(&card); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	id, err := h.gameCardService.CreateGameCard(card)
+	id, err := h.service.Create(card)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -112,7 +112,7 @@ func (h *GameCardHandler) CreateGameCard(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
-// UpdateGameCard 更新游戏卡片
+// Update 更新游戏卡片
 // @Summary 更新游戏卡片
 // @Description 更新现有的游戏卡片
 // @Tags 游戏卡片
@@ -122,7 +122,7 @@ func (h *GameCardHandler) CreateGameCard(c *gin.Context) {
 // @Param body body models.GameCard true "游戏卡片信息"
 // @Success 204 "无内容"
 // @Router /api/v1/game-cards/{id} [put]
-func (h *GameCardHandler) UpdateGameCard(c *gin.Context) {
+func (h *GameCardHandler) Update(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "游戏卡片ID不能为空"})
@@ -130,7 +130,7 @@ func (h *GameCardHandler) UpdateGameCard(c *gin.Context) {
 	}
 
 	// 验证卡片是否存在
-	card, err := h.gameCardService.GetGameCard(id)
+	card, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -150,7 +150,7 @@ func (h *GameCardHandler) UpdateGameCard(c *gin.Context) {
 	// 确保ID一致
 	updatedCard.ID = id
 
-	err = h.gameCardService.UpdateGameCard(id, updatedCard)
+	err = h.service.Update(id, updatedCard)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -159,7 +159,7 @@ func (h *GameCardHandler) UpdateGameCard(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// DeleteGameCard 删除游戏卡片
+// Delete 删除游戏卡片
 // @Summary 删除游戏卡片
 // @Description 删除指定的游戏卡片
 // @Tags 游戏卡片
@@ -168,7 +168,7 @@ func (h *GameCardHandler) UpdateGameCard(c *gin.Context) {
 // @Param id path string true "游戏卡片ID"
 // @Success 204 "无内容"
 // @Router /api/v1/game-cards/{id} [delete]
-func (h *GameCardHandler) DeleteGameCard(c *gin.Context) {
+func (h *GameCardHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "游戏卡片ID不能为空"})
@@ -176,7 +176,7 @@ func (h *GameCardHandler) DeleteGameCard(c *gin.Context) {
 	}
 
 	// 验证卡片是否存在
-	card, err := h.gameCardService.GetGameCard(id)
+	card, err := h.service.Get(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -187,7 +187,7 @@ func (h *GameCardHandler) DeleteGameCard(c *gin.Context) {
 		return
 	}
 
-	err = h.gameCardService.DeleteGameCard(id)
+	err = h.service.Delete(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

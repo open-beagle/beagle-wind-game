@@ -1,5 +1,14 @@
 # API 设计文档
 
+## 设计规范
+
+设计 HTTP API 接口时应遵守一下规范： 1.不允许使用 PUT、Patch、DELETE 方法，仅支持 GET、POST、OPTIONS 方法； 2.对应的 get、post、put、patch、delete 操作应遵循以下示例的要求：
+
+- 查询操作: Get /instance/:id
+- 新建操作: Post /instance/:id/create
+- 更新操作: Post /instance/:id/update
+- 删除操作: Post /instance/:id/delete
+
 ## 基础信息
 
 - 基础路径: `/api/v1`
@@ -697,8 +706,8 @@
   - `page`: 页码 (默认: 1)
   - `size`: 每页数量 (默认: 20)
   - `keyword`: 搜索关键词 (可选)
-  - `game_card_id`: 游戏卡片ID (可选)
-  - `node_id`: 节点ID (可选)
+  - `game_card_id`: 游戏卡片 ID (可选)
+  - `node_id`: 节点 ID (可选)
   - `status`: 状态 (可选: running/stopped/error)
 - 响应:
 

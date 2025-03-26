@@ -504,7 +504,7 @@ import {
   getPlatformDetail,
   updatePlatform,
   deletePlatform,
-  getPlatformAccess,
+  GetAccess,
   refreshPlatformAccess,
 } from "@/services/platformService";
 
@@ -680,7 +680,7 @@ const getAccessLink = async () => {
     
     try {
       console.log(`[平台详情] 正在获取平台ID:${platform.value.id}的访问链接`);
-      const link = await getPlatformAccess(platform.value.id);
+      const link = await GetAccess(platform.value.id);
       
       if (!link) {
         accessError.value = {

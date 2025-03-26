@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -37,18 +36,12 @@ type GameCardListResult struct {
 	Items []models.GameCard `json:"items"`
 }
 
-// ListGameCards 获取游戏卡片列表
-func (s *GameCardService) ListGameCards(params GameCardListParams) (GameCardListResult, error) {
+// List 获取游戏卡片列表
+func (s *GameCardService) List(params GameCardListParams) (*GameCardListResult, error) {
 	// 从存储获取卡片列表
 	cards, err := s.cardStore.List()
 	if err != nil {
-		if os.IsNotExist(err) {
-			return GameCardListResult{
-				Total: 0,
-				Items: []models.GameCard{},
-			}, nil
-		}
-		return GameCardListResult{}, fmt.Errorf("存储层错误")
+		return nil, fmt.Errorf("存储层错误: %w", err)
 	}
 
 	// 过滤和分页
@@ -87,7 +80,7 @@ func (s *GameCardService) ListGameCards(params GameCardListParams) (GameCardList
 	start := (params.Page - 1) * params.PageSize
 	end := start + params.PageSize
 	if start >= total {
-		return GameCardListResult{
+		return &GameCardListResult{
 			Total: total,
 			Items: []models.GameCard{},
 		}, nil
@@ -96,21 +89,21 @@ func (s *GameCardService) ListGameCards(params GameCardListParams) (GameCardList
 		end = total
 	}
 
-	return GameCardListResult{
+	return &GameCardListResult{
 		Total: total,
 		Items: filteredCards[start:end],
 	}, nil
 }
 
-// GetGameCard 获取游戏卡详情
-func (s *GameCardService) GetGameCard(id string) (*models.GameCard, error) {
+// Get 获取游戏卡详情
+func (s *GameCardService) Get(id string) (*models.GameCard, error) {
 	// 从存储获取游戏卡详情
 	card, err := s.cardStore.Get(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return nil, fmt.Errorf("存储层错误")
 		}
-		return nil, err
+		return nil, fmt.Errorf("存储层错误: %w", err)
 	}
 
 	// 如果卡片不存在，返回错误
@@ -121,15 +114,15 @@ func (s *GameCardService) GetGameCard(id string) (*models.GameCard, error) {
 	return &card, nil
 }
 
-// CreateGameCard 创建游戏卡
-func (s *GameCardService) CreateGameCard(card models.GameCard) (string, error) {
+// Create 创建游戏卡
+func (s *GameCardService) Create(card models.GameCard) (string, error) {
 	// 检查游戏卡是否已存在
 	existingCard, err := s.cardStore.Get(card.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return "", fmt.Errorf("存储层错误")
 		}
-		return "", err
+		return "", fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingCard.ID != "" {
 		return "", fmt.Errorf("卡片ID已存在: %s", card.ID)
@@ -141,21 +134,21 @@ func (s *GameCardService) CreateGameCard(card models.GameCard) (string, error) {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return "", fmt.Errorf("存储层错误")
 		}
-		return "", err
+		return "", fmt.Errorf("存储层错误: %w", err)
 	}
 
 	return card.ID, nil
 }
 
-// UpdateGameCard 更新游戏卡
-func (s *GameCardService) UpdateGameCard(id string, card models.GameCard) error {
+// Update 更新游戏卡
+func (s *GameCardService) Update(id string, card models.GameCard) error {
 	// 检查游戏卡是否存在
 	existingCard, err := s.cardStore.Get(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
 		}
-		return err
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingCard.ID == "" {
 		return fmt.Errorf("卡片不存在: %s", id)
@@ -174,21 +167,21 @@ func (s *GameCardService) UpdateGameCard(id string, card models.GameCard) error 
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
 		}
-		return err
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 
 	return nil
 }
 
-// DeleteGameCard 删除游戏卡
-func (s *GameCardService) DeleteGameCard(id string) error {
+// Delete 删除游戏卡
+func (s *GameCardService) Delete(id string) error {
 	// 检查游戏卡是否存在
 	existingCard, err := s.cardStore.Get(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
 		}
-		return err
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingCard.ID == "" {
 		return fmt.Errorf("卡片不存在: %s", id)
@@ -200,7 +193,7 @@ func (s *GameCardService) DeleteGameCard(id string) error {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
 		}
-		return err
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 
 	return nil

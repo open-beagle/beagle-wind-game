@@ -31,7 +31,7 @@
 
   ```go
   // internal/api/platform_handler.go
-  func listPlatforms(c *gin.Context) {
+  func List(c *gin.Context) {
       // 实现分页、搜索等功能
   }
   ```
@@ -49,7 +49,7 @@
 
   ```go
   // internal/api/platform_handler.go
-  func getPlatformAccess(c *gin.Context) {
+  func GetAccess(c *gin.Context) {
       // 生成远程访问链接
   }
 
@@ -228,7 +228,7 @@
 ### 命名规范
 
 - **文件命名**：使用下划线命名法，如`platform_handler.go`
-- **函数命名**：使用驼峰命名法，如`listPlatforms`
+- **函数命名**：使用驼峰命名法，如`List`
 - **变量命名**：使用驼峰命名法，如`platformID`
 - **常量命名**：使用全大写下划线命名法，如`MAX_PAGE_SIZE`
 

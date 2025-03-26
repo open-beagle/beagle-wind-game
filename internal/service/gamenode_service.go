@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
@@ -10,13 +11,13 @@ import (
 
 // GameNodeService 游戏节点服务
 type GameNodeService struct {
-	nodeStore store.GameNodeStore
+	store store.GameNodeStore
 }
 
 // NewGameNodeService 创建游戏节点服务
-func NewGameNodeService(nodeStore store.GameNodeStore) *GameNodeService {
+func NewGameNodeService(store store.GameNodeStore) *GameNodeService {
 	return &GameNodeService{
-		nodeStore: nodeStore,
+		store: store,
 	}
 }
 
@@ -40,12 +41,12 @@ type NodeAccessResult struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
-// ListNodes 获取游戏节点列表
-func (s *GameNodeService) ListNodes(params GameNodeListParams) (GameNodeListResult, error) {
+// List 获取游戏节点列表
+func (s *GameNodeService) List(params GameNodeListParams) (*GameNodeListResult, error) {
 	// 从存储获取节点列表
-	nodes, err := s.nodeStore.List()
+	nodes, err := s.store.List()
 	if err != nil {
-		return GameNodeListResult{}, fmt.Errorf("存储层错误")
+		return nil, fmt.Errorf("存储层错误: %w", err)
 	}
 
 	// 过滤和分页
@@ -80,7 +81,7 @@ func (s *GameNodeService) ListNodes(params GameNodeListParams) (GameNodeListResu
 	start := (params.Page - 1) * params.PageSize
 	end := start + params.PageSize
 	if start >= total {
-		return GameNodeListResult{
+		return &GameNodeListResult{
 			Total: total,
 			Items: []models.GameNode{},
 		}, nil
@@ -89,17 +90,17 @@ func (s *GameNodeService) ListNodes(params GameNodeListParams) (GameNodeListResu
 		end = total
 	}
 
-	return GameNodeListResult{
+	return &GameNodeListResult{
 		Total: total,
 		Items: filteredNodes[start:end],
 	}, nil
 }
 
-// GetNode 获取节点信息
-func (s *GameNodeService) GetNode(id string) (*models.GameNode, error) {
-	node, err := s.nodeStore.Get(id)
+// Get 获取节点信息
+func (s *GameNodeService) Get(id string) (*models.GameNode, error) {
+	node, err := s.store.Get(id)
 	if err != nil {
-		return nil, fmt.Errorf("存储层错误")
+		return nil, fmt.Errorf("存储层错误: %w", err)
 	}
 
 	// 如果节点不存在，返回错误
@@ -110,12 +111,12 @@ func (s *GameNodeService) GetNode(id string) (*models.GameNode, error) {
 	return &node, nil
 }
 
-// CreateNode 创建游戏节点
-func (s *GameNodeService) CreateNode(node models.GameNode) error {
+// Create 创建游戏节点
+func (s *GameNodeService) Create(node models.GameNode) error {
 	// 检查节点是否已存在
-	existingNode, err := s.nodeStore.Get(node.ID)
-	if err != nil {
-		return fmt.Errorf("存储层错误")
+	existingNode, err := s.store.Get(node.ID)
+	if err != nil && !strings.Contains(err.Error(), "节点不存在") {
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingNode.ID != "" {
 		return fmt.Errorf("节点ID已存在: %s", node.ID)
@@ -136,19 +137,19 @@ func (s *GameNodeService) CreateNode(node models.GameNode) error {
 		Metrics:    make(map[string]interface{}),
 	}
 
-	err = s.nodeStore.Add(node)
+	err = s.store.Add(node)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	return nil
 }
 
-// UpdateNode 更新游戏节点
-func (s *GameNodeService) UpdateNode(id string, node models.GameNode) error {
+// Update 更新游戏节点
+func (s *GameNodeService) Update(id string, node models.GameNode) error {
 	// 检查节点是否存在
-	existingNode, err := s.nodeStore.Get(id)
+	existingNode, err := s.store.Get(id)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingNode.ID == "" {
 		return fmt.Errorf("节点不存在: %s", id)
@@ -161,57 +162,57 @@ func (s *GameNodeService) UpdateNode(id string, node models.GameNode) error {
 	// 确保ID一致
 	node.ID = id
 
-	err = s.nodeStore.Update(node)
+	err = s.store.Update(node)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	return nil
 }
 
-// DeleteNode 删除游戏节点
-func (s *GameNodeService) DeleteNode(id string) error {
+// Delete 删除游戏节点
+func (s *GameNodeService) Delete(id string) error {
 	// 检查节点是否存在
-	node, err := s.nodeStore.Get(id)
+	node, err := s.store.Get(id)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if node.ID == "" {
 		return fmt.Errorf("节点不存在: %s", id)
 	}
 
-	err = s.nodeStore.Delete(id)
+	err = s.store.Delete(id)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	return nil
 }
 
-// UpdateNodeStatus 更新节点状态
-func (s *GameNodeService) UpdateNodeStatus(id string, status string) error {
-	node, err := s.nodeStore.Get(id)
+// UpdateStatusState 更新节点状态
+func (s *GameNodeService) UpdateStatusState(id string, state string) error {
+	node, err := s.store.Get(id)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if node.ID == "" {
 		return fmt.Errorf("节点不存在: %s", id)
 	}
 
-	node.Status.State = models.GameNodeState(status)
+	node.Status.State = models.GameNodeState(state)
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
-	err = s.nodeStore.Update(node)
+	err = s.store.Update(node)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	return nil
 }
 
-// UpdateNodeMetrics 更新节点指标
-func (s *GameNodeService) UpdateNodeMetrics(id string, metrics map[string]interface{}) error {
-	node, err := s.nodeStore.Get(id)
+// UpdateStatusMetrics 更新节点指标
+func (s *GameNodeService) UpdateStatusMetrics(id string, metrics map[string]interface{}) error {
+	node, err := s.store.Get(id)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if node.ID == "" {
 		return fmt.Errorf("节点不存在: %s", id)
@@ -221,18 +222,18 @@ func (s *GameNodeService) UpdateNodeMetrics(id string, metrics map[string]interf
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
-	err = s.nodeStore.Update(node)
+	err = s.store.Update(node)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	return nil
 }
 
-// UpdateNodeResources 更新节点资源
-func (s *GameNodeService) UpdateNodeResources(id string, resources map[string]interface{}) error {
-	node, err := s.nodeStore.Get(id)
+// UpdateStatusResources 更新节点资源
+func (s *GameNodeService) UpdateStatusResources(id string, resources map[string]interface{}) error {
+	node, err := s.store.Get(id)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if node.ID == "" {
 		return fmt.Errorf("节点不存在: %s", id)
@@ -252,18 +253,18 @@ func (s *GameNodeService) UpdateNodeResources(id string, resources map[string]in
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
-	err = s.nodeStore.Update(node)
+	err = s.store.Update(node)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	return nil
 }
 
-// UpdateNodeOnlineStatus 更新节点在线状态
-func (s *GameNodeService) UpdateNodeOnlineStatus(id string, online bool) error {
-	node, err := s.nodeStore.Get(id)
+// UpdateStatusOnlineStatus 更新节点在线状态
+func (s *GameNodeService) UpdateStatusOnlineStatus(id string, online bool) error {
+	node, err := s.store.Get(id)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if node.ID == "" {
 		return fmt.Errorf("节点不存在: %s", id)
@@ -276,18 +277,18 @@ func (s *GameNodeService) UpdateNodeOnlineStatus(id string, online bool) error {
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
-	err = s.nodeStore.Update(node)
+	err = s.store.Update(node)
 	if err != nil {
-		return fmt.Errorf("存储层错误")
+		return fmt.Errorf("存储层错误: %w", err)
 	}
 	return nil
 }
 
-// GetNodeAccess 获取节点访问链接
-func (s *GameNodeService) GetNodeAccess(id string) (NodeAccessResult, error) {
-	node, err := s.nodeStore.Get(id)
-	if err != nil {
-		return NodeAccessResult{}, fmt.Errorf("存储层错误")
+// GetAccess 获取节点访问链接
+func (s *GameNodeService) GetAccess(id string) (NodeAccessResult, error) {
+	node, err := s.store.Get(id)
+	if err != nil && !strings.Contains(err.Error(), "节点不存在") {
+		return NodeAccessResult{}, fmt.Errorf("存储层错误: %w", err)
 	}
 	if node.ID == "" {
 		return NodeAccessResult{}, fmt.Errorf("节点不存在: %s", id)
@@ -303,11 +304,11 @@ func (s *GameNodeService) GetNodeAccess(id string) (NodeAccessResult, error) {
 	}, nil
 }
 
-// RefreshNodeAccess 刷新节点访问链接
-func (s *GameNodeService) RefreshNodeAccess(id string) (NodeAccessResult, error) {
-	node, err := s.nodeStore.Get(id)
-	if err != nil {
-		return NodeAccessResult{}, fmt.Errorf("存储层错误")
+// RefreshAccess 刷新节点访问链接
+func (s *GameNodeService) RefreshAccess(id string) (NodeAccessResult, error) {
+	node, err := s.store.Get(id)
+	if err != nil && !strings.Contains(err.Error(), "节点不存在") {
+		return NodeAccessResult{}, fmt.Errorf("存储层错误: %w", err)
 	}
 	if node.ID == "" {
 		return NodeAccessResult{}, fmt.Errorf("节点不存在: %s", id)

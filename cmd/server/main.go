@@ -31,34 +31,34 @@ func main() {
 	}
 
 	// 创建存储实例
-	platformStore, err := store.NewGamePlatformStore("config/platforms.yaml")
+	gameplatformStore, err := store.NewGamePlatformStore("config/platforms.yaml")
 	if err != nil {
 		log.Fatalf("创建平台存储失败: %v", err)
 	}
-	defer platformStore.Cleanup()
+	defer gameplatformStore.Cleanup()
 
-	nodeStore, err := store.NewGameNodeStore("data/nodes.yaml")
+	gamenodeStore, err := store.NewGameNodeStore("data/nodes.yaml")
 	if err != nil {
 		log.Fatalf("创建节点存储失败: %v", err)
 	}
-	defer nodeStore.Cleanup()
+	defer gamenodeStore.Cleanup()
 
 	gameCardStore, err := store.NewGameCardStore("data/game_cards.yaml")
 	if err != nil {
 		log.Fatalf("创建游戏卡片存储失败: %v", err)
 	}
 
-	instanceStore, err := store.NewGameInstanceStore("data/instances.yaml")
+	gameinstanceStore, err := store.NewGameInstanceStore("data/instances.yaml")
 	if err != nil {
 		log.Fatalf("创建实例存储失败: %v", err)
 	}
-	defer instanceStore.Cleanup()
+	defer gameinstanceStore.Cleanup()
 
 	// 创建服务实例
-	platformService := service.NewGamePlatformService(platformStore)
-	nodeService := service.NewGameNodeService(nodeStore)
+	gameplatformService := service.NewGamePlatformService(gameplatformStore)
+	gamenodeService := service.NewGameNodeService(gamenodeStore)
 	gameCardService := service.NewGameCardService(gameCardStore)
-	instanceService := service.NewGameInstanceService(instanceStore)
+	gameinstanceService := service.NewGameInstanceService(gameinstanceStore)
 
 	// 创建并启动 gRPC 服务器
 	grpcOpts := server.ServerOptions{
@@ -67,10 +67,10 @@ func main() {
 		TLSKeyFile:   *tlsKeyFile,
 		MaxHeartbeat: 30 * time.Second,
 	}
-	agentServer := server.NewAgentServer(grpcOpts, nodeService)
+	agentServer := server.NewAgentServer(grpcOpts, gamenodeService)
 
 	// 设置 HTTP 路由
-	router := api.SetupRouter(platformService, nodeService, gameCardService, instanceService)
+	router := api.SetupRouter(gameplatformService, gamenodeService, gameCardService, gameinstanceService)
 
 	// 启动 gRPC 服务器
 	go func() {

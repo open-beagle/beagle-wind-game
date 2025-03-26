@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -11,6 +10,33 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
+
+// mockGameCardErrorStore 模拟返回错误的游戏卡存储实现
+type mockGameCardErrorStore struct{}
+
+func (s *mockGameCardErrorStore) List() ([]models.GameCard, error) {
+	return nil, assert.AnError
+}
+
+func (s *mockGameCardErrorStore) Get(id string) (models.GameCard, error) {
+	return models.GameCard{}, assert.AnError
+}
+
+func (s *mockGameCardErrorStore) Add(card models.GameCard) error {
+	return assert.AnError
+}
+
+func (s *mockGameCardErrorStore) Update(card models.GameCard) error {
+	return assert.AnError
+}
+
+func (s *mockGameCardErrorStore) Delete(id string) error {
+	return assert.AnError
+}
+
+func (s *mockGameCardErrorStore) Cleanup() error {
+	return nil
+}
 
 // 测试数据
 var testCard = models.GameCard{
@@ -26,20 +52,12 @@ var testCard = models.GameCard{
 	UpdatedAt:   time.Now(),
 }
 
-func TestListGameCards(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	cardStore, err := store.NewGameCardStore(tmpFile)
-	assert.NoError(t, err)
-	defer cardStore.Cleanup()
-
-	service := NewGameCardService(cardStore)
-
+func TestGameCardService_List(t *testing.T) {
 	tests := []struct {
 		name           string
 		params         GameCardListParams
-		setup          func()
-		expectedResult GameCardListResult
+		store          store.GameCardStore
+		expectedResult *GameCardListResult
 		expectedError  error
 	}{
 		{
@@ -48,11 +66,15 @@ func TestListGameCards(t *testing.T) {
 				Page:     1,
 				PageSize: 20,
 			},
-			setup: func() {
-				err := cardStore.Add(testCard)
+			store: func() store.GameCardStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameCardStore(tmpFile)
 				assert.NoError(t, err)
-			},
-			expectedResult: GameCardListResult{
+				err = store.Add(testCard)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedResult: &GameCardListResult{
 				Total: 1,
 				Items: []models.GameCard{testCard},
 			},
@@ -64,27 +86,19 @@ func TestListGameCards(t *testing.T) {
 				Page:     1,
 				PageSize: 20,
 			},
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedResult: GameCardListResult{},
-			expectedError:  fmt.Errorf("存储层错误"),
+			store:          &mockGameCardErrorStore{},
+			expectedResult: nil,
+			expectedError:  assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			result, err := service.ListGameCards(tt.params)
+			service := NewGameCardService(tt.store)
+			result, err := service.List(tt.params)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				assert.Nil(t, result)
 				return
 			}
 			assert.NoError(t, err)
@@ -99,63 +113,56 @@ func TestListGameCards(t *testing.T) {
 	}
 }
 
-func TestGetGameCard(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	cardStore, err := store.NewGameCardStore(tmpFile)
-	assert.NoError(t, err)
-	defer cardStore.Cleanup()
-
-	service := NewGameCardService(cardStore)
-
+func TestGameCardService_Get(t *testing.T) {
 	tests := []struct {
 		name           string
 		cardID         string
-		setup          func()
+		store          store.GameCardStore
 		expectedResult *models.GameCard
 		expectedError  error
 	}{
 		{
 			name:   "成功获取游戏卡",
 			cardID: "test-card-1",
-			setup: func() {
-				err := cardStore.Add(testCard)
+			store: func() store.GameCardStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameCardStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testCard)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedResult: &testCard,
 			expectedError:  nil,
 		},
 		{
-			name:           "游戏卡不存在",
-			cardID:         "non-existent-card",
-			setup:          nil,
+			name:   "游戏卡不存在",
+			cardID: "non-existent-card",
+			store: func() store.GameCardStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameCardStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedResult: nil,
 			expectedError:  fmt.Errorf("卡片不存在: non-existent-card"),
 		},
 		{
-			name:   "存储层返回错误",
-			cardID: "test-card-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
+			name:           "存储层返回错误",
+			cardID:         "test-card-1",
+			store:          &mockGameCardErrorStore{},
 			expectedResult: nil,
-			expectedError:  fmt.Errorf("存储层错误"),
+			expectedError:  assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			result, err := service.GetGameCard(tt.cardID)
+			service := NewGameCardService(tt.store)
+			result, err := service.Get(tt.cardID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				assert.Nil(t, result)
 				return
 			}
 			assert.NoError(t, err)
@@ -170,66 +177,56 @@ func TestGetGameCard(t *testing.T) {
 	}
 }
 
-func TestCreateGameCard(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	cardStore, err := store.NewGameCardStore(tmpFile)
-	assert.NoError(t, err)
-	defer cardStore.Cleanup()
-
-	service := NewGameCardService(cardStore)
-
+func TestGameCardService_Create(t *testing.T) {
 	tests := []struct {
 		name          string
 		card          models.GameCard
-		setup         func()
+		store         store.GameCardStore
 		expectedID    string
 		expectedError error
 	}{
 		{
 			name: "成功创建游戏卡",
 			card: testCard,
-			setup: func() {
-				// 不需要特殊设置
-			},
+			store: func() store.GameCardStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameCardStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedID:    testCard.ID,
 			expectedError: nil,
 		},
 		{
 			name: "卡片ID已存在",
 			card: testCard,
-			setup: func() {
-				err := cardStore.Add(testCard)
+			store: func() store.GameCardStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameCardStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testCard)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedID:    "",
 			expectedError: fmt.Errorf("卡片ID已存在: %s", testCard.ID),
 		},
 		{
-			name: "存储层返回错误",
-			card: testCard,
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
+			name:          "存储层返回错误",
+			card:          testCard,
+			store:         &mockGameCardErrorStore{},
 			expectedID:    "",
-			expectedError: fmt.Errorf("存储层错误"),
+			expectedError: assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			id, err := service.CreateGameCard(tt.card)
+			service := NewGameCardService(tt.store)
+			id, err := service.Create(tt.card)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
-				assert.Equal(t, tt.expectedID, id)
+				assert.Equal(t, "", id)
 				return
 			}
 			assert.NoError(t, err)
@@ -238,69 +235,58 @@ func TestCreateGameCard(t *testing.T) {
 	}
 }
 
-func TestUpdateGameCard(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	cardStore, err := store.NewGameCardStore(tmpFile)
-	assert.NoError(t, err)
-	defer cardStore.Cleanup()
-
-	service := NewGameCardService(cardStore)
+func TestGameCardService_Update(t *testing.T) {
+	updatedCard := testCard
+	updatedCard.Name = "Updated Card"
 
 	tests := []struct {
 		name          string
 		cardID        string
 		card          models.GameCard
-		setup         func()
+		store         store.GameCardStore
 		expectedError error
 	}{
 		{
 			name:   "成功更新游戏卡",
 			cardID: "test-card-1",
-			card:   testCard,
-			setup: func() {
-				err := cardStore.Add(testCard)
+			card:   updatedCard,
+			store: func() store.GameCardStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameCardStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testCard)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedError: nil,
 		},
 		{
 			name:   "游戏卡不存在",
-			cardID: "test-card-1",
-			card:   testCard,
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
+			cardID: "non-existent-card",
+			card:   updatedCard,
+			store: func() store.GameCardStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameCardStore(tmpFile)
 				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("存储层错误"),
+				return store
+			}(),
+			expectedError: fmt.Errorf("卡片不存在: non-existent-card"),
 		},
 		{
-			name:   "存储层返回错误",
-			cardID: "test-card-1",
-			card:   testCard,
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("存储层错误"),
+			name:          "存储层返回错误",
+			cardID:        "test-card-1",
+			card:          updatedCard,
+			store:         &mockGameCardErrorStore{},
+			expectedError: assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			err := service.UpdateGameCard(tt.cardID, tt.card)
+			service := NewGameCardService(tt.store)
+			err := service.Update(tt.cardID, tt.card)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -308,65 +294,51 @@ func TestUpdateGameCard(t *testing.T) {
 	}
 }
 
-func TestDeleteGameCard(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	cardStore, err := store.NewGameCardStore(tmpFile)
-	assert.NoError(t, err)
-	defer cardStore.Cleanup()
-
-	service := NewGameCardService(cardStore)
-
+func TestGameCardService_Delete(t *testing.T) {
 	tests := []struct {
 		name          string
 		cardID        string
-		setup         func()
+		store         store.GameCardStore
 		expectedError error
 	}{
 		{
 			name:   "成功删除游戏卡",
 			cardID: "test-card-1",
-			setup: func() {
-				err := cardStore.Add(testCard)
+			store: func() store.GameCardStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameCardStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testCard)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedError: nil,
 		},
 		{
 			name:   "游戏卡不存在",
-			cardID: "test-card-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
+			cardID: "non-existent-card",
+			store: func() store.GameCardStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameCardStore(tmpFile)
 				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("存储层错误"),
+				return store
+			}(),
+			expectedError: fmt.Errorf("卡片不存在: non-existent-card"),
 		},
 		{
-			name:   "存储层返回错误",
-			cardID: "test-card-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("存储层错误"),
+			name:          "存储层返回错误",
+			cardID:        "test-card-1",
+			store:         &mockGameCardErrorStore{},
+			expectedError: assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			err := service.DeleteGameCard(tt.cardID)
+			service := NewGameCardService(tt.store)
+			err := service.Delete(tt.cardID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)

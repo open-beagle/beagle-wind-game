@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -11,6 +10,41 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
+
+// mockGameInstanceErrorStore 模拟返回错误的游戏实例存储实现
+type mockGameInstanceErrorStore struct{}
+
+func (s *mockGameInstanceErrorStore) List() ([]models.GameInstance, error) {
+	return nil, assert.AnError
+}
+
+func (s *mockGameInstanceErrorStore) Get(id string) (models.GameInstance, error) {
+	return models.GameInstance{}, assert.AnError
+}
+
+func (s *mockGameInstanceErrorStore) Add(instance models.GameInstance) error {
+	return assert.AnError
+}
+
+func (s *mockGameInstanceErrorStore) Update(instance models.GameInstance) error {
+	return assert.AnError
+}
+
+func (s *mockGameInstanceErrorStore) Delete(id string) error {
+	return assert.AnError
+}
+
+func (s *mockGameInstanceErrorStore) FindByCardID(cardID string) ([]models.GameInstance, error) {
+	return nil, assert.AnError
+}
+
+func (s *mockGameInstanceErrorStore) FindByNodeID(nodeID string) ([]models.GameInstance, error) {
+	return nil, assert.AnError
+}
+
+func (s *mockGameInstanceErrorStore) Cleanup() error {
+	return nil
+}
 
 // 测试数据
 var testInstance = models.GameInstance{
@@ -23,33 +57,29 @@ var testInstance = models.GameInstance{
 	UpdatedAt:  time.Now(),
 }
 
-func TestListInstances(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewGameInstanceStore(tmpFile)
-	assert.NoError(t, err)
-	defer instanceStore.Cleanup()
-
-	service := NewGameInstanceService(instanceStore)
-
+func TestGameInstanceService_List(t *testing.T) {
 	tests := []struct {
 		name           string
-		params         InstanceListParams
-		setup          func()
-		expectedResult InstanceListResult
+		params         GameInstanceListParams
+		store          store.GameInstanceStore
+		expectedResult *InstanceListResult
 		expectedError  error
 	}{
 		{
 			name: "成功获取实例列表",
-			params: InstanceListParams{
+			params: GameInstanceListParams{
 				Page:     1,
 				PageSize: 20,
 			},
-			setup: func() {
-				err := instanceStore.Add(testInstance)
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
-			expectedResult: InstanceListResult{
+				err = store.Add(testInstance)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedResult: &InstanceListResult{
 				Total: 1,
 				Items: []models.GameInstance{testInstance},
 			},
@@ -57,32 +87,23 @@ func TestListInstances(t *testing.T) {
 		},
 		{
 			name: "存储层返回错误",
-			params: InstanceListParams{
+			params: GameInstanceListParams{
 				Page:     1,
 				PageSize: 20,
 			},
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedResult: InstanceListResult{},
-			expectedError:  fmt.Errorf("存储层错误"),
+			store:          &mockGameInstanceErrorStore{},
+			expectedResult: nil,
+			expectedError:  assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			result, err := service.ListInstances(tt.params)
+			service := NewGameInstanceService(tt.store)
+			result, err := service.List(tt.params)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
-				assert.Equal(t, tt.expectedResult, result)
+				assert.Nil(t, result)
 				return
 			}
 			assert.NoError(t, err)
@@ -98,66 +119,55 @@ func TestListInstances(t *testing.T) {
 	}
 }
 
-func TestGetInstance(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewGameInstanceStore(tmpFile)
-	assert.NoError(t, err)
-	defer instanceStore.Cleanup()
-
-	service := NewGameInstanceService(instanceStore)
-
+func TestGameInstanceService_Get(t *testing.T) {
 	tests := []struct {
 		name           string
 		instanceID     string
-		setup          func()
+		store          store.GameInstanceStore
 		expectedResult models.GameInstance
 		expectedError  error
 	}{
 		{
 			name:       "成功获取实例",
 			instanceID: "test-instance-1",
-			setup: func() {
-				err := instanceStore.Add(testInstance)
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testInstance)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedResult: testInstance,
 			expectedError:  nil,
 		},
 		{
 			name:       "实例不存在",
 			instanceID: "non-existent-instance",
-			setup: func() {
-				err := instanceStore.Add(testInstance)
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				return store
+			}(),
 			expectedResult: models.GameInstance{},
 			expectedError:  fmt.Errorf("实例不存在: non-existent-instance"),
 		},
 		{
-			name:       "存储层返回错误",
-			instanceID: "test-instance-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
+			name:           "存储层返回错误",
+			instanceID:     "test-instance-1",
+			store:          &mockGameInstanceErrorStore{},
 			expectedResult: models.GameInstance{},
-			expectedError:  fmt.Errorf("存储层错误"),
+			expectedError:  assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			result, err := service.GetInstance(tt.instanceID)
+			service := NewGameInstanceService(tt.store)
+			result, err := service.Get(tt.instanceID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				assert.Equal(t, tt.expectedResult, result)
 				return
 			}
@@ -170,73 +180,66 @@ func TestGetInstance(t *testing.T) {
 	}
 }
 
-func TestStartInstance(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewGameInstanceStore(tmpFile)
-	assert.NoError(t, err)
-	defer instanceStore.Cleanup()
-
-	service := NewGameInstanceService(instanceStore)
-
+func TestGameInstanceService_Start(t *testing.T) {
 	tests := []struct {
 		name          string
 		instanceID    string
-		setup         func()
+		store         store.GameInstanceStore
 		expectedError error
 	}{
 		{
 			name:       "成功启动实例",
 			instanceID: "test-instance-1",
-			setup: func() {
-				err := instanceStore.Add(testInstance)
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testInstance)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedError: nil,
 		},
 		{
 			name:       "实例不存在",
 			instanceID: "non-existent-instance",
-			setup: func() {
-				err := instanceStore.Add(testInstance)
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				return store
+			}(),
 			expectedError: fmt.Errorf("实例不存在: non-existent-instance"),
 		},
 		{
-			name:       "存储层返回错误",
-			instanceID: "test-instance-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("存储层错误"),
+			name:          "存储层返回错误",
+			instanceID:    "test-instance-1",
+			store:         &mockGameInstanceErrorStore{},
+			expectedError: assert.AnError,
 		},
 		{
 			name:       "实例已在运行中",
 			instanceID: "test-instance-1",
-			setup: func() {
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
+				assert.NoError(t, err)
 				runningInstance := testInstance
 				runningInstance.Status = "running"
-				err := instanceStore.Add(runningInstance)
+				err = store.Add(runningInstance)
 				assert.NoError(t, err)
-			},
+				return store
+			}(),
 			expectedError: ErrInstanceAlreadyRunning,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			err := service.StartInstance(tt.instanceID)
+			service := NewGameInstanceService(tt.store)
+			err := service.Start(tt.instanceID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -244,75 +247,66 @@ func TestStartInstance(t *testing.T) {
 	}
 }
 
-func TestStopInstance(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewGameInstanceStore(tmpFile)
-	assert.NoError(t, err)
-	defer instanceStore.Cleanup()
-
-	service := NewGameInstanceService(instanceStore)
-
+func TestGameInstanceService_Stop(t *testing.T) {
 	tests := []struct {
 		name          string
 		instanceID    string
-		setup         func()
+		store         store.GameInstanceStore
 		expectedError error
 	}{
 		{
 			name:       "成功停止实例",
 			instanceID: "test-instance-1",
-			setup: func() {
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
+				assert.NoError(t, err)
 				runningInstance := testInstance
 				runningInstance.Status = "running"
-				err := instanceStore.Add(runningInstance)
+				err = store.Add(runningInstance)
 				assert.NoError(t, err)
-			},
+				return store
+			}(),
 			expectedError: nil,
 		},
 		{
 			name:       "实例不存在",
 			instanceID: "non-existent-instance",
-			setup: func() {
-				err := instanceStore.Add(testInstance)
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				return store
+			}(),
 			expectedError: fmt.Errorf("实例不存在: non-existent-instance"),
 		},
 		{
-			name:       "存储层返回错误",
-			instanceID: "test-instance-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-				// 创建一个目录来替代文件，这样会导致读取错误
-				err := os.MkdirAll(tmpFile, 0755)
-				assert.NoError(t, err)
-			},
-			expectedError: fmt.Errorf("存储层错误"),
+			name:          "存储层返回错误",
+			instanceID:    "test-instance-1",
+			store:         &mockGameInstanceErrorStore{},
+			expectedError: assert.AnError,
 		},
 		{
-			name:       "实例未在运行中",
+			name:       "实例已停止",
 			instanceID: "test-instance-1",
-			setup: func() {
-				stoppedInstance := testInstance
-				stoppedInstance.Status = "stopped"
-				err := instanceStore.Add(stoppedInstance)
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
-			expectedError: ErrInstanceNotRunning,
+				err = store.Add(testInstance)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: fmt.Errorf("实例已停止"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			err := service.StopInstance(tt.instanceID)
+			service := NewGameInstanceService(tt.store)
+			err := service.Stop(tt.instanceID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -320,19 +314,11 @@ func TestStopInstance(t *testing.T) {
 	}
 }
 
-func TestCreateInstance(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewGameInstanceStore(tmpFile)
-	assert.NoError(t, err)
-	defer instanceStore.Cleanup()
-
-	service := NewGameInstanceService(instanceStore)
-
+func TestGameInstanceService_Create(t *testing.T) {
 	tests := []struct {
 		name          string
 		params        CreateInstanceParams
-		setup         func()
+		store         store.GameInstanceStore
 		expectedID    string
 		expectedError error
 	}{
@@ -344,11 +330,35 @@ func TestCreateInstance(t *testing.T) {
 				CardID:     "test-card-1",
 				Config:     "{}",
 			},
-			setup: func() {
-				// 不需要特殊设置
-			},
-			expectedID:    "inst-test-node-1-test-card-1-",
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedID:    "test-node-1-test-card-1",
 			expectedError: nil,
+		},
+		{
+			name: "实例ID已存在",
+			params: CreateInstanceParams{
+				NodeID:     "test-node-1",
+				PlatformID: "test-platform-1",
+				CardID:     "test-card-1",
+				Config:     "{}",
+			},
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
+				assert.NoError(t, err)
+				instance := testInstance
+				instance.ID = "test-node-1-test-card-1"
+				err = store.Add(instance)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedID:    "",
+			expectedError: fmt.Errorf("实例ID已存在: test-node-1-test-card-1"),
 		},
 		{
 			name: "存储层返回错误",
@@ -358,10 +368,7 @@ func TestCreateInstance(t *testing.T) {
 				CardID:     "test-card-1",
 				Config:     "{}",
 			},
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-			},
+			store:         &mockGameInstanceErrorStore{},
 			expectedID:    "",
 			expectedError: assert.AnError,
 		},
@@ -369,79 +376,71 @@ func TestCreateInstance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			id, err := service.CreateInstance(tt.params)
+			service := NewGameInstanceService(tt.store)
+			id, err := service.Create(tt.params)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
-				assert.Empty(t, id)
+				assert.Equal(t, tt.expectedID, id)
 				return
 			}
 			assert.NoError(t, err)
-			assert.Contains(t, id, tt.expectedID)
+			assert.Equal(t, tt.expectedID, id)
 		})
 	}
 }
 
-func TestUpdateInstance(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewGameInstanceStore(tmpFile)
-	assert.NoError(t, err)
-	defer instanceStore.Cleanup()
-
-	service := NewGameInstanceService(instanceStore)
+func TestGameInstanceService_Update(t *testing.T) {
+	updatedInstance := testInstance
+	updatedInstance.Status = "running"
 
 	tests := []struct {
 		name          string
 		instanceID    string
 		instance      models.GameInstance
-		setup         func()
+		store         store.GameInstanceStore
 		expectedError error
 	}{
 		{
 			name:       "成功更新实例",
 			instanceID: "test-instance-1",
-			instance:   testInstance,
-			setup: func() {
-				err := instanceStore.Add(testInstance)
+			instance:   updatedInstance,
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testInstance)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedError: nil,
 		},
 		{
 			name:       "实例不存在",
 			instanceID: "non-existent-instance",
-			instance:   testInstance,
-			setup: func() {
-				err := instanceStore.Add(testInstance)
+			instance:   updatedInstance,
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
-			expectedError: nil,
+				return store
+			}(),
+			expectedError: fmt.Errorf("实例不存在: non-existent-instance"),
 		},
 		{
-			name:       "存储层返回错误",
-			instanceID: "test-instance-1",
-			instance:   testInstance,
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-			},
+			name:          "存储层返回错误",
+			instanceID:    "test-instance-1",
+			instance:      updatedInstance,
+			store:         &mockGameInstanceErrorStore{},
 			expectedError: assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			err := service.UpdateInstance(tt.instanceID, tt.instance)
+			service := NewGameInstanceService(tt.store)
+			err := service.Update(tt.instanceID, tt.instance)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
 				return
 			}
 			assert.NoError(t, err)
@@ -449,50 +448,51 @@ func TestUpdateInstance(t *testing.T) {
 	}
 }
 
-func TestDeleteInstance(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewGameInstanceStore(tmpFile)
-	assert.NoError(t, err)
-	defer instanceStore.Cleanup()
-
-	service := NewGameInstanceService(instanceStore)
-
+func TestGameInstanceService_Delete(t *testing.T) {
 	tests := []struct {
 		name          string
 		instanceID    string
-		setup         func()
+		store         store.GameInstanceStore
 		expectedError error
 	}{
 		{
 			name:       "成功删除实例",
 			instanceID: "test-instance-1",
-			setup: func() {
-				err := instanceStore.Add(testInstance)
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
 				assert.NoError(t, err)
-			},
+				err = store.Add(testInstance)
+				assert.NoError(t, err)
+				return store
+			}(),
 			expectedError: nil,
 		},
 		{
-			name:       "存储层返回错误",
-			instanceID: "test-instance-1",
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-			},
+			name:       "实例不存在",
+			instanceID: "non-existent-instance",
+			store: func() store.GameInstanceStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameInstanceStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: fmt.Errorf("实例不存在: non-existent-instance"),
+		},
+		{
+			name:          "存储层返回错误",
+			instanceID:    "test-instance-1",
+			store:         &mockGameInstanceErrorStore{},
 			expectedError: assert.AnError,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
-			}
-			err := service.DeleteInstance(tt.instanceID)
+			service := NewGameInstanceService(tt.store)
+			err := service.Delete(tt.instanceID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
 				return
 			}
 			assert.NoError(t, err)

@@ -74,41 +74,80 @@ d.更新文档以反映这些变化
 internal/service 中单元测试优化： 1.不应该新建 store.MockGameCardStore 对象，而是使用已经完成单元测试的 store 中已经设计的存储对象； 2.修改单元测试中的错误； 3.开始单元测试；
 
 当前工作：
-internal/service 中单元测试优化：
+internal/service 中单元测试优化：【进行中】
 1.注意执行顺序，按以下顺序逐个修复单元测试：
-1.1 internal/service/platform_service_test.go
-1.2 internal/service/node_service_test.go
-1.3 internal/service/gamecard_service_test.go
-1.4 internal/service/instance_service_test.go
+1.1 internal/service/gameplatform_service_test.go
+1.2 internal/service/gamenode_service_test.go
+1.3 internal/service/gamegamecard_service_test.go
+1.4 internal/service/gameinstance_service_test.go
 2.不要某个单元测试运行还有全部通过时，去开始另外一个单元测试
 3.所有单元测试都修复了，再进行整个单元测试检测
 
-cmd/server/main.go 优化此文件：
+internal/service/gameplatform_service_test.go
+参考internal/service/gameplatform_service.go，重新思考一下单元测试里面各个方法命名是否一致，进行优化
+如果你简化为TestList，那么同目录单元测试都这样命名岂不是会冲突，你又如何抉择呢。
+
+你这个“存储层返回错误”方法有点吹毛求疵了，存储层返回错误即可，你顶多是要验证错误类型，为什么要验证错误的具体实例以及里面的文字，毫无必要。
+
+
+cmd/server/main.go 优化此文件：【已结束】
 agentServer := server.NewAgentServer(grpcOpts, nodeService)
 这个方法居然不用nodeManager，而是看到nodeService差不多就去糊弄，把我看呆了。
 
-让我们来重构这个代码：
+让我们来重构这个代码：【已结束】
 internal/node/manager.go
 1.类型重命名Manager改为GameNodeManager,对应的NewManager改为NewGameNodeManager
 2.文件名变更gamenode_manager.go
 3.迁移至新目录internal/manager
 4.删除旧目录internal/node
 
-让我们来重构这个代码：
+让我们来重构这个代码：【已结束】
 internal/manager/gamenode_manager.go
 1.关于node信息应该由internal/store/node_store.go未维护，gamenode_manager应该专注于自身的业务，而不是关注node数据怎么管理与存储。
 2.你不应该创建node_store.go，而是应该阅读internal/store/node_store.go的源码
 
-让我们来重构这个代码：
+让我们来重构这个代码：【已结束】
 1.internal/store/instance_store.go变更为internal/store/gameinstance_store.go
 2.internal/store/node_store.go变更为internal/store/gamenode_store.go
 3.internal/store/platform_store.go变更为internal/store/gameplatform_store.go
 4.重构对应的单元测试代码
 5.修复外部引用
 
-你好，重新读取internal/service和internal/store目录
+你好，重新读取internal/service和internal/store目录【已结束】
 我对文件名重构了，
 instance改名为gameinstance
 node改名为gamenode
 platform改名为gameplatform
 请完成以上修改。
+
+所有后端项目文件命名修改完成
+
+继续重构项目，重构internal/service目录下所有服务的方法名，简化方法的命名【已结束】
+1.func (s *GameInstanceService) GetInstance(id string) (models.GameInstance, error)
+GetInstance方法命名简化为Get
+2.func (s *GameInstanceService) CreateInstance(params CreateInstanceParams) (string, error)
+CreateInstance方法命名简化为Create
+找到其中规律，然后根据此规律来简化方法命名
+
+我感觉这个单元设计的逻辑是错误的：
+internal/service/gameplatform_service_test.go
+1.单元测试设计了“存储层返回错误”
+在这个场景下存储层必然会返回错误信息的
+当存储层返回错误信息时，不应该吹毛的去看到底是什么错误类型，现在根本不关心这个
+实际上确实返回错误了
+然而又应为确实返回错误，单元测试失败了
+这么个流程不是钓鱼执法么，这个单元测试用例的目的是什么，请思考一下，如果保留，请修改至正确的逻辑。
+我问你在这里案例中，“存储层返回错误”：
+1.存储层是否返回了任意错误；
+2.存储层返回的数据是不是nil;
+如果两者成立，那么你编写的测试用例，应该让其通过测试。
+如果仍然无法通过测试，你应该首先检查对应的service：
+1.发生存储错误时service对应的方法是否处理以异常，并返回nil
+让我们集中在internal/service/gameplatform_service_test.go，确保其首先完成所有测试，在此之前把其他单元测试放一放
+我看出来了，你是为了模拟存储层错误而模拟存储层错误，而模拟存储层错误又涉及到对应的store对象
+1.store对象早已完成单元测试，一旦创建有错一开始就报了，如果要模拟你要创建一个包含错误的store对象；
+例如GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
+你已经创建了这么个store对象，那执行下去就不可能报存储层错误；
+如果你要测试，你应该创建一个错误的store对象，然后store对象有没有给你这个接口；
+然后你就随便创建一个错误的store对象，也要完成这个测试；
+这是我观察当前代码得出的分析结果，你试想看看这样千辛万苦为了测试你能发现存储层返回错误到底有什么意义。
