@@ -554,3 +554,217 @@ func TestGameNodeService_RefreshAccess(t *testing.T) {
 		})
 	}
 }
+
+func TestGameNodeService_UpdateStatusMetrics(t *testing.T) {
+	tests := []struct {
+		name          string
+		nodeID        string
+		metrics       map[string]interface{}
+		store         store.GameNodeStore
+		expectedError error
+	}{
+		{
+			name:   "成功更新节点指标",
+			nodeID: "test-node-1",
+			metrics: map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"usage": 50.0,
+				},
+				"memory": map[string]interface{}{
+					"usage": 60.0,
+				},
+				"disk": map[string]interface{}{
+					"usage": 70.0,
+				},
+				"network": map[string]interface{}{
+					"rx_bytes_per_sec": float32(1000),
+					"tx_bytes_per_sec": float32(2000),
+				},
+			},
+			store: func() store.GameNodeStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameNodeStore(tmpFile)
+				assert.NoError(t, err)
+				err = store.Add(testNode)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: nil,
+		},
+		{
+			name:   "节点不存在",
+			nodeID: "non-existent-node",
+			metrics: map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"usage": 50.0,
+				},
+				"memory": map[string]interface{}{
+					"usage": 60.0,
+				},
+				"disk": map[string]interface{}{
+					"usage": 70.0,
+				},
+			},
+			store: func() store.GameNodeStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameNodeStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: fmt.Errorf("节点不存在: %s", "non-existent-node"),
+		},
+		{
+			name:   "存储层返回错误",
+			nodeID: "test-node-1",
+			metrics: map[string]interface{}{
+				"cpu": map[string]interface{}{
+					"usage": 50.0,
+				},
+				"memory": map[string]interface{}{
+					"usage": 60.0,
+				},
+				"disk": map[string]interface{}{
+					"usage": 70.0,
+				},
+			},
+			store:         &mockGameNodeErrorStore{},
+			expectedError: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := NewGameNodeService(tt.store)
+			err := service.UpdateStatusMetrics(tt.nodeID, tt.metrics)
+			if tt.expectedError != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestGameNodeService_UpdateStatusResources(t *testing.T) {
+	tests := []struct {
+		name          string
+		nodeID        string
+		resources     map[string]interface{}
+		store         store.GameNodeStore
+		expectedError error
+	}{
+		{
+			name:   "成功更新节点资源",
+			nodeID: "test-node-1",
+			resources: map[string]interface{}{
+				"CPU_Usage":  "50.0%",
+				"RAM_Usage":  "60.0%",
+				"Disk_Usage": "70.0%",
+				"GPU_Usage":  "80.0%",
+			},
+			store: func() store.GameNodeStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameNodeStore(tmpFile)
+				assert.NoError(t, err)
+				err = store.Add(testNode)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: nil,
+		},
+		{
+			name:   "节点不存在",
+			nodeID: "non-existent-node",
+			resources: map[string]interface{}{
+				"CPU_Usage": "50.0%",
+			},
+			store: func() store.GameNodeStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameNodeStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: fmt.Errorf("节点不存在: %s", "non-existent-node"),
+		},
+		{
+			name:   "存储层返回错误",
+			nodeID: "test-node-1",
+			resources: map[string]interface{}{
+				"CPU_Usage": "50.0%",
+			},
+			store:         &mockGameNodeErrorStore{},
+			expectedError: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := NewGameNodeService(tt.store)
+			err := service.UpdateStatusResources(tt.nodeID, tt.resources)
+			if tt.expectedError != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestGameNodeService_UpdateStatusOnlineStatus(t *testing.T) {
+	tests := []struct {
+		name          string
+		nodeID        string
+		online        bool
+		store         store.GameNodeStore
+		expectedError error
+	}{
+		{
+			name:   "成功更新节点在线状态",
+			nodeID: "test-node-1",
+			online: true,
+			store: func() store.GameNodeStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameNodeStore(tmpFile)
+				assert.NoError(t, err)
+				err = store.Add(testNode)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: nil,
+		},
+		{
+			name:   "节点不存在",
+			nodeID: "non-existent-node",
+			online: true,
+			store: func() store.GameNodeStore {
+				tmpFile := utils.CreateTempTestFile(t)
+				store, err := store.NewGameNodeStore(tmpFile)
+				assert.NoError(t, err)
+				return store
+			}(),
+			expectedError: fmt.Errorf("节点不存在: %s", "non-existent-node"),
+		},
+		{
+			name:          "存储层返回错误",
+			nodeID:        "test-node-1",
+			online:        true,
+			store:         &mockGameNodeErrorStore{},
+			expectedError: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := NewGameNodeService(tt.store)
+			err := service.UpdateStatusOnlineStatus(tt.nodeID, tt.online)
+			if tt.expectedError != nil {
+				assert.Error(t, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}

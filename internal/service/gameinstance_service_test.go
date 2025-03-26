@@ -124,12 +124,12 @@ func TestGameInstanceService_Get(t *testing.T) {
 		name           string
 		instanceID     string
 		store          store.GameInstanceStore
-		expectedResult models.GameInstance
+		expectedResult *models.GameInstance
 		expectedError  error
 	}{
 		{
 			name:       "成功获取实例",
-			instanceID: "test-instance-1",
+			instanceID: "test-node-1-test-card-1",
 			store: func() store.GameInstanceStore {
 				tmpFile := utils.CreateTempTestFile(t)
 				store, err := store.NewGameInstanceStore(tmpFile)
@@ -138,7 +138,7 @@ func TestGameInstanceService_Get(t *testing.T) {
 				assert.NoError(t, err)
 				return store
 			}(),
-			expectedResult: testInstance,
+			expectedResult: &testInstance,
 			expectedError:  nil,
 		},
 		{
@@ -150,14 +150,14 @@ func TestGameInstanceService_Get(t *testing.T) {
 				assert.NoError(t, err)
 				return store
 			}(),
-			expectedResult: models.GameInstance{},
-			expectedError:  fmt.Errorf("实例不存在: non-existent-instance"),
+			expectedResult: nil,
+			expectedError:  fmt.Errorf("实例不存在: %s", "non-existent-instance"),
 		},
 		{
 			name:           "存储层返回错误",
-			instanceID:     "test-instance-1",
+			instanceID:     "test-node-1-test-card-1",
 			store:          &mockGameInstanceErrorStore{},
-			expectedResult: models.GameInstance{},
+			expectedResult: nil,
 			expectedError:  assert.AnError,
 		},
 	}
@@ -168,10 +168,12 @@ func TestGameInstanceService_Get(t *testing.T) {
 			result, err := service.Get(tt.instanceID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedResult, result)
+				assert.Nil(t, result)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
+			assert.NotNil(t, result)
 			assert.Equal(t, tt.expectedResult.ID, result.ID)
 			assert.Equal(t, tt.expectedResult.NodeID, result.NodeID)
 			assert.Equal(t, tt.expectedResult.CardID, result.CardID)

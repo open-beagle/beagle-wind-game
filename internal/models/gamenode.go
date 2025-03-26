@@ -50,3 +50,30 @@ type GameNode struct {
 func (GameNode) TableName() string {
 	return "game_nodes"
 }
+
+// Resource 资源信息
+type Resource struct {
+	Total int64 `json:"total" yaml:"total"` // 总量
+	Used  int64 `json:"used" yaml:"used"`   // 已使用量
+}
+
+// NodeResources 节点资源信息
+type NodeResources struct {
+	CPU    Resource `json:"cpu" yaml:"cpu"`       // CPU资源
+	Memory Resource `json:"memory" yaml:"memory"` // 内存资源
+	Disk   Resource `json:"disk" yaml:"disk"`     // 磁盘资源
+}
+
+// NetworkMetrics 网络指标
+type NetworkMetrics struct {
+	RxBytesPerSec float32 `json:"rx_bytes_per_sec" yaml:"rx_bytes_per_sec"` // 接收速率
+	TxBytesPerSec float32 `json:"tx_bytes_per_sec" yaml:"tx_bytes_per_sec"` // 发送速率
+}
+
+// NodeMetrics 节点指标
+type NodeMetrics struct {
+	CPU     float32        `json:"cpu" yaml:"cpu"`         // CPU使用率
+	Memory  float32        `json:"memory" yaml:"memory"`   // 内存使用率
+	Disk    float32        `json:"disk" yaml:"disk"`       // 磁盘使用率
+	Network NetworkMetrics `json:"network" yaml:"network"` // 网络指标
+}
