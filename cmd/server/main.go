@@ -53,9 +53,9 @@ func main() {
 
 	// 创建服务实例
 	platformService := service.NewPlatformService(platformStore)
-	nodeService := service.NewNodeService(nodeStore, instanceStore)
-	gameCardService := service.NewGameCardService(gameCardStore, platformStore, instanceStore)
-	instanceService := service.NewInstanceService(instanceStore, nodeStore, gameCardStore, platformStore)
+	nodeService := service.NewNodeService(nodeStore)
+	gameCardService := service.NewGameCardService(gameCardStore)
+	instanceService := service.NewInstanceService(instanceStore)
 
 	// 创建并启动 gRPC 服务器
 	grpcOpts := server.ServerOptions{

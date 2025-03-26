@@ -125,7 +125,7 @@ func (h *NodeHandler) UpdateNodeStatus(c *gin.Context) {
 		return
 	}
 
-	err = h.nodeService.UpdateNodeStatus(id, req.Status, req.Reason)
+	err = h.nodeService.UpdateNodeStatus(id, req.Status)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -150,12 +150,7 @@ func (h *NodeHandler) CreateNode(c *gin.Context) {
 		return
 	}
 
-	id, err := h.nodeService.CreateNode(node)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
+	id := h.nodeService.CreateNode(node)
 	c.JSON(http.StatusCreated, gin.H{"id": id})
 }
 

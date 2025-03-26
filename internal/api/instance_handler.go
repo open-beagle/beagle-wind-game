@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/open-beagle/beagle-wind-game/internal/models"
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 )
 
@@ -148,7 +149,18 @@ func (h *InstanceHandler) UpdateInstance(c *gin.Context) {
 		return
 	}
 
-	err = h.instanceService.UpdateInstance(id, params)
+	// 将参数转换为 GameInstance
+	instance = models.GameInstance{
+		ID:          id,
+		Status:      params.Status,
+		Resources:   params.Resources,
+		Performance: params.Performance,
+		SaveData:    params.SaveData,
+		Config:      params.Config,
+		Backup:      params.Backup,
+	}
+
+	err = h.instanceService.UpdateInstance(id, instance)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
