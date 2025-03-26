@@ -1,4 +1,4 @@
-package agent
+package gamenode
 
 import (
 	"bufio"
@@ -11,7 +11,7 @@ import (
 	"github.com/docker/docker/client"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	pb "github.com/open-beagle/beagle-wind-game/internal/agent/proto"
+	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
 )
 
 // LogCollector 日志收集器

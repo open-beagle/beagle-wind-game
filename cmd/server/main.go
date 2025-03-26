@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/open-beagle/beagle-wind-game/internal/agent"
 	"github.com/open-beagle/beagle-wind-game/internal/api"
 	"github.com/open-beagle/beagle-wind-game/internal/config"
+	"github.com/open-beagle/beagle-wind-game/internal/gamenode"
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 	"github.com/open-beagle/beagle-wind-game/internal/store"
 )
@@ -60,14 +60,19 @@ func main() {
 	gameCardService := service.NewGameCardService(gameCardStore)
 	gameinstanceService := service.NewGameInstanceService(gameinstanceStore)
 
-	// 创建并启动 gRPC 服务器
-	grpcOpts := agent.ServerOptions{
+	// 创建节点服务适配器
+	nodeManager := gamenode.NewGameNodeManager(gamenodeService)
+
+	// 创建服务器选项
+	opts := gamenode.ServerOptions{
 		ListenAddr:   *grpcAddr,
 		TLSCertFile:  *tlsCertFile,
 		TLSKeyFile:   *tlsKeyFile,
 		MaxHeartbeat: 30 * time.Second,
 	}
-	agentServer := agent.NewAgentServer(grpcOpts, gamenodeService)
+
+	// 创建 agent 服务器
+	gamenodeServer := gamenode.NewGameNodeServer(opts, nodeManager)
 
 	// 设置 HTTP 路由
 	router := api.SetupRouter(gameplatformService, gamenodeService, gameCardService, gameinstanceService)
@@ -75,7 +80,7 @@ func main() {
 	// 启动 gRPC 服务器
 	go func() {
 		fmt.Printf("gRPC服务器正在监听 %s\n", *grpcAddr)
-		if err := agentServer.Start(); err != nil {
+		if err := gamenodeServer.Start(); err != nil {
 			log.Fatalf("gRPC服务器运行失败: %v", err)
 		}
 	}()
@@ -95,6 +100,6 @@ func main() {
 
 	// 优雅关闭
 	fmt.Println("正在关闭服务器...")
-	agentServer.Stop()
+	gamenodeServer.Stop()
 	fmt.Println("服务器已关闭")
 }

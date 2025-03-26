@@ -39,32 +39,58 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 
 ### 核心组件
 
-1. GameNode（游戏机）
+1. GameNode（游戏节点）
 
-   - 硬件资源管理
-   - 游戏运行环境
-   - 状态监控
-   - 资源调度
+   - 静态属性
+     - 基础属性：id，名称 name，模版 model，所属机房 location
+     - 硬件配置 Hardware：CPU、RAM、GPU、Storage、Network
+     - 网络配置 Network：IP、Speed
+     - 通用属性：创建时间 CreatedAt，更新时间 UpdatedAt
+     - 其他属性：节点标签、节点类型
+   - 动态属性 Status
+     - 节点状态：在线还是维护中，最后在线时间，累积在线时长
+     - 节点资源：可以创建几个游戏实例，CPU 啊，内存啊，这些资源总量有多少
+     - 节点指标：metrics 数据
 
-2. GamePlatform（游戏平台）
+2. GamePlatform（游戏平台）[详细设计](docs/design/gameplatform.md)
 
-   - 平台配置管理
-   - 运行环境准备
-   - 平台特性支持
-   - 安装流程控制
+   - 静态属性
+     - 基础属性：id，名称 name，版本 version，类型 type ，特性列表
+     - 容器属性：镜像 Image，启动路径 Bin，操作系统 OS
+     - 平台配置：wine , dxvk , vkd3d 等
+     - 通用属性：创建时间 CreatedAt，更新时间 UpdatedAt
+     - 文件与安装器
+   - 动态属性 Status
+     - 运行的游戏实例相关信息
 
-3. GameCard（游戏卡片）
+3. GameCard（游戏卡片）[详细设计](docs/design/gamecard.md)
 
-   - 游戏信息管理
-   - 资源文件管理
-   - 更新包管理
-   - 权限控制
+   - 静态属性
+     - 游戏信息管理
+     - 资源文件管理
+     - 更新包管理
+     - 权限控制
+   - 动态属性 Status 暂无
 
-4. GameInstance（游戏实例）
-   - 实例生命周期管理
-   - 资源分配
-   - 状态监控
-   - 数据备份
+4. GamePlatformUser (用户拥有的游戏平台配置)
+
+   - 用户拥有自己的游戏平台配置
+
+5. GameCardUser (用户拥有的游戏信息记录)
+
+   - 用户拥有自己的游戏记录信息
+     如：最后运行时间、游戏时长
+   - 游戏存档
+   - 游戏 Mods
+
+6. GameInstance（游戏实例）[详细设计](docs/design/gameinstance.md)
+
+   - 静态属性
+     - 实例生命周期管理
+     - 资源分配
+     - 状态监控
+     - 数据备份
+   - 动态属性 Status 暂无
 
 ### 技术架构
 
@@ -214,6 +240,9 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 
 - [系统总体设计](docs/design/summary.md)
 - [节点 Agent 通信设计](docs/design/agent_communication.md)
+- [游戏平台设计](docs/design/gameplatform.md)
+- [游戏卡片设计](docs/design/gamecard.md)
+- [游戏实例设计](docs/design/gameinstance.md)
 - [Pipeline 系统设计](docs/pipeline.md)
 - [节点管理设计](docs/design/node_management.md)
 - [数据模型设计](docs/models.md)

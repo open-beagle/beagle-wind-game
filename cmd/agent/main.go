@@ -8,7 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/open-beagle/beagle-wind-game/internal/agent"
+	"github.com/docker/docker/client"
+	"github.com/open-beagle/beagle-wind-game/internal/gamenode"
 )
 
 func main() {
@@ -16,10 +17,17 @@ func main() {
 	serverAddr := flag.String("server", "localhost:50051", "服务器地址")
 	flag.Parse()
 
-	// 创建 Agent 实例
-	a, err := agent.NewAgent(*serverAddr)
+	// 创建 Docker 客户端
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		log.Fatalf("创建 Agent 失败: %v", err)
+		log.Printf("警告: 无法创建 Docker 客户端: %v", err)
+		dockerClient = nil
+	}
+
+	// 创建 GameNodeAgent 实例
+	agent := gamenode.NewGameNodeAgent(*serverAddr, dockerClient)
+	if agent == nil {
+		log.Fatal("创建 GameNodeAgent 失败")
 	}
 
 	// 创建上下文
@@ -27,15 +35,16 @@ func main() {
 	defer cancel()
 
 	// 启动 Agent
-	if err := a.Start(ctx); err != nil {
+	if err := agent.Start(ctx); err != nil {
 		log.Fatalf("启动 Agent 失败: %v", err)
 	}
 
-	// 等待信号
+	// 等待中断信号
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
 
 	// 优雅关闭
-	a.Stop()
+	log.Println("正在关闭 Agent...")
+	agent.Stop()
 }

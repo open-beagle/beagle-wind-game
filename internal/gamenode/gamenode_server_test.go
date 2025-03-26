@@ -1,4 +1,4 @@
-package agent
+package gamenode
 
 import (
 	"context"
@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	pb "github.com/open-beagle/beagle-wind-game/internal/agent/proto"
 	"github.com/open-beagle/beagle-wind-game/internal/models"
+	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
 )
 
 // MockDockerClient 模拟 Docker 客户端

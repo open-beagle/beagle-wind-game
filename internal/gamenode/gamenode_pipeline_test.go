@@ -1,4 +1,4 @@
-package agent
+package gamenode
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	pb "github.com/open-beagle/beagle-wind-game/internal/agent/proto"
+	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
 )
 
 // TestNewPipeline 测试创建新的Pipeline实例

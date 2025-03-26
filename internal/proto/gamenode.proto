@@ -1,13 +1,13 @@
 syntax = "proto3";
 
-package agent;
+package gamenode;
 
-option go_package = "github.com/open-beagle/beagle-wind-game/internal/agent/proto";
+option go_package = "github.com/open-beagle/beagle-wind-game/internal/proto";
 
 import "google/protobuf/timestamp.proto";
 
-// AgentService 定义节点Agent的gRPC服务
-service AgentService {
+// GameNodeService 定义节点Agent的gRPC服务
+service GameNodeService {
   // 节点注册与心跳
   rpc Register(RegisterRequest) returns (RegisterResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);

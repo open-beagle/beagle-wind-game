@@ -1,4 +1,4 @@
-package agent
+package gamenode
 
 import (
 	"context"
@@ -7,28 +7,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/open-beagle/beagle-wind-game/internal/agent/proto"
 	"github.com/open-beagle/beagle-wind-game/internal/models"
+	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
 )
 
-// AgentServer 实现节点Agent的gRPC服务端
-type AgentServer struct {
-	proto.UnimplementedAgentServiceServer
+// GameAgentServer 实现节点Agent的gRPC服务端
+type GameAgentServer struct {
+	pb.UnimplementedAgentServiceServer
 	opts             ServerOptions
 	server           *grpc.Server
 	nodeConnections  map[string]*nodeConnection
 	connectionsMutex sync.RWMutex
-	manager          AgentServerManager
+	manager          GameAgentManager
 	pipelines        map[string]*Pipeline
 	pipelinesMutex   sync.RWMutex
-	dockerClient     *client.Client
 }
 
 // 节点连接信息
@@ -36,9 +34,9 @@ type nodeConnection struct {
 	nodeID      string
 	sessionID   string
 	lastSeen    time.Time
-	info        *proto.NodeInfo
-	metrics     *proto.NodeMetrics
-	eventStream map[string]proto.AgentService_SubscribeEventsServer
+	info        *pb.NodeInfo
+	metrics     *pb.NodeMetrics
+	eventStream map[string]pb.AgentService_SubscribeEventsServer
 	mutex       sync.RWMutex
 }
 
@@ -58,25 +56,18 @@ var DefaultServerOptions = ServerOptions{
 	MaxHeartbeat: 30 * time.Second,
 }
 
-// NewAgentServer 创建新的Agent服务器实例
-func NewAgentServer(opts ServerOptions, manager AgentServerManager) *AgentServer {
-	// 创建 Docker 客户端
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		dockerClient = nil // 如果创建失败，设置为 nil
-	}
-
-	return &AgentServer{
+// NewGameAgentServer 创建新的Agent服务器实例
+func NewGameAgentServer(opts ServerOptions, manager GameAgentManager) *GameAgentServer {
+	return &GameAgentServer{
 		opts:            opts,
 		manager:         manager,
 		nodeConnections: make(map[string]*nodeConnection),
 		pipelines:       make(map[string]*Pipeline),
-		dockerClient:    dockerClient,
 	}
 }
 
 // Start 启动gRPC服务
-func (s *AgentServer) Start() error {
+func (s *GameAgentServer) Start() error {
 	// 设置gRPC服务器选项
 	var serverOpts []grpc.ServerOption
 
@@ -101,7 +92,7 @@ func (s *AgentServer) Start() error {
 
 	// 创建gRPC服务器
 	s.server = grpc.NewServer(serverOpts...)
-	proto.RegisterAgentServiceServer(s.server, s)
+	pb.RegisterAgentServiceServer(s.server, s)
 
 	// 启用反射服务
 	reflection.Register(s.server)
@@ -121,14 +112,14 @@ func (s *AgentServer) Start() error {
 }
 
 // Stop 停止gRPC服务
-func (s *AgentServer) Stop() {
+func (s *GameAgentServer) Stop() {
 	if s.server != nil {
 		s.server.GracefulStop()
 	}
 }
 
 // monitorNodeStatus 定期监控节点状态，清理超时节点
-func (s *AgentServer) monitorNodeStatus() {
+func (s *GameAgentServer) monitorNodeStatus() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -138,7 +129,7 @@ func (s *AgentServer) monitorNodeStatus() {
 }
 
 // checkNodesStatus 检查所有节点的状态，清理超时节点
-func (s *AgentServer) checkNodesStatus() {
+func (s *GameAgentServer) checkNodesStatus() {
 	now := time.Now()
 	s.connectionsMutex.Lock()
 	defer s.connectionsMutex.Unlock()
@@ -153,10 +144,10 @@ func (s *AgentServer) checkNodesStatus() {
 }
 
 // Register 实现节点注册接口
-func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) (*proto.RegisterResponse, error) {
+func (s *GameAgentServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
 	// 验证请求
 	if req.NodeId == "" {
-		return &proto.RegisterResponse{
+		return &pb.RegisterResponse{
 			Success: false,
 			Message: "节点ID不能为空",
 		}, fmt.Errorf("节点ID不能为空")
@@ -164,7 +155,7 @@ func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) 
 
 	// 验证节点管理器
 	if s.manager == nil {
-		return &proto.RegisterResponse{
+		return &pb.RegisterResponse{
 			Success: false,
 			Message: "节点管理器未初始化",
 		}, fmt.Errorf("节点管理器未初始化")
@@ -173,7 +164,7 @@ func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) 
 	// 获取节点信息
 	_, err := s.manager.Get(req.NodeId)
 	if err != nil {
-		return &proto.RegisterResponse{
+		return &pb.RegisterResponse{
 			Success: false,
 			Message: fmt.Sprintf("获取节点信息失败: %v", err),
 		}, fmt.Errorf("获取节点信息失败: %w", err)
@@ -182,7 +173,7 @@ func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) 
 	// 更新节点状态
 	err = s.manager.UpdateStatusState(req.NodeId, string(models.GameNodeStateReady))
 	if err != nil {
-		return &proto.RegisterResponse{
+		return &pb.RegisterResponse{
 			Success: false,
 			Message: fmt.Sprintf("更新节点状态失败: %v", err),
 		}, fmt.Errorf("更新节点状态失败: %w", err)
@@ -207,13 +198,13 @@ func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) 
 			sessionID:   sessionID,
 			lastSeen:    time.Now(),
 			info:        req.NodeInfo,
-			eventStream: make(map[string]proto.AgentService_SubscribeEventsServer),
+			eventStream: make(map[string]pb.AgentService_SubscribeEventsServer),
 		}
 	}
 
 	fmt.Printf("节点 %s 注册成功，会话ID: %s\n", req.NodeId, sessionID)
 
-	return &proto.RegisterResponse{
+	return &pb.RegisterResponse{
 		SessionId: sessionID,
 		Success:   true,
 		Message:   "注册成功",
@@ -221,14 +212,14 @@ func (s *AgentServer) Register(ctx context.Context, req *proto.RegisterRequest) 
 }
 
 // Heartbeat 实现心跳接口
-func (s *AgentServer) Heartbeat(ctx context.Context, req *proto.HeartbeatRequest) (*proto.HeartbeatResponse, error) {
+func (s *GameAgentServer) Heartbeat(ctx context.Context, req *pb.HeartbeatRequest) (*pb.HeartbeatResponse, error) {
 	// 验证节点和会话
 	s.connectionsMutex.RLock()
 	conn, exists := s.nodeConnections[req.NodeId]
 	s.connectionsMutex.RUnlock()
 
 	if !exists {
-		return &proto.HeartbeatResponse{
+		return &pb.HeartbeatResponse{
 			Success:    false,
 			ServerTime: timestamppb.Now(),
 		}, nil
@@ -242,41 +233,33 @@ func (s *AgentServer) Heartbeat(ctx context.Context, req *proto.HeartbeatRequest
 	}
 	conn.mutex.Unlock()
 
-	return &proto.HeartbeatResponse{
+	return &pb.HeartbeatResponse{
 		Success:    true,
 		ServerTime: timestamppb.Now(),
 	}, nil
 }
 
 // ExecutePipeline 实现Pipeline执行接口
-func (s *AgentServer) ExecutePipeline(ctx context.Context, req *proto.ExecutePipelineRequest) (*proto.ExecutePipelineResponse, error) {
+func (s *GameAgentServer) ExecutePipeline(ctx context.Context, req *pb.ExecutePipelineRequest) (*pb.ExecutePipelineResponse, error) {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	_, exists := s.nodeConnections[req.NodeId]
 	s.connectionsMutex.RUnlock()
 
 	if !exists {
-		return &proto.ExecutePipelineResponse{
+		return &pb.ExecutePipelineResponse{
 			Accepted: false,
 			Message:  "节点未注册",
 		}, nil
-	}
-
-	// 验证 Docker 客户端
-	if s.dockerClient == nil {
-		return &proto.ExecutePipelineResponse{
-			Accepted: false,
-			Message:  "Docker 客户端未初始化",
-		}, fmt.Errorf("Docker 客户端未初始化")
 	}
 
 	// 生成执行ID
 	executionID := fmt.Sprintf("%s-%s-%d", req.NodeId, req.PipelineId, time.Now().UnixNano())
 
 	// 创建 Pipeline 实例
-	pipeline := NewPipeline(req, s.dockerClient)
+	pipeline := NewPipeline(req)
 	if pipeline == nil {
-		return &proto.ExecutePipelineResponse{
+		return &pb.ExecutePipelineResponse{
 			Accepted: false,
 			Message:  "创建 Pipeline 失败",
 		}, fmt.Errorf("创建 Pipeline 失败")
@@ -294,15 +277,15 @@ func (s *AgentServer) ExecutePipeline(ctx context.Context, req *proto.ExecutePip
 		}
 	}()
 
-	return &proto.ExecutePipelineResponse{
-		ExecutionId: executionID,
+	return &pb.ExecutePipelineResponse{
 		Accepted:    true,
-		Message:     "Pipeline 执行请求已接受",
+		ExecutionId: executionID,
+		Message:     "Pipeline 已接受",
 	}, nil
 }
 
 // GetPipelineStatus 实现获取Pipeline状态接口
-func (s *AgentServer) GetPipelineStatus(ctx context.Context, req *proto.PipelineStatusRequest) (*proto.PipelineStatusResponse, error) {
+func (s *GameAgentServer) GetPipelineStatus(ctx context.Context, req *pb.PipelineStatusRequest) (*pb.PipelineStatusResponse, error) {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	_, exists := s.nodeConnections[req.NodeId]
@@ -314,7 +297,7 @@ func (s *AgentServer) GetPipelineStatus(ctx context.Context, req *proto.Pipeline
 
 	// TODO: 实现获取Pipeline状态逻辑
 
-	return &proto.PipelineStatusResponse{
+	return &pb.PipelineStatusResponse{
 		ExecutionId: req.ExecutionId,
 		Status:      "pending",
 		CurrentStep: 0,
@@ -325,14 +308,14 @@ func (s *AgentServer) GetPipelineStatus(ctx context.Context, req *proto.Pipeline
 }
 
 // CancelPipeline 实现取消Pipeline接口
-func (s *AgentServer) CancelPipeline(ctx context.Context, req *proto.PipelineCancelRequest) (*proto.PipelineCancelResponse, error) {
+func (s *GameAgentServer) CancelPipeline(ctx context.Context, req *pb.PipelineCancelRequest) (*pb.PipelineCancelResponse, error) {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	_, exists := s.nodeConnections[req.NodeId]
 	s.connectionsMutex.RUnlock()
 
 	if !exists {
-		return &proto.PipelineCancelResponse{
+		return &pb.PipelineCancelResponse{
 			Success: false,
 			Message: "节点未注册",
 		}, nil
@@ -340,21 +323,21 @@ func (s *AgentServer) CancelPipeline(ctx context.Context, req *proto.PipelineCan
 
 	// TODO: 实现取消Pipeline逻辑
 
-	return &proto.PipelineCancelResponse{
+	return &pb.PipelineCancelResponse{
 		Success: true,
 		Message: "Pipeline取消请求已发送",
 	}, nil
 }
 
 // StartContainer 实现启动容器接口
-func (s *AgentServer) StartContainer(ctx context.Context, req *proto.StartContainerRequest) (*proto.StartContainerResponse, error) {
+func (s *GameAgentServer) StartContainer(ctx context.Context, req *pb.StartContainerRequest) (*pb.StartContainerResponse, error) {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	_, exists := s.nodeConnections[req.NodeId]
 	s.connectionsMutex.RUnlock()
 
 	if !exists {
-		return &proto.StartContainerResponse{
+		return &pb.StartContainerResponse{
 			Success: false,
 			Message: "节点未注册",
 		}, nil
@@ -362,7 +345,7 @@ func (s *AgentServer) StartContainer(ctx context.Context, req *proto.StartContai
 
 	// TODO: 实现启动容器逻辑
 
-	return &proto.StartContainerResponse{
+	return &pb.StartContainerResponse{
 		Success:     true,
 		ContainerId: req.ContainerId,
 		Message:     "容器启动请求已发送",
@@ -370,14 +353,14 @@ func (s *AgentServer) StartContainer(ctx context.Context, req *proto.StartContai
 }
 
 // StopContainer 实现停止容器接口
-func (s *AgentServer) StopContainer(ctx context.Context, req *proto.StopContainerRequest) (*proto.StopContainerResponse, error) {
+func (s *GameAgentServer) StopContainer(ctx context.Context, req *pb.StopContainerRequest) (*pb.StopContainerResponse, error) {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	_, exists := s.nodeConnections[req.NodeId]
 	s.connectionsMutex.RUnlock()
 
 	if !exists {
-		return &proto.StopContainerResponse{
+		return &pb.StopContainerResponse{
 			Success: false,
 			Message: "节点未注册",
 		}, nil
@@ -385,21 +368,21 @@ func (s *AgentServer) StopContainer(ctx context.Context, req *proto.StopContaine
 
 	// TODO: 实现停止容器逻辑
 
-	return &proto.StopContainerResponse{
+	return &pb.StopContainerResponse{
 		Success: true,
 		Message: "容器停止请求已发送",
 	}, nil
 }
 
 // RestartContainer 实现重启容器接口
-func (s *AgentServer) RestartContainer(ctx context.Context, req *proto.RestartContainerRequest) (*proto.RestartContainerResponse, error) {
+func (s *GameAgentServer) RestartContainer(ctx context.Context, req *pb.RestartContainerRequest) (*pb.RestartContainerResponse, error) {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	_, exists := s.nodeConnections[req.NodeId]
 	s.connectionsMutex.RUnlock()
 
 	if !exists {
-		return &proto.RestartContainerResponse{
+		return &pb.RestartContainerResponse{
 			Success: false,
 			Message: "节点未注册",
 		}, nil
@@ -407,14 +390,14 @@ func (s *AgentServer) RestartContainer(ctx context.Context, req *proto.RestartCo
 
 	// TODO: 实现重启容器逻辑
 
-	return &proto.RestartContainerResponse{
+	return &pb.RestartContainerResponse{
 		Success: true,
 		Message: "容器重启请求已发送",
 	}, nil
 }
 
 // GetNodeMetrics 实现获取节点指标接口
-func (s *AgentServer) GetNodeMetrics(ctx context.Context, req *proto.NodeMetricsRequest) (*proto.NodeMetricsResponse, error) {
+func (s *GameAgentServer) GetNodeMetrics(ctx context.Context, req *pb.NodeMetricsRequest) (*pb.NodeMetricsResponse, error) {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	conn, exists := s.nodeConnections[req.NodeId]
@@ -430,12 +413,12 @@ func (s *AgentServer) GetNodeMetrics(ctx context.Context, req *proto.NodeMetrics
 	conn.mutex.RUnlock()
 
 	if metrics == nil {
-		return &proto.NodeMetricsResponse{
+		return &pb.NodeMetricsResponse{
 			NodeId: req.NodeId,
 		}, nil
 	}
 
-	return &proto.NodeMetricsResponse{
+	return &pb.NodeMetricsResponse{
 		NodeId:  req.NodeId,
 		Metrics: metrics,
 		// TODO: 添加容器指标
@@ -443,7 +426,7 @@ func (s *AgentServer) GetNodeMetrics(ctx context.Context, req *proto.NodeMetrics
 }
 
 // StreamNodeLogs 实现节点日志流接口
-func (s *AgentServer) StreamNodeLogs(req *proto.NodeLogsRequest, stream proto.AgentService_StreamNodeLogsServer) error {
+func (s *GameAgentServer) StreamNodeLogs(req *pb.NodeLogsRequest, stream pb.AgentService_StreamNodeLogsServer) error {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	_, exists := s.nodeConnections[req.NodeId]
@@ -461,7 +444,7 @@ func (s *AgentServer) StreamNodeLogs(req *proto.NodeLogsRequest, stream proto.Ag
 			return ctx.Err()
 		case <-time.After(5 * time.Second):
 			// 发送示例日志
-			err := stream.Send(&proto.LogEntry{
+			err := stream.Send(&pb.LogEntry{
 				Source:    "node",
 				Content:   "示例节点日志",
 				Timestamp: timestamppb.Now(),
@@ -474,7 +457,7 @@ func (s *AgentServer) StreamNodeLogs(req *proto.NodeLogsRequest, stream proto.Ag
 }
 
 // StreamContainerLogs 实现容器日志流接口
-func (s *AgentServer) StreamContainerLogs(req *proto.ContainerLogsRequest, stream proto.AgentService_StreamContainerLogsServer) error {
+func (s *GameAgentServer) StreamContainerLogs(req *pb.ContainerLogsRequest, stream pb.AgentService_StreamContainerLogsServer) error {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	_, exists := s.nodeConnections[req.NodeId]
@@ -492,7 +475,7 @@ func (s *AgentServer) StreamContainerLogs(req *proto.ContainerLogsRequest, strea
 			return ctx.Err()
 		case <-time.After(5 * time.Second):
 			// 发送示例日志
-			err := stream.Send(&proto.LogEntry{
+			err := stream.Send(&pb.LogEntry{
 				Source:    "container",
 				Content:   "示例容器日志",
 				Timestamp: timestamppb.Now(),
@@ -505,7 +488,7 @@ func (s *AgentServer) StreamContainerLogs(req *proto.ContainerLogsRequest, strea
 }
 
 // SubscribeEvents 实现事件订阅接口
-func (s *AgentServer) SubscribeEvents(req *proto.EventSubscriptionRequest, stream proto.AgentService_SubscribeEventsServer) error {
+func (s *GameAgentServer) SubscribeEvents(req *pb.EventSubscriptionRequest, stream pb.AgentService_SubscribeEventsServer) error {
 	// 验证节点
 	s.connectionsMutex.RLock()
 	conn, exists := s.nodeConnections[req.NodeId]
@@ -537,7 +520,7 @@ func (s *AgentServer) SubscribeEvents(req *proto.EventSubscriptionRequest, strea
 }
 
 // BroadcastEvent 向节点发送事件
-func (s *AgentServer) BroadcastEvent(nodeID string, event *proto.Event) error {
+func (s *GameAgentServer) BroadcastEvent(nodeID string, event *pb.Event) error {
 	s.connectionsMutex.RLock()
 	conn, exists := s.nodeConnections[nodeID]
 	s.connectionsMutex.RUnlock()

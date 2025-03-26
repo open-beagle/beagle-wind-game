@@ -212,3 +212,90 @@ Pipeline 系统提供以下管理接口：
    - 缓存频繁请求的响应
    - 状态变更增量更新
    - 预取可能需要的数据
+
+## Docker 客户端依赖关系
+
+在 Agent 系统中，有三个主要组件：AgentServer、Agent 和 Pipeline。关于 Docker 客户端的依赖关系，我们做了如下设计：
+
+### 1. AgentServer
+
+- **职责**：提供 gRPC 服务，管理节点连接，处理 Pipeline 请求
+- **特点**：不直接执行 Docker 操作
+- **结论**：**不需要**从外部传入 dockerClient
+- **原因**：
+  - AgentServer 只负责服务管理和请求转发
+  - 不涉及具体的 Docker 操作
+
+### 2. Agent
+
+- **职责**：作为客户端连接到 AgentServer，执行 Pipeline 任务
+- **特点**：需要直接执行 Docker 操作（创建容器、管理容器等）
+- **结论**：**需要**从外部传入 dockerClient
+- **原因**：
+  - 需要执行实际的 Docker 操作
+  - 需要支持测试时注入 mock 客户端
+  - 遵循依赖倒置原则
+  - 直接依赖 Docker 功能
+  - 最适合管理 Docker 客户端生命周期
+
+### 3. Pipeline
+
+- **职责**：执行具体的容器操作步骤
+- **特点**：被 Agent 调用，执行具体的容器操作
+- **结论**：**不需要**从外部传入 dockerClient
+- **原因**：
+  - Pipeline 是 Agent 的内部实现细节
+  - Pipeline 的 Docker 操作应该通过 Agent 的 dockerClient 执行
+  - 保持 Pipeline 的简单性，让它专注于步骤执行逻辑
+
+## 设计原则
+
+这个设计遵循以下原则：
+
+1. **单一职责原则**
+
+   - 每个组件都有明确的职责
+   - 避免职责重叠
+
+2. **依赖倒置原则**
+
+   - 高层模块不依赖低层模块的具体实现
+   - 通过依赖注入实现解耦
+
+3. **接口隔离原则**
+
+   - 组件之间通过清晰的接口通信
+   - 避免不必要的依赖
+
+4. **可测试性**
+   - 支持单元测试
+   - 可以方便地注入 mock 对象
+
+## 实现建议
+
+1. Agent 的初始化：
+
+```go
+func NewAgent(opts AgentOptions, dockerClient *client.Client) *Agent {
+    // 使用外部传入的 dockerClient
+}
+```
+
+2. Pipeline 的创建：
+
+```go
+func (a *Agent) executePipeline(req *proto.ExecutePipelineRequest) error {
+    // 使用 Agent 的 dockerClient
+    pipeline := NewPipeline(req, a.dockerClient)
+}
+```
+
+3. 测试用例：
+
+```go
+func TestAgent(t *testing.T) {
+    mockDockerClient := NewMockDockerClient()
+    agent := NewAgent(opts, mockDockerClient)
+    // 进行测试...
+}
+```

@@ -158,5 +158,40 @@ docs/design/agent_communication.md
 开始之前请阅读文档
 2.grpc服务在internal/agent目录已经实现了
 现在我要推动这个grpc服务的单元测试
-3.涉及docker的测试，要使用本地docker
-要用dry-run之类的，别真的跑啊
+3.一些单元测试涉及docker
+创建dockerclient时，设置参数，让其dry-run；
+满足单元测试条件即可。
+你不需要为单元测试创建一个全新的dockerclient，而是docker的客户端，本来就支持以dry-run的方式来执行命令；
+你现在对于这个知识还很茫然，你先搜索学习相关知识，再进行单元测试工作
+我觉得，可以将dockerclient由外部创建，然后传输给agentserver，你觉得如何
+
+开始之前让我们重构agentserver
+1.重构NewAgentServer方法
+让dockerClient，成为一个变量传进来；
+这样我在编写单元测试的时候，可以传入一个dry-run的dockerclient实例；
+同时我在main.go里面创建server的事后传入一个正常的dockerclient即可；
+2.重构pipeline
+按照上面的思路来
+
+现在来专注解决internal/agent/agentserver.go的开发问题：
+1.agentserver，是agent服务侧的实现，其业务逻辑见docs/design/agent_communication.md；
+2.agentserver，是平台服务的一部分，与API服务一起，构成了平台服务；
+3.agentserver要根据agent传回gamenode的所有status信息，来维护gamenode的status，同时还负责实现其他核心业务；
+4.因此agentserver需要与平台服务交互数据，所以设计agentserver_manager.go来干这个。
+5.不要改变agentserver_manager.go的名字，继续下去.
+
+明白，我们需要：
+重命名 internal/agent 为 internal/gamenode，包括其中的所有组件：
+Agent -> GameNodeAgent
+AgentServer -> GameNodeServer
+AgentServerManager -> GameNodeManager
+Pipeline -> GameNodePipeline
+将 internal/agent/proto 目录移动到 internal/proto，因为这些 proto 定义不仅仅是给 gamenode 使用的，而是整个系统的通信协议。
+这样的调整更符合：
+领域驱动设计的命名规范
+项目结构的清晰度
+README.md 中定义的核心业务领域
+请让我们一起来完成重构工作。
+迁移过程中做到完整迁移，不要丢失任何已有的业务，当然有错误也先不要管，先完成迁移重构工作。
+如果你发现了有遗漏，是迁移导致的，请立即补救。
+迁移结束后删除原Agent目录下面的所有文件。
