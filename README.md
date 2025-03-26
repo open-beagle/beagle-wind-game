@@ -33,7 +33,7 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 2. 避免使用通用名称（如 Node、Platform、Card）
 3. 数据库表名统一使用小写下划线命名法
 4. 常量值使用领域前缀 + 类型 + 具体值的形式
-5. 接口命名应反映其业务职责，如 `GameNodeManager`、`GamePlatformService`
+5. 接口命名应反映其业务职责，如 `AgentServerManager`、`GamePlatformService`
 
 ## 系统架构
 

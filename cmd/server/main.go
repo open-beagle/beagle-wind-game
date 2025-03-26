@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/open-beagle/beagle-wind-game/internal/agent/server"
+	"github.com/open-beagle/beagle-wind-game/internal/agent"
 	"github.com/open-beagle/beagle-wind-game/internal/api"
 	"github.com/open-beagle/beagle-wind-game/internal/config"
 	"github.com/open-beagle/beagle-wind-game/internal/service"
@@ -61,13 +61,13 @@ func main() {
 	gameinstanceService := service.NewGameInstanceService(gameinstanceStore)
 
 	// 创建并启动 gRPC 服务器
-	grpcOpts := server.ServerOptions{
+	grpcOpts := agent.ServerOptions{
 		ListenAddr:   *grpcAddr,
 		TLSCertFile:  *tlsCertFile,
 		TLSKeyFile:   *tlsKeyFile,
 		MaxHeartbeat: 30 * time.Second,
 	}
-	agentServer := server.NewAgentServer(grpcOpts, gamenodeService)
+	agentServer := agent.NewAgentServer(grpcOpts, gamenodeService)
 
 	// 设置 HTTP 路由
 	router := api.SetupRouter(gameplatformService, gamenodeService, gameCardService, gameinstanceService)

@@ -1,4 +1,4 @@
-package server
+package agent
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/docker/client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -24,7 +25,10 @@ type AgentServer struct {
 	server           *grpc.Server
 	nodeConnections  map[string]*nodeConnection
 	connectionsMutex sync.RWMutex
-	manager          GameNodeManager
+	manager          AgentServerManager
+	pipelines        map[string]*Pipeline
+	pipelinesMutex   sync.RWMutex
+	dockerClient     *client.Client
 }
 
 // 节点连接信息
@@ -55,11 +59,19 @@ var DefaultServerOptions = ServerOptions{
 }
 
 // NewAgentServer 创建新的Agent服务器实例
-func NewAgentServer(opts ServerOptions, manager GameNodeManager) *AgentServer {
+func NewAgentServer(opts ServerOptions, manager AgentServerManager) *AgentServer {
+	// 创建 Docker 客户端
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		dockerClient = nil // 如果创建失败，设置为 nil
+	}
+
 	return &AgentServer{
 		opts:            opts,
 		manager:         manager,
 		nodeConnections: make(map[string]*nodeConnection),
+		pipelines:       make(map[string]*Pipeline),
+		dockerClient:    dockerClient,
 	}
 }
 
@@ -250,15 +262,42 @@ func (s *AgentServer) ExecutePipeline(ctx context.Context, req *proto.ExecutePip
 		}, nil
 	}
 
+	// 验证 Docker 客户端
+	if s.dockerClient == nil {
+		return &proto.ExecutePipelineResponse{
+			Accepted: false,
+			Message:  "Docker 客户端未初始化",
+		}, fmt.Errorf("Docker 客户端未初始化")
+	}
+
 	// 生成执行ID
 	executionID := fmt.Sprintf("%s-%s-%d", req.NodeId, req.PipelineId, time.Now().UnixNano())
 
-	// TODO: 实现Pipeline执行逻辑
+	// 创建 Pipeline 实例
+	pipeline := NewPipeline(req, s.dockerClient)
+	if pipeline == nil {
+		return &proto.ExecutePipelineResponse{
+			Accepted: false,
+			Message:  "创建 Pipeline 失败",
+		}, fmt.Errorf("创建 Pipeline 失败")
+	}
+
+	// 保存 Pipeline 实例
+	s.pipelinesMutex.Lock()
+	s.pipelines[executionID] = pipeline
+	s.pipelinesMutex.Unlock()
+
+	// 执行 Pipeline
+	go func() {
+		if err := pipeline.Execute(ctx); err != nil {
+			fmt.Printf("Pipeline 执行失败: %v\n", err)
+		}
+	}()
 
 	return &proto.ExecutePipelineResponse{
 		ExecutionId: executionID,
 		Accepted:    true,
-		Message:     "Pipeline执行请求已接受",
+		Message:     "Pipeline 执行请求已接受",
 	}, nil
 }
 

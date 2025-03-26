@@ -39,6 +39,10 @@ type Pipeline struct {
 
 // NewPipeline 创建一个新的 Pipeline 实例
 func NewPipeline(req *pb.ExecutePipelineRequest, dockerClient *client.Client) *Pipeline {
+	if dockerClient == nil {
+		return nil
+	}
+
 	now := timestamppb.Now()
 	return &Pipeline{
 		id:                req.PipelineId,

@@ -1,4 +1,4 @@
-package server
+package agent
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 )
 
 // NodeManager 节点管理器接口
-type GameNodeManager interface {
+type AgentServerManager interface {
 	Get(id string) (*models.GameNode, error)
 	UpdateStatusState(id string, status string) error
 	UpdateStatusMetrics(id string, metrics map[string]interface{}) error

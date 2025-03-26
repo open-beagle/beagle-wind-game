@@ -73,8 +73,7 @@ d.更新文档以反映这些变化
 
 internal/service 中单元测试优化： 1.不应该新建 store.MockGameCardStore 对象，而是使用已经完成单元测试的 store 中已经设计的存储对象； 2.修改单元测试中的错误； 3.开始单元测试；
 
-当前工作：
-internal/service 中单元测试优化：【进行中】
+internal/service 中单元测试优化：【已结束】
 1.注意执行顺序，按以下顺序逐个修复单元测试：
 1.1 internal/service/gameplatform_service_test.go
 1.2 internal/service/gamenode_service_test.go
@@ -96,7 +95,7 @@ agentServer := server.NewAgentServer(grpcOpts, nodeService)
 
 让我们来重构这个代码：【已结束】
 internal/node/manager.go
-1.类型重命名Manager改为GameNodeManager,对应的NewManager改为NewGameNodeManager
+1.类型重命名Manager改为AgentServerManager,对应的NewManager改为NewAgentServerManager
 2.文件名变更gamenode_manager.go
 3.迁移至新目录internal/manager
 4.删除旧目录internal/node
@@ -151,3 +150,13 @@ internal/service/gameplatform_service_test.go
 如果你要测试，你应该创建一个错误的store对象，然后store对象有没有给你这个接口；
 然后你就随便创建一个错误的store对象，也要完成这个测试；
 这是我观察当前代码得出的分析结果，你试想看看这样千辛万苦为了测试你能发现存储层返回错误到底有什么意义。
+
+agent单元测试：
+1.在之前的工作中我设计了grpc服务来管理节点的实际业务：
+docs/design/node_management.md
+docs/design/agent_communication.md
+开始之前请阅读文档
+2.grpc服务在internal/agent目录已经实现了
+现在我要推动这个grpc服务的单元测试
+3.涉及docker的测试，要使用本地docker
+要用dry-run之类的，别真的跑啊
