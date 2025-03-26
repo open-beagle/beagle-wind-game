@@ -18,15 +18,15 @@ var (
 	ErrNodeNotReady           = fmt.Errorf("节点未就绪")
 )
 
-// InstanceService 游戏实例服务
-type InstanceService struct {
-	instanceStore store.InstanceStore
+// GameInstanceService 游戏实例服务
+type GameInstanceService struct {
+	GameInstanceStore store.GameInstanceStore
 }
 
-// NewInstanceService 创建游戏实例服务
-func NewInstanceService(instanceStore store.InstanceStore) *InstanceService {
-	return &InstanceService{
-		instanceStore: instanceStore,
+// NewGameInstanceService 创建游戏实例服务
+func NewGameInstanceService(GameInstanceStore store.GameInstanceStore) *GameInstanceService {
+	return &GameInstanceService{
+		GameInstanceStore: GameInstanceStore,
 	}
 }
 
@@ -48,9 +48,9 @@ type InstanceListResult struct {
 }
 
 // ListInstances 获取游戏实例列表
-func (s *InstanceService) ListInstances(params InstanceListParams) (InstanceListResult, error) {
+func (s *GameInstanceService) ListInstances(params InstanceListParams) (InstanceListResult, error) {
 	// 从存储获取实例列表
-	instances, err := s.instanceStore.List()
+	instances, err := s.GameInstanceStore.List()
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return InstanceListResult{}, fmt.Errorf("存储层错误")
@@ -124,9 +124,9 @@ func (s *InstanceService) ListInstances(params InstanceListParams) (InstanceList
 }
 
 // GetInstance 获取实例详情
-func (s *InstanceService) GetInstance(id string) (models.GameInstance, error) {
+func (s *GameInstanceService) GetInstance(id string) (models.GameInstance, error) {
 	// 从存储获取实例详情
-	instance, err := s.instanceStore.Get(id)
+	instance, err := s.GameInstanceStore.Get(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return models.GameInstance{}, fmt.Errorf("存储层错误")
@@ -153,7 +153,7 @@ type CreateInstanceParams struct {
 }
 
 // CreateInstance 创建游戏实例
-func (s *InstanceService) CreateInstance(params CreateInstanceParams) (string, error) {
+func (s *GameInstanceService) CreateInstance(params CreateInstanceParams) (string, error) {
 	// 创建实例
 	now := time.Now()
 	instance := models.GameInstance{
@@ -170,7 +170,7 @@ func (s *InstanceService) CreateInstance(params CreateInstanceParams) (string, e
 	}
 
 	// 检查实例是否已存在
-	existingInstance, err := s.instanceStore.Get(instance.ID)
+	existingInstance, err := s.GameInstanceStore.Get(instance.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return "", fmt.Errorf("存储层错误")
@@ -184,7 +184,7 @@ func (s *InstanceService) CreateInstance(params CreateInstanceParams) (string, e
 	}
 
 	// 保存实例
-	err = s.instanceStore.Add(instance)
+	err = s.GameInstanceStore.Add(instance)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return "", fmt.Errorf("存储层错误")
@@ -206,9 +206,9 @@ type UpdateInstanceParams struct {
 }
 
 // UpdateInstance 更新游戏实例
-func (s *InstanceService) UpdateInstance(id string, instance models.GameInstance) error {
+func (s *GameInstanceService) UpdateInstance(id string, instance models.GameInstance) error {
 	// 检查实例是否存在
-	existingInstance, err := s.instanceStore.Get(id)
+	existingInstance, err := s.GameInstanceStore.Get(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
@@ -227,7 +227,7 @@ func (s *InstanceService) UpdateInstance(id string, instance models.GameInstance
 	instance.ID = id
 
 	// 更新实例
-	err = s.instanceStore.Update(instance)
+	err = s.GameInstanceStore.Update(instance)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
@@ -239,9 +239,9 @@ func (s *InstanceService) UpdateInstance(id string, instance models.GameInstance
 }
 
 // DeleteInstance 删除游戏实例
-func (s *InstanceService) DeleteInstance(id string) error {
+func (s *GameInstanceService) DeleteInstance(id string) error {
 	// 检查实例是否存在
-	existingInstance, err := s.instanceStore.Get(id)
+	existingInstance, err := s.GameInstanceStore.Get(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
@@ -253,7 +253,7 @@ func (s *InstanceService) DeleteInstance(id string) error {
 	}
 
 	// 删除实例
-	err = s.instanceStore.Delete(id)
+	err = s.GameInstanceStore.Delete(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
@@ -265,9 +265,9 @@ func (s *InstanceService) DeleteInstance(id string) error {
 }
 
 // StartInstance 启动游戏实例
-func (s *InstanceService) StartInstance(id string) error {
+func (s *GameInstanceService) StartInstance(id string) error {
 	// 获取实例
-	instance, err := s.instanceStore.Get(id)
+	instance, err := s.GameInstanceStore.Get(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
@@ -293,7 +293,7 @@ func (s *InstanceService) StartInstance(id string) error {
 	instance.UpdatedAt = time.Now()
 
 	// 保存更新
-	err = s.instanceStore.Update(instance)
+	err = s.GameInstanceStore.Update(instance)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
@@ -305,9 +305,9 @@ func (s *InstanceService) StartInstance(id string) error {
 }
 
 // StopInstance 停止游戏实例
-func (s *InstanceService) StopInstance(id string) error {
+func (s *GameInstanceService) StopInstance(id string) error {
 	// 获取实例
-	instance, err := s.instanceStore.Get(id)
+	instance, err := s.GameInstanceStore.Get(id)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")
@@ -332,7 +332,7 @@ func (s *InstanceService) StopInstance(id string) error {
 	instance.UpdatedAt = time.Now()
 
 	// 保存更新
-	err = s.instanceStore.Update(instance)
+	err = s.GameInstanceStore.Update(instance)
 	if err != nil {
 		if strings.Contains(err.Error(), "目标是一个目录") {
 			return fmt.Errorf("存储层错误")

@@ -24,7 +24,7 @@ type AgentServer struct {
 	server           *grpc.Server
 	nodeConnections  map[string]*nodeConnection
 	connectionsMutex sync.RWMutex
-	nodeManager      NodeManager
+	nodeManager      GameNodeManager
 }
 
 // 节点连接信息
@@ -55,7 +55,7 @@ var DefaultServerOptions = ServerOptions{
 }
 
 // NewAgentServer 创建新的Agent服务器实例
-func NewAgentServer(opts ServerOptions, nodeManager NodeManager) *AgentServer {
+func NewAgentServer(opts ServerOptions, nodeManager GameNodeManager) *AgentServer {
 	return &AgentServer{
 		opts:            opts,
 		nodeConnections: make(map[string]*nodeConnection),

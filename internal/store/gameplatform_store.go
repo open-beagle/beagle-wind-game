@@ -9,8 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// PlatformStore 游戏平台存储接口
-type PlatformStore interface {
+// GamePlatformStore 游戏平台存储接口
+type GamePlatformStore interface {
 	// List 获取所有平台
 	List() ([]models.GamePlatform, error)
 	// Get 获取指定ID的平台
@@ -25,16 +25,16 @@ type PlatformStore interface {
 	Cleanup() error
 }
 
-// YAMLPlatformStore YAML文件存储实现
-type YAMLPlatformStore struct {
+// YAMLGamePlatformStore YAML文件存储实现
+type YAMLGamePlatformStore struct {
 	configFile string
 	platforms  []models.GamePlatform
 	mu         sync.RWMutex
 }
 
-// NewPlatformStore 创建游戏平台存储
-func NewPlatformStore(configFile string) (PlatformStore, error) {
-	store := &YAMLPlatformStore{
+// NewGamePlatformStore 创建游戏平台存储
+func NewGamePlatformStore(configFile string) (GamePlatformStore, error) {
+	store := &YAMLGamePlatformStore{
 		configFile: configFile,
 	}
 
@@ -48,7 +48,7 @@ func NewPlatformStore(configFile string) (PlatformStore, error) {
 }
 
 // Load 加载平台数据
-func (s *YAMLPlatformStore) Load() error {
+func (s *YAMLGamePlatformStore) Load() error {
 	// 读取配置文件
 	data, err := os.ReadFile(s.configFile)
 	if err != nil {
@@ -67,7 +67,7 @@ func (s *YAMLPlatformStore) Load() error {
 }
 
 // Save 保存平台配置到文件
-func (s *YAMLPlatformStore) Save() error {
+func (s *YAMLGamePlatformStore) Save() error {
 	// 将平台数据序列化为YAML
 	data, err := yaml.Marshal(s.platforms)
 	if err != nil {
@@ -84,7 +84,7 @@ func (s *YAMLPlatformStore) Save() error {
 }
 
 // List 获取所有平台
-func (s *YAMLPlatformStore) List() ([]models.GamePlatform, error) {
+func (s *YAMLGamePlatformStore) List() ([]models.GamePlatform, error) {
 	// 创建副本避免修改原始数据
 	platforms := make([]models.GamePlatform, len(s.platforms))
 	copy(platforms, s.platforms)
@@ -92,7 +92,7 @@ func (s *YAMLPlatformStore) List() ([]models.GamePlatform, error) {
 }
 
 // Get 获取指定ID的平台
-func (s *YAMLPlatformStore) Get(id string) (models.GamePlatform, error) {
+func (s *YAMLGamePlatformStore) Get(id string) (models.GamePlatform, error) {
 	for _, platform := range s.platforms {
 		if platform.ID == id {
 			return platform, nil
@@ -102,7 +102,7 @@ func (s *YAMLPlatformStore) Get(id string) (models.GamePlatform, error) {
 }
 
 // Add 添加平台
-func (s *YAMLPlatformStore) Add(platform models.GamePlatform) error {
+func (s *YAMLGamePlatformStore) Add(platform models.GamePlatform) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -121,7 +121,7 @@ func (s *YAMLPlatformStore) Add(platform models.GamePlatform) error {
 }
 
 // Update 更新平台
-func (s *YAMLPlatformStore) Update(platform models.GamePlatform) error {
+func (s *YAMLGamePlatformStore) Update(platform models.GamePlatform) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -144,7 +144,7 @@ func (s *YAMLPlatformStore) Update(platform models.GamePlatform) error {
 }
 
 // Delete 删除平台
-func (s *YAMLPlatformStore) Delete(id string) error {
+func (s *YAMLGamePlatformStore) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -168,6 +168,6 @@ func (s *YAMLPlatformStore) Delete(id string) error {
 }
 
 // Cleanup 清理测试文件
-func (s *YAMLPlatformStore) Cleanup() error {
+func (s *YAMLGamePlatformStore) Cleanup() error {
 	return os.Remove(s.configFile)
 }

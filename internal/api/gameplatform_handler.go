@@ -8,14 +8,14 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 )
 
-// PlatformHandler 平台API处理器
-type PlatformHandler struct {
-	platformService *service.PlatformService
+// GamePlatformHandler 平台API处理器
+type GamePlatformHandler struct {
+	platformService *service.GamePlatformService
 }
 
 // NewPlatformHandler 创建平台API处理器
-func NewPlatformHandler(platformService *service.PlatformService) *PlatformHandler {
-	return &PlatformHandler{
+func NewPlatformHandler(platformService *service.GamePlatformService) *GamePlatformHandler {
+	return &GamePlatformHandler{
 		platformService: platformService,
 	}
 }
@@ -32,7 +32,7 @@ func NewPlatformHandler(platformService *service.PlatformService) *PlatformHandl
 // @Param status query string false "平台状态(active/maintenance/inactive)"
 // @Success 200 {object} service.PlatformListResult "平台列表"
 // @Router /api/v1/platforms [get]
-func (h *PlatformHandler) ListPlatforms(c *gin.Context) {
+func (h *GamePlatformHandler) ListPlatforms(c *gin.Context) {
 	var params service.PlatformListParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -65,7 +65,7 @@ func (h *PlatformHandler) ListPlatforms(c *gin.Context) {
 // @Param id path string true "平台ID"
 // @Success 200 {object} models.GamePlatform "平台详情"
 // @Router /api/v1/platforms/{id} [get]
-func (h *PlatformHandler) GetPlatform(c *gin.Context) {
+func (h *GamePlatformHandler) GetPlatform(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "平台ID不能为空"})
@@ -95,7 +95,7 @@ func (h *PlatformHandler) GetPlatform(c *gin.Context) {
 // @Param id path string true "平台ID"
 // @Success 200 {object} service.PlatformAccessResult "访问链接"
 // @Router /api/v1/platforms/{id}/access [get]
-func (h *PlatformHandler) GetPlatformAccess(c *gin.Context) {
+func (h *GamePlatformHandler) GetPlatformAccess(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "平台ID不能为空"})
@@ -132,7 +132,7 @@ func (h *PlatformHandler) GetPlatformAccess(c *gin.Context) {
 // @Param id path string true "平台ID"
 // @Success 200 {object} service.PlatformAccessResult "访问链接"
 // @Router /api/v1/platforms/{id}/access/refresh [post]
-func (h *PlatformHandler) RefreshPlatformAccess(c *gin.Context) {
+func (h *GamePlatformHandler) RefreshPlatformAccess(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "平台ID不能为空"})
@@ -169,7 +169,7 @@ func (h *PlatformHandler) RefreshPlatformAccess(c *gin.Context) {
 // @Param body body models.GamePlatform true "平台信息"
 // @Success 201 {object} gin.H "包含新创建的平台ID"
 // @Router /api/v1/platforms [post]
-func (h *PlatformHandler) CreatePlatform(c *gin.Context) {
+func (h *GamePlatformHandler) CreatePlatform(c *gin.Context) {
 	var platform models.GamePlatform
 	if err := c.ShouldBindJSON(&platform); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -207,7 +207,7 @@ func (h *PlatformHandler) CreatePlatform(c *gin.Context) {
 // @Param body body models.GamePlatform true "平台信息"
 // @Success 204 "无内容"
 // @Router /api/v1/platforms/{id} [put]
-func (h *PlatformHandler) UpdatePlatform(c *gin.Context) {
+func (h *GamePlatformHandler) UpdatePlatform(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "平台ID不能为空"})
@@ -247,7 +247,7 @@ func (h *PlatformHandler) UpdatePlatform(c *gin.Context) {
 // @Param id path string true "平台ID"
 // @Success 204 "无内容"
 // @Router /api/v1/platforms/{id} [delete]
-func (h *PlatformHandler) DeletePlatform(c *gin.Context) {
+func (h *GamePlatformHandler) DeletePlatform(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "平台ID不能为空"})

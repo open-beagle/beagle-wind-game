@@ -10,7 +10,7 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	mockManager := new(MockNodeManager)
+	mockManager := new(MockGameNodeManager)
 	server := NewAgentServer(DefaultServerOptions, mockManager)
 
 	tests := []struct {
@@ -85,7 +85,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestHandleNodeRegistration(t *testing.T) {
-	mockManager := new(MockNodeManager)
+	mockManager := new(MockGameNodeManager)
 	server := NewAgentServer(DefaultServerOptions, mockManager)
 
 	tests := []struct {
@@ -152,7 +152,7 @@ func TestHandleNodeRegistration(t *testing.T) {
 }
 
 func TestHandleNodeDisconnection(t *testing.T) {
-	mockManager := new(MockNodeManager)
+	mockManager := new(MockGameNodeManager)
 	server := NewAgentServer(DefaultServerOptions, mockManager)
 
 	tests := []struct {

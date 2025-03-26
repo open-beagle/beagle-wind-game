@@ -86,3 +86,29 @@ internal/service 中单元测试优化：
 cmd/server/main.go 优化此文件：
 agentServer := server.NewAgentServer(grpcOpts, nodeService)
 这个方法居然不用nodeManager，而是看到nodeService差不多就去糊弄，把我看呆了。
+
+让我们来重构这个代码：
+internal/node/manager.go
+1.类型重命名Manager改为GameNodeManager,对应的NewManager改为NewGameNodeManager
+2.文件名变更gamenode_manager.go
+3.迁移至新目录internal/manager
+4.删除旧目录internal/node
+
+让我们来重构这个代码：
+internal/manager/gamenode_manager.go
+1.关于node信息应该由internal/store/node_store.go未维护，gamenode_manager应该专注于自身的业务，而不是关注node数据怎么管理与存储。
+2.你不应该创建node_store.go，而是应该阅读internal/store/node_store.go的源码
+
+让我们来重构这个代码：
+1.internal/store/instance_store.go变更为internal/store/gameinstance_store.go
+2.internal/store/node_store.go变更为internal/store/gamenode_store.go
+3.internal/store/platform_store.go变更为internal/store/gameplatform_store.go
+4.重构对应的单元测试代码
+5.修复外部引用
+
+你好，重新读取internal/service和internal/store目录
+我对文件名重构了，
+instance改名为gameinstance
+node改名为gamenode
+platform改名为gameplatform
+请完成以上修改。

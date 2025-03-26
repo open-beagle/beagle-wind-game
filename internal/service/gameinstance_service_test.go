@@ -26,11 +26,11 @@ var testInstance = models.GameInstance{
 func TestListInstances(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewInstanceStore(tmpFile)
+	instanceStore, err := store.NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer instanceStore.Cleanup()
 
-	service := NewInstanceService(instanceStore)
+	service := NewGameInstanceService(instanceStore)
 
 	tests := []struct {
 		name           string
@@ -101,11 +101,11 @@ func TestListInstances(t *testing.T) {
 func TestGetInstance(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewInstanceStore(tmpFile)
+	instanceStore, err := store.NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer instanceStore.Cleanup()
 
-	service := NewInstanceService(instanceStore)
+	service := NewGameInstanceService(instanceStore)
 
 	tests := []struct {
 		name           string
@@ -173,11 +173,11 @@ func TestGetInstance(t *testing.T) {
 func TestStartInstance(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewInstanceStore(tmpFile)
+	instanceStore, err := store.NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer instanceStore.Cleanup()
 
-	service := NewInstanceService(instanceStore)
+	service := NewGameInstanceService(instanceStore)
 
 	tests := []struct {
 		name          string
@@ -247,11 +247,11 @@ func TestStartInstance(t *testing.T) {
 func TestStopInstance(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewInstanceStore(tmpFile)
+	instanceStore, err := store.NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer instanceStore.Cleanup()
 
-	service := NewInstanceService(instanceStore)
+	service := NewGameInstanceService(instanceStore)
 
 	tests := []struct {
 		name          string
@@ -323,11 +323,11 @@ func TestStopInstance(t *testing.T) {
 func TestCreateInstance(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewInstanceStore(tmpFile)
+	instanceStore, err := store.NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer instanceStore.Cleanup()
 
-	service := NewInstanceService(instanceStore)
+	service := NewGameInstanceService(instanceStore)
 
 	tests := []struct {
 		name          string
@@ -388,11 +388,11 @@ func TestCreateInstance(t *testing.T) {
 func TestUpdateInstance(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewInstanceStore(tmpFile)
+	instanceStore, err := store.NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer instanceStore.Cleanup()
 
-	service := NewInstanceService(instanceStore)
+	service := NewGameInstanceService(instanceStore)
 
 	tests := []struct {
 		name          string
@@ -452,11 +452,11 @@ func TestUpdateInstance(t *testing.T) {
 func TestDeleteInstance(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	instanceStore, err := store.NewInstanceStore(tmpFile)
+	instanceStore, err := store.NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer instanceStore.Cleanup()
 
-	service := NewInstanceService(instanceStore)
+	service := NewGameInstanceService(instanceStore)
 
 	tests := []struct {
 		name          string

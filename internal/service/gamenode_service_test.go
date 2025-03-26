@@ -47,22 +47,24 @@ var testNode = models.GameNode{
 func TestListNodes(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	nodeStore, err := store.NewNodeStore(tmpFile)
-	assert.NoError(t, err)
+	nodeStore, err := store.NewGameNodeStore(tmpFile)
+	if err != nil {
+		t.Fatalf("创建节点存储失败: %v", err)
+	}
 	defer nodeStore.Cleanup()
 
-	service := NewNodeService(nodeStore)
+	service := NewGameNodeService(nodeStore)
 
 	tests := []struct {
 		name           string
-		params         NodeListParams
+		params         GameNodeListParams
 		setup          func()
-		expectedResult NodeListResult
+		expectedResult GameNodeListResult
 		expectedError  error
 	}{
 		{
 			name: "成功获取节点列表",
-			params: NodeListParams{
+			params: GameNodeListParams{
 				Page:     1,
 				PageSize: 20,
 			},
@@ -70,7 +72,7 @@ func TestListNodes(t *testing.T) {
 				err := nodeStore.Add(testNode)
 				assert.NoError(t, err)
 			},
-			expectedResult: NodeListResult{
+			expectedResult: GameNodeListResult{
 				Total: 1,
 				Items: []models.GameNode{testNode},
 			},
@@ -78,7 +80,7 @@ func TestListNodes(t *testing.T) {
 		},
 		{
 			name: "存储层返回错误",
-			params: NodeListParams{
+			params: GameNodeListParams{
 				Page:     1,
 				PageSize: 20,
 			},
@@ -86,7 +88,7 @@ func TestListNodes(t *testing.T) {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
 			},
-			expectedResult: NodeListResult{},
+			expectedResult: GameNodeListResult{},
 			expectedError:  fmt.Errorf("存储层错误"),
 		},
 	}
@@ -117,11 +119,13 @@ func TestListNodes(t *testing.T) {
 func TestGetNode(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	nodeStore, err := store.NewNodeStore(tmpFile)
-	assert.NoError(t, err)
+	nodeStore, err := store.NewGameNodeStore(tmpFile)
+	if err != nil {
+		t.Fatalf("创建节点存储失败: %v", err)
+	}
 	defer nodeStore.Cleanup()
 
-	service := NewNodeService(nodeStore)
+	service := NewGameNodeService(nodeStore)
 
 	tests := []struct {
 		name           string
@@ -185,11 +189,13 @@ func TestGetNode(t *testing.T) {
 func TestCreateNode(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	nodeStore, err := store.NewNodeStore(tmpFile)
-	assert.NoError(t, err)
+	nodeStore, err := store.NewGameNodeStore(tmpFile)
+	if err != nil {
+		t.Fatalf("创建节点存储失败: %v", err)
+	}
 	defer nodeStore.Cleanup()
 
-	service := NewNodeService(nodeStore)
+	service := NewGameNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
@@ -244,11 +250,13 @@ func TestCreateNode(t *testing.T) {
 func TestUpdateNode(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	nodeStore, err := store.NewNodeStore(tmpFile)
-	assert.NoError(t, err)
+	nodeStore, err := store.NewGameNodeStore(tmpFile)
+	if err != nil {
+		t.Fatalf("创建节点存储失败: %v", err)
+	}
 	defer nodeStore.Cleanup()
 
-	service := NewNodeService(nodeStore)
+	service := NewGameNodeService(nodeStore)
 
 	updatedNode := testNode
 	updatedNode.Name = "Updated Node"
@@ -308,11 +316,13 @@ func TestUpdateNode(t *testing.T) {
 func TestDeleteNode(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	nodeStore, err := store.NewNodeStore(tmpFile)
-	assert.NoError(t, err)
+	nodeStore, err := store.NewGameNodeStore(tmpFile)
+	if err != nil {
+		t.Fatalf("创建节点存储失败: %v", err)
+	}
 	defer nodeStore.Cleanup()
 
-	service := NewNodeService(nodeStore)
+	service := NewGameNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
@@ -365,11 +375,13 @@ func TestDeleteNode(t *testing.T) {
 func TestUpdateNodeStatus(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	nodeStore, err := store.NewNodeStore(tmpFile)
-	assert.NoError(t, err)
+	nodeStore, err := store.NewGameNodeStore(tmpFile)
+	if err != nil {
+		t.Fatalf("创建节点存储失败: %v", err)
+	}
 	defer nodeStore.Cleanup()
 
-	service := NewNodeService(nodeStore)
+	service := NewGameNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
@@ -426,11 +438,13 @@ func TestUpdateNodeStatus(t *testing.T) {
 func TestGetNodeAccess(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	nodeStore, err := store.NewNodeStore(tmpFile)
-	assert.NoError(t, err)
+	nodeStore, err := store.NewGameNodeStore(tmpFile)
+	if err != nil {
+		t.Fatalf("创建节点存储失败: %v", err)
+	}
 	defer nodeStore.Cleanup()
 
-	service := NewNodeService(nodeStore)
+	service := NewGameNodeService(nodeStore)
 
 	tests := []struct {
 		name          string
@@ -493,11 +507,13 @@ func TestGetNodeAccess(t *testing.T) {
 func TestRefreshNodeAccess(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	nodeStore, err := store.NewNodeStore(tmpFile)
-	assert.NoError(t, err)
+	nodeStore, err := store.NewGameNodeStore(tmpFile)
+	if err != nil {
+		t.Fatalf("创建节点存储失败: %v", err)
+	}
 	defer nodeStore.Cleanup()
 
-	service := NewNodeService(nodeStore)
+	service := NewGameNodeService(nodeStore)
 
 	tests := []struct {
 		name          string

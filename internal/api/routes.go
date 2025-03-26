@@ -6,8 +6,8 @@ import (
 )
 
 // SetupRouter 设置路由
-func SetupRouter(platformService *service.PlatformService, nodeService *service.NodeService,
-	gameCardService *service.GameCardService, instanceService *service.InstanceService) *gin.Engine {
+func SetupRouter(platformService *service.GamePlatformService, nodeService *service.GameNodeService,
+	gameCardService *service.GameCardService, instanceService *service.GameInstanceService) *gin.Engine {
 	// 创建默认的gin引擎
 	r := gin.Default()
 

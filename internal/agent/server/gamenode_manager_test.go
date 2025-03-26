@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// MockNodeManager 模拟节点管理器
-type MockNodeManager struct {
+// MockGameNodeManager 模拟节点管理器
+type MockGameNodeManager struct {
 	mock.Mock
 }
 
-func (m *MockNodeManager) GetNode(id string) (*models.GameNode, error) {
+func (m *MockGameNodeManager) GetNode(id string) (*models.GameNode, error) {
 	args := m.Called(id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -22,28 +22,28 @@ func (m *MockNodeManager) GetNode(id string) (*models.GameNode, error) {
 	return args.Get(0).(*models.GameNode), args.Error(1)
 }
 
-func (m *MockNodeManager) UpdateNodeStatus(id string, status string) error {
+func (m *MockGameNodeManager) UpdateNodeStatus(id string, status string) error {
 	args := m.Called(id, status)
 	return args.Error(0)
 }
 
-func (m *MockNodeManager) UpdateNodeMetrics(id string, metrics map[string]interface{}) error {
+func (m *MockGameNodeManager) UpdateNodeMetrics(id string, metrics map[string]interface{}) error {
 	args := m.Called(id, metrics)
 	return args.Error(0)
 }
 
-func (m *MockNodeManager) UpdateNodeResources(id string, resources map[string]interface{}) error {
+func (m *MockGameNodeManager) UpdateNodeResources(id string, resources map[string]interface{}) error {
 	args := m.Called(id, resources)
 	return args.Error(0)
 }
 
-func (m *MockNodeManager) UpdateNodeOnlineStatus(id string, online bool) error {
+func (m *MockGameNodeManager) UpdateNodeOnlineStatus(id string, online bool) error {
 	args := m.Called(id, online)
 	return args.Error(0)
 }
 
 func TestUpdateNodeStatus(t *testing.T) {
-	mockManager := new(MockNodeManager)
+	mockManager := new(MockGameNodeManager)
 	server := &AgentServer{
 		nodeManager: mockManager,
 	}
@@ -90,7 +90,7 @@ func TestUpdateNodeStatus(t *testing.T) {
 }
 
 func TestUpdateNodeMetrics(t *testing.T) {
-	mockManager := new(MockNodeManager)
+	mockManager := new(MockGameNodeManager)
 	server := &AgentServer{
 		nodeManager: mockManager,
 	}
@@ -153,7 +153,7 @@ func TestUpdateNodeMetrics(t *testing.T) {
 }
 
 func TestUpdateNodeResources(t *testing.T) {
-	mockManager := new(MockNodeManager)
+	mockManager := new(MockGameNodeManager)
 	server := &AgentServer{
 		nodeManager: mockManager,
 	}
@@ -210,7 +210,7 @@ func TestUpdateNodeResources(t *testing.T) {
 }
 
 func TestHandleNodeHeartbeat(t *testing.T) {
-	mockManager := new(MockNodeManager)
+	mockManager := new(MockGameNodeManager)
 	server := &AgentServer{
 		nodeManager: mockManager,
 	}

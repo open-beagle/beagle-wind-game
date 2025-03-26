@@ -43,25 +43,25 @@ var testNode = models.GameNode{
 	UpdatedAt: time.Now(),
 }
 
-// TestNodeStore_New 测试创建节点存储
-func TestNodeStore_New(t *testing.T) {
+// TestGameNodeStore_New 测试创建节点存储
+func TestGameNodeStore_New(t *testing.T) {
 	// 测试正常创建
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 	assert.NotNil(t, store)
 	defer store.Cleanup()
 
 	// 测试无效文件路径
-	store, err = NewNodeStore("/invalid/path/test.yaml")
+	store, err = NewGameNodeStore("/invalid/path/test.yaml")
 	assert.Error(t, err)
 	assert.Nil(t, store)
 }
 
-// TestNodeStore_List 测试获取所有节点
-func TestNodeStore_List(t *testing.T) {
+// TestGameNodeStore_List 测试获取所有节点
+func TestGameNodeStore_List(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -81,10 +81,10 @@ func TestNodeStore_List(t *testing.T) {
 	assert.Equal(t, testNode.ID, nodes[0].ID)
 }
 
-// TestNodeStore_Get 测试获取指定节点
-func TestNodeStore_Get(t *testing.T) {
+// TestGameNodeStore_Get 测试获取指定节点
+func TestGameNodeStore_Get(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -104,10 +104,10 @@ func TestNodeStore_Get(t *testing.T) {
 	assert.Equal(t, testNode.Name, node.Name)
 }
 
-// TestNodeStore_Add 测试添加节点
-func TestNodeStore_Add(t *testing.T) {
+// TestGameNodeStore_Add 测试添加节点
+func TestGameNodeStore_Add(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -126,10 +126,10 @@ func TestNodeStore_Add(t *testing.T) {
 	assert.Contains(t, err.Error(), "节点已存在")
 }
 
-// TestNodeStore_Update 测试更新节点
-func TestNodeStore_Update(t *testing.T) {
+// TestGameNodeStore_Update 测试更新节点
+func TestGameNodeStore_Update(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -154,10 +154,10 @@ func TestNodeStore_Update(t *testing.T) {
 	assert.Equal(t, "Updated Node", node.Name)
 }
 
-// TestNodeStore_Delete 测试删除节点
-func TestNodeStore_Delete(t *testing.T) {
+// TestGameNodeStore_Delete 测试删除节点
+func TestGameNodeStore_Delete(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -180,10 +180,10 @@ func TestNodeStore_Delete(t *testing.T) {
 	assert.Contains(t, err.Error(), "节点不存在")
 }
 
-// TestNodeStore_Cleanup 测试清理文件
-func TestNodeStore_Cleanup(t *testing.T) {
+// TestGameNodeStore_Cleanup 测试清理文件
+func TestGameNodeStore_Cleanup(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 
 	// 添加测试数据
@@ -199,45 +199,12 @@ func TestNodeStore_Cleanup(t *testing.T) {
 	assert.True(t, os.IsNotExist(err), "文件应该被删除")
 }
 
-// TestNodeStoreStatusManagement 测试节点状态管理
-func TestNodeStoreStatusManagement(t *testing.T) {
+// TestGameNodeStoreStatusManagement 测试节点状态管理
+func TestGameNodeStoreStatusManagement(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
-
-	// 创建测试数据
-	testNode := models.GameNode{
-		ID:       "test-node-1",
-		Name:     "Test Node",
-		Model:    "test-model",
-		Type:     models.GameNodeTypePhysical,
-		Location: "test-location",
-		Hardware: map[string]string{
-			"cpu":    "4",
-			"memory": "8",
-		},
-		Network: map[string]string{
-			"ip": "192.168.1.1",
-		},
-		Labels: map[string]string{
-			"env": "test",
-		},
-		Status: models.GameNodeStatus{
-			State:      models.GameNodeStateOffline,
-			Online:     false,
-			LastOnline: time.Now(),
-			UpdatedAt:  time.Now(),
-			Resources: map[string]string{
-				"cpu_usage": "0.5",
-			},
-			Metrics: map[string]interface{}{
-				"latency": 100,
-			},
-		},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
 
 	// 添加节点
 	err = store.Add(testNode)
@@ -270,46 +237,12 @@ func TestNodeStoreStatusManagement(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestNodeStoreResourceManagement 测试节点资源管理
-func TestNodeStoreResourceManagement(t *testing.T) {
+// TestGameNodeStoreResourceManagement 测试节点资源管理
+func TestGameNodeStoreResourceManagement(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
-
-	// 创建测试数据
-	testNode := models.GameNode{
-		ID:       "test-node-1",
-		Name:     "Test Node",
-		Model:    "test-model",
-		Type:     models.GameNodeTypePhysical,
-		Location: "test-location",
-		Hardware: map[string]string{
-			"cpu":    "4",
-			"memory": "8",
-		},
-		Network: map[string]string{
-			"ip": "192.168.1.1",
-		},
-		Labels: map[string]string{
-			"env": "test",
-		},
-		Status: models.GameNodeStatus{
-			State:      models.GameNodeStateReady,
-			Online:     true,
-			LastOnline: time.Now(),
-			UpdatedAt:  time.Now(),
-			Resources: map[string]string{
-				"cpu_usage":    "0.3",
-				"memory_usage": "0.4",
-			},
-			Metrics: map[string]interface{}{
-				"latency": 100,
-			},
-		},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
 
 	// 添加节点
 	err = store.Add(testNode)
@@ -344,45 +277,12 @@ func TestNodeStoreResourceManagement(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestNodeStoreLabelManagement 测试节点标签管理
-func TestNodeStoreLabelManagement(t *testing.T) {
+// TestGameNodeStoreLabelManagement 测试节点标签管理
+func TestGameNodeStoreLabelManagement(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewNodeStore(tmpFile)
+	store, err := NewGameNodeStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
-
-	// 创建测试数据
-	testNode := models.GameNode{
-		ID:       "test-node-1",
-		Name:     "Test Node",
-		Model:    "test-model",
-		Type:     models.GameNodeTypePhysical,
-		Location: "test-location",
-		Hardware: map[string]string{
-			"cpu":    "4",
-			"memory": "8",
-		},
-		Network: map[string]string{
-			"ip": "192.168.1.1",
-		},
-		Labels: map[string]string{
-			"env": "test",
-		},
-		Status: models.GameNodeStatus{
-			State:      models.GameNodeStateOffline,
-			Online:     false,
-			LastOnline: time.Now(),
-			UpdatedAt:  time.Now(),
-			Resources: map[string]string{
-				"cpu_usage": "0.5",
-			},
-			Metrics: map[string]interface{}{
-				"latency": 100,
-			},
-		},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
 
 	// 添加节点
 	err = store.Add(testNode)

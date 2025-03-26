@@ -21,8 +21,8 @@ var testPlatform = models.GamePlatform{
 	Bin:      "test-bin",
 	Features: []string{"feature1", "feature2"},
 	Config:   map[string]string{"key": "value"},
-	Files:    []models.PlatformFile{{ID: "file1", Type: "bin", URL: "http://test.com/file1"}},
-	Installer: []models.PlatformInstaller{
+	Files:    []models.GamePlatformFile{{ID: "file1", Type: "bin", URL: "http://test.com/file1"}},
+	Installer: []models.GamePlatformInstaller{
 		{
 			Command: "install",
 			Move:    &models.InstallerMove{Src: "src", Dst: "dst"},
@@ -34,25 +34,25 @@ var testPlatform = models.GamePlatform{
 	UpdatedAt: time.Now(),
 }
 
-// TestPlatformStore_New 测试创建平台存储
-func TestPlatformStore_New(t *testing.T) {
+// TestGamePlatformStore_New 测试创建平台存储
+func TestGamePlatformStore_New(t *testing.T) {
 	// 测试正常创建
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 	assert.NotNil(t, store)
 	defer store.Cleanup()
 
 	// 测试无效文件路径
-	store, err = NewPlatformStore("/invalid/path/test.yaml")
+	store, err = NewGamePlatformStore("/invalid/path/test.yaml")
 	assert.Error(t, err)
 	assert.Nil(t, store)
 }
 
-// TestPlatformStore_List 测试获取所有平台
-func TestPlatformStore_List(t *testing.T) {
+// TestGamePlatformStore_List 测试获取所有平台
+func TestGamePlatformStore_List(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -72,10 +72,10 @@ func TestPlatformStore_List(t *testing.T) {
 	assert.Equal(t, testPlatform.ID, platforms[0].ID)
 }
 
-// TestPlatformStore_Get 测试获取指定平台
-func TestPlatformStore_Get(t *testing.T) {
+// TestGamePlatformStore_Get 测试获取指定平台
+func TestGamePlatformStore_Get(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -95,10 +95,10 @@ func TestPlatformStore_Get(t *testing.T) {
 	assert.Equal(t, testPlatform.Name, platform.Name)
 }
 
-// TestPlatformStore_Add 测试添加平台
-func TestPlatformStore_Add(t *testing.T) {
+// TestGamePlatformStore_Add 测试添加平台
+func TestGamePlatformStore_Add(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -117,10 +117,10 @@ func TestPlatformStore_Add(t *testing.T) {
 	assert.Contains(t, err.Error(), "平台ID已存在")
 }
 
-// TestPlatformStore_Update 测试更新平台
-func TestPlatformStore_Update(t *testing.T) {
+// TestGamePlatformStore_Update 测试更新平台
+func TestGamePlatformStore_Update(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -145,10 +145,10 @@ func TestPlatformStore_Update(t *testing.T) {
 	assert.Equal(t, "Updated Platform", platform.Name)
 }
 
-// TestPlatformStore_Delete 测试删除平台
-func TestPlatformStore_Delete(t *testing.T) {
+// TestGamePlatformStore_Delete 测试删除平台
+func TestGamePlatformStore_Delete(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -171,10 +171,10 @@ func TestPlatformStore_Delete(t *testing.T) {
 	assert.Contains(t, err.Error(), "平台不存在")
 }
 
-// TestPlatformStore_Cleanup 测试清理文件
-func TestPlatformStore_Cleanup(t *testing.T) {
+// TestGamePlatformStore_Cleanup 测试清理文件
+func TestGamePlatformStore_Cleanup(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 
 	// 添加测试数据
@@ -190,11 +190,11 @@ func TestPlatformStore_Cleanup(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
-// TestPlatformStore 测试平台存储
-func TestPlatformStore(t *testing.T) {
+// TestGamePlatformStore 测试平台存储
+func TestGamePlatformStore(t *testing.T) {
 	// 创建存储实例
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -209,8 +209,8 @@ func TestPlatformStore(t *testing.T) {
 		Bin:       "/usr/local/bin/test",
 		Features:  []string{"feature1", "feature2"},
 		Config:    map[string]string{"key1": "value1"},
-		Files:     []models.PlatformFile{},
-		Installer: []models.PlatformInstaller{},
+		Files:     []models.GamePlatformFile{},
+		Installer: []models.GamePlatformInstaller{},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -244,10 +244,10 @@ func TestPlatformStore(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestPlatformStoreVersionManagement 测试平台版本管理
-func TestPlatformStoreVersionManagement(t *testing.T) {
+// TestGamePlatformStoreVersionManagement 测试平台版本管理
+func TestGamePlatformStoreVersionManagement(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -263,8 +263,8 @@ func TestPlatformStoreVersionManagement(t *testing.T) {
 		Bin:       "/usr/local/bin/test",
 		Features:  []string{"feature1", "feature2"},
 		Config:    map[string]string{"key1": "value1"},
-		Files:     []models.PlatformFile{},
-		Installer: []models.PlatformInstaller{},
+		Files:     []models.GamePlatformFile{},
+		Installer: []models.GamePlatformInstaller{},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -294,10 +294,10 @@ func TestPlatformStoreVersionManagement(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestPlatformStoreConfigManagement 测试平台配置管理
-func TestPlatformStoreConfigManagement(t *testing.T) {
+// TestGamePlatformStoreConfigManagement 测试平台配置管理
+func TestGamePlatformStoreConfigManagement(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewPlatformStore(tmpFile)
+	store, err := NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -312,8 +312,8 @@ func TestPlatformStoreConfigManagement(t *testing.T) {
 		Bin:       "/usr/local/bin/test",
 		Features:  []string{"feature1", "feature2"},
 		Config:    map[string]string{"key1": "value1"},
-		Files:     []models.PlatformFile{},
-		Installer: []models.PlatformInstaller{},
+		Files:     []models.GamePlatformFile{},
+		Installer: []models.GamePlatformInstaller{},
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}

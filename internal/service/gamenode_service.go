@@ -8,28 +8,28 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/store"
 )
 
-// NodeService 游戏节点服务
-type NodeService struct {
-	nodeStore store.NodeStore
+// GameNodeService 游戏节点服务
+type GameNodeService struct {
+	nodeStore store.GameNodeStore
 }
 
-// NewNodeService 创建游戏节点服务
-func NewNodeService(nodeStore store.NodeStore) *NodeService {
-	return &NodeService{
+// NewGameNodeService 创建游戏节点服务
+func NewGameNodeService(nodeStore store.GameNodeStore) *GameNodeService {
+	return &GameNodeService{
 		nodeStore: nodeStore,
 	}
 }
 
-// NodeListParams 节点列表查询参数
-type NodeListParams struct {
+// GameNodeListParams 节点列表查询参数
+type GameNodeListParams struct {
 	Page     int    `form:"page" binding:"omitempty,min=1"`
 	PageSize int    `form:"size" binding:"omitempty,min=1,max=100"`
 	Keyword  string `form:"keyword" binding:"omitempty"`
 	Status   string `form:"status" binding:"omitempty,oneof=online offline maintenance"`
 }
 
-// NodeListResult 节点列表查询结果
-type NodeListResult struct {
+// GameNodeListResult 节点列表查询结果
+type GameNodeListResult struct {
 	Total int               `json:"total"`
 	Items []models.GameNode `json:"items"`
 }
@@ -41,11 +41,11 @@ type NodeAccessResult struct {
 }
 
 // ListNodes 获取游戏节点列表
-func (s *NodeService) ListNodes(params NodeListParams) (NodeListResult, error) {
+func (s *GameNodeService) ListNodes(params GameNodeListParams) (GameNodeListResult, error) {
 	// 从存储获取节点列表
 	nodes, err := s.nodeStore.List()
 	if err != nil {
-		return NodeListResult{}, fmt.Errorf("存储层错误")
+		return GameNodeListResult{}, fmt.Errorf("存储层错误")
 	}
 
 	// 过滤和分页
@@ -80,7 +80,7 @@ func (s *NodeService) ListNodes(params NodeListParams) (NodeListResult, error) {
 	start := (params.Page - 1) * params.PageSize
 	end := start + params.PageSize
 	if start >= total {
-		return NodeListResult{
+		return GameNodeListResult{
 			Total: total,
 			Items: []models.GameNode{},
 		}, nil
@@ -89,14 +89,14 @@ func (s *NodeService) ListNodes(params NodeListParams) (NodeListResult, error) {
 		end = total
 	}
 
-	return NodeListResult{
+	return GameNodeListResult{
 		Total: total,
 		Items: filteredNodes[start:end],
 	}, nil
 }
 
 // GetNode 获取节点信息
-func (s *NodeService) GetNode(id string) (*models.GameNode, error) {
+func (s *GameNodeService) GetNode(id string) (*models.GameNode, error) {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
 		return nil, fmt.Errorf("存储层错误")
@@ -111,7 +111,7 @@ func (s *NodeService) GetNode(id string) (*models.GameNode, error) {
 }
 
 // CreateNode 创建游戏节点
-func (s *NodeService) CreateNode(node models.GameNode) error {
+func (s *GameNodeService) CreateNode(node models.GameNode) error {
 	// 检查节点是否已存在
 	existingNode, err := s.nodeStore.Get(node.ID)
 	if err != nil {
@@ -144,7 +144,7 @@ func (s *NodeService) CreateNode(node models.GameNode) error {
 }
 
 // UpdateNode 更新游戏节点
-func (s *NodeService) UpdateNode(id string, node models.GameNode) error {
+func (s *GameNodeService) UpdateNode(id string, node models.GameNode) error {
 	// 检查节点是否存在
 	existingNode, err := s.nodeStore.Get(id)
 	if err != nil {
@@ -169,7 +169,7 @@ func (s *NodeService) UpdateNode(id string, node models.GameNode) error {
 }
 
 // DeleteNode 删除游戏节点
-func (s *NodeService) DeleteNode(id string) error {
+func (s *GameNodeService) DeleteNode(id string) error {
 	// 检查节点是否存在
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
@@ -187,7 +187,7 @@ func (s *NodeService) DeleteNode(id string) error {
 }
 
 // UpdateNodeStatus 更新节点状态
-func (s *NodeService) UpdateNodeStatus(id string, status string) error {
+func (s *GameNodeService) UpdateNodeStatus(id string, status string) error {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
 		return fmt.Errorf("存储层错误")
@@ -208,7 +208,7 @@ func (s *NodeService) UpdateNodeStatus(id string, status string) error {
 }
 
 // UpdateNodeMetrics 更新节点指标
-func (s *NodeService) UpdateNodeMetrics(id string, metrics map[string]interface{}) error {
+func (s *GameNodeService) UpdateNodeMetrics(id string, metrics map[string]interface{}) error {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
 		return fmt.Errorf("存储层错误")
@@ -229,7 +229,7 @@ func (s *NodeService) UpdateNodeMetrics(id string, metrics map[string]interface{
 }
 
 // UpdateNodeResources 更新节点资源
-func (s *NodeService) UpdateNodeResources(id string, resources map[string]interface{}) error {
+func (s *GameNodeService) UpdateNodeResources(id string, resources map[string]interface{}) error {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
 		return fmt.Errorf("存储层错误")
@@ -260,7 +260,7 @@ func (s *NodeService) UpdateNodeResources(id string, resources map[string]interf
 }
 
 // UpdateNodeOnlineStatus 更新节点在线状态
-func (s *NodeService) UpdateNodeOnlineStatus(id string, online bool) error {
+func (s *GameNodeService) UpdateNodeOnlineStatus(id string, online bool) error {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
 		return fmt.Errorf("存储层错误")
@@ -284,7 +284,7 @@ func (s *NodeService) UpdateNodeOnlineStatus(id string, online bool) error {
 }
 
 // GetNodeAccess 获取节点访问链接
-func (s *NodeService) GetNodeAccess(id string) (NodeAccessResult, error) {
+func (s *GameNodeService) GetNodeAccess(id string) (NodeAccessResult, error) {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
 		return NodeAccessResult{}, fmt.Errorf("存储层错误")
@@ -304,7 +304,7 @@ func (s *NodeService) GetNodeAccess(id string) (NodeAccessResult, error) {
 }
 
 // RefreshNodeAccess 刷新节点访问链接
-func (s *NodeService) RefreshNodeAccess(id string) (NodeAccessResult, error) {
+func (s *GameNodeService) RefreshNodeAccess(id string) (NodeAccessResult, error) {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
 		return NodeAccessResult{}, fmt.Errorf("存储层错误")

@@ -31,31 +31,34 @@ func main() {
 	}
 
 	// 创建存储实例
-	platformStore, err := store.NewPlatformStore("config/platforms.yaml")
+	platformStore, err := store.NewGamePlatformStore("config/platforms.yaml")
 	if err != nil {
 		log.Fatalf("创建平台存储失败: %v", err)
 	}
+	defer platformStore.Cleanup()
 
-	nodeStore, err := store.NewNodeStore("data/nodes.yaml")
+	nodeStore, err := store.NewGameNodeStore("data/nodes.yaml")
 	if err != nil {
 		log.Fatalf("创建节点存储失败: %v", err)
 	}
+	defer nodeStore.Cleanup()
 
 	gameCardStore, err := store.NewGameCardStore("data/game_cards.yaml")
 	if err != nil {
 		log.Fatalf("创建游戏卡片存储失败: %v", err)
 	}
 
-	instanceStore, err := store.NewInstanceStore("data/instances.yaml")
+	instanceStore, err := store.NewGameInstanceStore("data/instances.yaml")
 	if err != nil {
 		log.Fatalf("创建实例存储失败: %v", err)
 	}
+	defer instanceStore.Cleanup()
 
 	// 创建服务实例
-	platformService := service.NewPlatformService(platformStore)
-	nodeService := service.NewNodeService(nodeStore)
+	platformService := service.NewGamePlatformService(platformStore)
+	nodeService := service.NewGameNodeService(nodeStore)
 	gameCardService := service.NewGameCardService(gameCardStore)
-	instanceService := service.NewInstanceService(instanceStore)
+	instanceService := service.NewGameInstanceService(instanceStore)
 
 	// 创建并启动 gRPC 服务器
 	grpcOpts := server.ServerOptions{

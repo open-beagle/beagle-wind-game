@@ -8,7 +8,7 @@ import (
 )
 
 // NodeManager 节点管理器接口
-type NodeManager interface {
+type GameNodeManager interface {
 	GetNode(id string) (*models.GameNode, error)
 	UpdateNodeStatus(id string, status string) error
 	UpdateNodeMetrics(id string, metrics map[string]interface{}) error

@@ -8,14 +8,14 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/store"
 )
 
-// PlatformService 游戏平台服务
-type PlatformService struct {
-	platformStore store.PlatformStore
+// GamePlatformService 游戏平台服务
+type GamePlatformService struct {
+	platformStore store.GamePlatformStore
 }
 
-// NewPlatformService 创建游戏平台服务
-func NewPlatformService(platformStore store.PlatformStore) *PlatformService {
-	return &PlatformService{
+// NewGamePlatformService 创建游戏平台服务
+func NewGamePlatformService(platformStore store.GamePlatformStore) *GamePlatformService {
+	return &GamePlatformService{
 		platformStore: platformStore,
 	}
 }
@@ -35,7 +35,7 @@ type PlatformListResult struct {
 }
 
 // ListPlatforms 获取游戏平台列表
-func (s *PlatformService) ListPlatforms(params PlatformListParams) (PlatformListResult, error) {
+func (s *GamePlatformService) ListPlatforms(params PlatformListParams) (PlatformListResult, error) {
 	platforms, err := s.platformStore.List()
 	if err != nil {
 		return PlatformListResult{}, fmt.Errorf("存储层错误")
@@ -90,7 +90,7 @@ func (s *PlatformService) ListPlatforms(params PlatformListParams) (PlatformList
 }
 
 // GetPlatform 获取指定ID的平台
-func (s *PlatformService) GetPlatform(id string) (*models.GamePlatform, error) {
+func (s *GamePlatformService) GetPlatform(id string) (*models.GamePlatform, error) {
 	platform, err := s.platformStore.Get(id)
 	if err != nil {
 		return nil, fmt.Errorf("存储层错误")
@@ -108,7 +108,7 @@ type PlatformAccessResult struct {
 }
 
 // GetPlatformAccess 获取平台远程访问链接
-func (s *PlatformService) GetPlatformAccess(id string) (PlatformAccessResult, error) {
+func (s *GamePlatformService) GetPlatformAccess(id string) (PlatformAccessResult, error) {
 	// 检查平台是否存在
 	platform, err := s.platformStore.Get(id)
 	if err != nil {
@@ -127,7 +127,7 @@ func (s *PlatformService) GetPlatformAccess(id string) (PlatformAccessResult, er
 }
 
 // RefreshPlatformAccess 刷新平台远程访问链接
-func (s *PlatformService) RefreshPlatformAccess(id string) (PlatformAccessResult, error) {
+func (s *GamePlatformService) RefreshPlatformAccess(id string) (PlatformAccessResult, error) {
 	// 检查平台是否存在
 	platform, err := s.platformStore.Get(id)
 	if err != nil {
@@ -146,7 +146,7 @@ func (s *PlatformService) RefreshPlatformAccess(id string) (PlatformAccessResult
 }
 
 // UpdatePlatform 更新平台信息
-func (s *PlatformService) UpdatePlatform(id string, platformData models.GamePlatform) error {
+func (s *GamePlatformService) UpdatePlatform(id string, platformData models.GamePlatform) error {
 	// 检查平台是否存在
 	existingPlatform, err := s.platformStore.Get(id)
 	if err != nil {
@@ -174,7 +174,7 @@ func (s *PlatformService) UpdatePlatform(id string, platformData models.GamePlat
 }
 
 // CreatePlatform 创建新平台
-func (s *PlatformService) CreatePlatform(platformData models.GamePlatform) (string, error) {
+func (s *GamePlatformService) CreatePlatform(platformData models.GamePlatform) (string, error) {
 	// 检查平台是否已存在
 	existingPlatform, err := s.platformStore.Get(platformData.ID)
 	if err != nil {
@@ -199,7 +199,7 @@ func (s *PlatformService) CreatePlatform(platformData models.GamePlatform) (stri
 }
 
 // DeletePlatform 删除平台
-func (s *PlatformService) DeletePlatform(id string) error {
+func (s *GamePlatformService) DeletePlatform(id string) error {
 	// 检查平台是否存在
 	platform, err := s.platformStore.Get(id)
 	if err != nil {

@@ -23,7 +23,7 @@ var testPlatform = models.GamePlatform{
 	Bin:       "/usr/bin/test",
 	Features:  []string{"feature1", "feature2"},
 	Config:    map[string]string{"key1": "value1"},
-	Files:     []models.PlatformFile{},
+	Files:     []models.GamePlatformFile{},
 	CreatedAt: time.Now(),
 	UpdatedAt: time.Now(),
 }
@@ -31,11 +31,11 @@ var testPlatform = models.GamePlatform{
 func TestListPlatforms(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	platformStore, err := store.NewPlatformStore(tmpFile)
+	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
-	defer platformStore.Cleanup()
+	defer GamePlatformStore.Cleanup()
 
-	service := NewPlatformService(platformStore)
+	service := NewGamePlatformService(GamePlatformStore)
 
 	tests := []struct {
 		name           string
@@ -51,7 +51,7 @@ func TestListPlatforms(t *testing.T) {
 				PageSize: 20,
 			},
 			setup: func() {
-				err := platformStore.Add(testPlatform)
+				err := GamePlatformStore.Add(testPlatform)
 				assert.NoError(t, err)
 			},
 			expectedResult: PlatformListResult{
@@ -104,11 +104,11 @@ func TestListPlatforms(t *testing.T) {
 func TestGetPlatform(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	platformStore, err := store.NewPlatformStore(tmpFile)
+	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
-	defer platformStore.Cleanup()
+	defer GamePlatformStore.Cleanup()
 
-	service := NewPlatformService(platformStore)
+	service := NewGamePlatformService(GamePlatformStore)
 
 	tests := []struct {
 		name           string
@@ -121,7 +121,7 @@ func TestGetPlatform(t *testing.T) {
 			name:       "成功获取平台",
 			platformID: "test-platform-1",
 			setup: func() {
-				err := platformStore.Add(testPlatform)
+				err := GamePlatformStore.Add(testPlatform)
 				assert.NoError(t, err)
 			},
 			expectedResult: &testPlatform,
@@ -175,11 +175,11 @@ func TestGetPlatform(t *testing.T) {
 func TestCreatePlatform(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	platformStore, err := store.NewPlatformStore(tmpFile)
+	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
-	defer platformStore.Cleanup()
+	defer GamePlatformStore.Cleanup()
 
-	service := NewPlatformService(platformStore)
+	service := NewGamePlatformService(GamePlatformStore)
 
 	tests := []struct {
 		name          string
@@ -201,7 +201,7 @@ func TestCreatePlatform(t *testing.T) {
 			name:     "平台ID已存在",
 			platform: testPlatform,
 			setup: func() {
-				err := platformStore.Add(testPlatform)
+				err := GamePlatformStore.Add(testPlatform)
 				assert.NoError(t, err)
 			},
 			expectedID:    "",
@@ -243,11 +243,11 @@ func TestCreatePlatform(t *testing.T) {
 func TestUpdatePlatform(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	platformStore, err := store.NewPlatformStore(tmpFile)
+	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
-	defer platformStore.Cleanup()
+	defer GamePlatformStore.Cleanup()
 
-	service := NewPlatformService(platformStore)
+	service := NewGamePlatformService(GamePlatformStore)
 
 	updatedPlatform := testPlatform
 	updatedPlatform.Name = "Updated Platform"
@@ -264,7 +264,7 @@ func TestUpdatePlatform(t *testing.T) {
 			platformID: "test-platform-1",
 			platform:   updatedPlatform,
 			setup: func() {
-				err := platformStore.Add(testPlatform)
+				err := GamePlatformStore.Add(testPlatform)
 				assert.NoError(t, err)
 			},
 			expectedError: nil,
@@ -310,11 +310,11 @@ func TestUpdatePlatform(t *testing.T) {
 func TestDeletePlatform(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	platformStore, err := store.NewPlatformStore(tmpFile)
+	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
-	defer platformStore.Cleanup()
+	defer GamePlatformStore.Cleanup()
 
-	service := NewPlatformService(platformStore)
+	service := NewGamePlatformService(GamePlatformStore)
 
 	tests := []struct {
 		name          string
@@ -326,7 +326,7 @@ func TestDeletePlatform(t *testing.T) {
 			name:       "成功删除平台",
 			platformID: "test-platform-1",
 			setup: func() {
-				err := platformStore.Add(testPlatform)
+				err := GamePlatformStore.Add(testPlatform)
 				assert.NoError(t, err)
 			},
 			expectedError: nil,
@@ -370,11 +370,11 @@ func TestDeletePlatform(t *testing.T) {
 func TestGetPlatformAccess(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	platformStore, err := store.NewPlatformStore(tmpFile)
+	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
-	defer platformStore.Cleanup()
+	defer GamePlatformStore.Cleanup()
 
-	service := NewPlatformService(platformStore)
+	service := NewGamePlatformService(GamePlatformStore)
 
 	tests := []struct {
 		name          string
@@ -387,7 +387,7 @@ func TestGetPlatformAccess(t *testing.T) {
 			name:       "成功获取平台访问链接",
 			platformID: "test-platform-1",
 			setup: func() {
-				err := platformStore.Add(testPlatform)
+				err := GamePlatformStore.Add(testPlatform)
 				assert.NoError(t, err)
 			},
 			expectedError: nil,
@@ -440,11 +440,11 @@ func TestGetPlatformAccess(t *testing.T) {
 func TestRefreshPlatformAccess(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
-	platformStore, err := store.NewPlatformStore(tmpFile)
+	GamePlatformStore, err := store.NewGamePlatformStore(tmpFile)
 	assert.NoError(t, err)
-	defer platformStore.Cleanup()
+	defer GamePlatformStore.Cleanup()
 
-	service := NewPlatformService(platformStore)
+	service := NewGamePlatformService(GamePlatformStore)
 
 	tests := []struct {
 		name          string
@@ -457,7 +457,7 @@ func TestRefreshPlatformAccess(t *testing.T) {
 			name:       "成功刷新平台访问链接",
 			platformID: "test-platform-1",
 			setup: func() {
-				err := platformStore.Add(testPlatform)
+				err := GamePlatformStore.Add(testPlatform)
 				assert.NoError(t, err)
 			},
 			expectedError: nil,

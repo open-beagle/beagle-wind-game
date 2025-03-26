@@ -10,11 +10,11 @@ import (
 
 // InstanceHandler 游戏实例API处理器
 type InstanceHandler struct {
-	instanceService *service.InstanceService
+	instanceService *service.GameInstanceService
 }
 
 // NewInstanceHandler 创建游戏实例API处理器
-func NewInstanceHandler(instanceService *service.InstanceService) *InstanceHandler {
+func NewInstanceHandler(instanceService *service.GameInstanceService) *InstanceHandler {
 	return &InstanceHandler{
 		instanceService: instanceService,
 	}

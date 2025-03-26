@@ -10,11 +10,11 @@ import (
 
 // NodeHandler 节点API处理器
 type NodeHandler struct {
-	nodeService *service.NodeService
+	nodeService *service.GameNodeService
 }
 
 // NewNodeHandler 创建节点API处理器
-func NewNodeHandler(nodeService *service.NodeService) *NodeHandler {
+func NewNodeHandler(nodeService *service.GameNodeService) *NodeHandler {
 	return &NodeHandler{
 		nodeService: nodeService,
 	}
@@ -30,10 +30,10 @@ func NewNodeHandler(nodeService *service.NodeService) *NodeHandler {
 // @Param size query int false "每页数量"
 // @Param keyword query string false "搜索关键词"
 // @Param status query string false "节点状态(online/offline/maintenance)"
-// @Success 200 {object} service.NodeListResult "节点列表"
+// @Success 200 {object} service.GameNodeListResult "节点列表"
 // @Router /api/v1/game-nodes [get]
 func (h *NodeHandler) ListNodes(c *gin.Context) {
-	var params service.NodeListParams
+	var params service.GameNodeListParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

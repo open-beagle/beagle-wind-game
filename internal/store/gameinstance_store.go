@@ -9,8 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// InstanceStore 游戏实例存储接口
-type InstanceStore interface {
+// GameInstanceStore 游戏实例存储接口
+type GameInstanceStore interface {
 	// List 获取所有实例
 	List() ([]models.GameInstance, error)
 	// Get 获取指定ID的实例
@@ -29,16 +29,16 @@ type InstanceStore interface {
 	Cleanup() error
 }
 
-// YAMLInstanceStore YAML文件存储实现
-type YAMLInstanceStore struct {
+// YAMLGameInstanceStore YAML文件存储实现
+type YAMLGameInstanceStore struct {
 	dataFile  string
 	instances []models.GameInstance
 	mu        sync.RWMutex
 }
 
-// NewInstanceStore 创建游戏实例存储
-func NewInstanceStore(dataFile string) (InstanceStore, error) {
-	store := &YAMLInstanceStore{
+// NewGameInstanceStore 创建游戏实例存储
+func NewGameInstanceStore(dataFile string) (GameInstanceStore, error) {
+	store := &YAMLGameInstanceStore{
 		dataFile: dataFile,
 	}
 
@@ -52,7 +52,7 @@ func NewInstanceStore(dataFile string) (InstanceStore, error) {
 }
 
 // Load 加载实例数据
-func (s *YAMLInstanceStore) Load() error {
+func (s *YAMLGameInstanceStore) Load() error {
 	// 检查文件状态
 	fileInfo, err := os.Stat(s.dataFile)
 	if err != nil {
@@ -87,7 +87,7 @@ func (s *YAMLInstanceStore) Load() error {
 }
 
 // Save 保存实例数据
-func (s *YAMLInstanceStore) Save() error {
+func (s *YAMLGameInstanceStore) Save() error {
 	// 检查文件状态
 	fileInfo, err := os.Stat(s.dataFile)
 	if err == nil && fileInfo.IsDir() {
@@ -110,7 +110,7 @@ func (s *YAMLInstanceStore) Save() error {
 }
 
 // List 获取所有实例
-func (s *YAMLInstanceStore) List() ([]models.GameInstance, error) {
+func (s *YAMLGameInstanceStore) List() ([]models.GameInstance, error) {
 	// 检查文件状态
 	fileInfo, err := os.Stat(s.dataFile)
 	if err != nil {
@@ -132,7 +132,7 @@ func (s *YAMLInstanceStore) List() ([]models.GameInstance, error) {
 }
 
 // Get 获取指定ID的实例
-func (s *YAMLInstanceStore) Get(id string) (models.GameInstance, error) {
+func (s *YAMLGameInstanceStore) Get(id string) (models.GameInstance, error) {
 	// 检查文件状态
 	fileInfo, err := os.Stat(s.dataFile)
 	if err != nil {
@@ -156,7 +156,7 @@ func (s *YAMLInstanceStore) Get(id string) (models.GameInstance, error) {
 }
 
 // Add 添加实例
-func (s *YAMLInstanceStore) Add(instance models.GameInstance) error {
+func (s *YAMLGameInstanceStore) Add(instance models.GameInstance) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -181,7 +181,7 @@ func (s *YAMLInstanceStore) Add(instance models.GameInstance) error {
 }
 
 // Update 更新实例
-func (s *YAMLInstanceStore) Update(instance models.GameInstance) error {
+func (s *YAMLGameInstanceStore) Update(instance models.GameInstance) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -203,7 +203,7 @@ func (s *YAMLInstanceStore) Update(instance models.GameInstance) error {
 }
 
 // Delete 删除实例
-func (s *YAMLInstanceStore) Delete(id string) error {
+func (s *YAMLGameInstanceStore) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -226,7 +226,7 @@ func (s *YAMLInstanceStore) Delete(id string) error {
 }
 
 // FindByNodeID 根据节点ID查找实例
-func (s *YAMLInstanceStore) FindByNodeID(nodeID string) ([]models.GameInstance, error) {
+func (s *YAMLGameInstanceStore) FindByNodeID(nodeID string) ([]models.GameInstance, error) {
 	// 检查文件状态
 	fileInfo, err := os.Stat(s.dataFile)
 	if err != nil {
@@ -251,7 +251,7 @@ func (s *YAMLInstanceStore) FindByNodeID(nodeID string) ([]models.GameInstance, 
 }
 
 // FindByCardID 根据卡片ID查找实例
-func (s *YAMLInstanceStore) FindByCardID(cardID string) ([]models.GameInstance, error) {
+func (s *YAMLGameInstanceStore) FindByCardID(cardID string) ([]models.GameInstance, error) {
 	// 检查文件状态
 	fileInfo, err := os.Stat(s.dataFile)
 	if err != nil {
@@ -276,6 +276,6 @@ func (s *YAMLInstanceStore) FindByCardID(cardID string) ([]models.GameInstance, 
 }
 
 // Cleanup 清理测试文件
-func (s *YAMLInstanceStore) Cleanup() error {
+func (s *YAMLGameInstanceStore) Cleanup() error {
 	return os.Remove(s.dataFile)
 }

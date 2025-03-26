@@ -29,11 +29,11 @@ var testInstance = models.GameInstance{
 	StoppedAt:   time.Now(),
 }
 
-// TestInstanceStore 测试实例存储
-func TestInstanceStore(t *testing.T) {
+// TestGameInstanceStore 测试实例存储
+func TestGameInstanceStore(t *testing.T) {
 	// 创建存储实例
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -90,10 +90,10 @@ func TestInstanceStore(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestInstanceStoreFindByNodeID 测试按节点ID查找实例
-func TestInstanceStoreFindByNodeID(t *testing.T) {
+// TestGameInstanceStoreFindByNodeID 测试按节点ID查找实例
+func TestGameInstanceStoreFindByNodeID(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -157,10 +157,10 @@ func TestInstanceStoreFindByNodeID(t *testing.T) {
 	}
 }
 
-// TestInstanceStoreFindByCardID 测试按卡片ID查找实例
-func TestInstanceStoreFindByCardID(t *testing.T) {
+// TestGameInstanceStoreFindByCardID 测试按卡片ID查找实例
+func TestGameInstanceStoreFindByCardID(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -224,10 +224,10 @@ func TestInstanceStoreFindByCardID(t *testing.T) {
 	}
 }
 
-// TestInstanceStoreStateTransition 测试实例状态转换
-func TestInstanceStoreStateTransition(t *testing.T) {
+// TestGameInstanceStoreStateTransition 测试实例状态转换
+func TestGameInstanceStoreStateTransition(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -268,25 +268,25 @@ func TestInstanceStoreStateTransition(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestInstanceStore_New 测试创建实例存储
-func TestInstanceStore_New(t *testing.T) {
+// TestGameInstanceStore_New 测试创建实例存储
+func TestGameInstanceStore_New(t *testing.T) {
 	// 测试正常创建
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	assert.NotNil(t, store)
 	defer store.Cleanup()
 
 	// 测试无效文件路径
-	store, err = NewInstanceStore("/invalid/path/test.yaml")
+	store, err = NewGameInstanceStore("/invalid/path/test.yaml")
 	assert.Error(t, err)
 	assert.Nil(t, store)
 }
 
-// TestInstanceStore_List 测试获取所有实例
-func TestInstanceStore_List(t *testing.T) {
+// TestGameInstanceStore_List 测试获取所有实例
+func TestGameInstanceStore_List(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -306,10 +306,10 @@ func TestInstanceStore_List(t *testing.T) {
 	assert.Equal(t, testInstance.ID, instances[0].ID)
 }
 
-// TestInstanceStore_Get 测试获取指定实例
-func TestInstanceStore_Get(t *testing.T) {
+// TestGameInstanceStore_Get 测试获取指定实例
+func TestGameInstanceStore_Get(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -329,10 +329,10 @@ func TestInstanceStore_Get(t *testing.T) {
 	assert.Equal(t, testInstance.NodeID, instance.NodeID)
 }
 
-// TestInstanceStore_Add 测试添加实例
-func TestInstanceStore_Add(t *testing.T) {
+// TestGameInstanceStore_Add 测试添加实例
+func TestGameInstanceStore_Add(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -351,10 +351,10 @@ func TestInstanceStore_Add(t *testing.T) {
 	assert.Contains(t, err.Error(), "实例ID已存在")
 }
 
-// TestInstanceStore_Update 测试更新实例
-func TestInstanceStore_Update(t *testing.T) {
+// TestGameInstanceStore_Update 测试更新实例
+func TestGameInstanceStore_Update(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -379,10 +379,10 @@ func TestInstanceStore_Update(t *testing.T) {
 	assert.Equal(t, "running", instance.Status)
 }
 
-// TestInstanceStore_Delete 测试删除实例
-func TestInstanceStore_Delete(t *testing.T) {
+// TestGameInstanceStore_Delete 测试删除实例
+func TestGameInstanceStore_Delete(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -405,10 +405,10 @@ func TestInstanceStore_Delete(t *testing.T) {
 	assert.Contains(t, err.Error(), "实例不存在")
 }
 
-// TestInstanceStore_FindByNodeID 测试按节点ID查找实例
-func TestInstanceStore_FindByNodeID(t *testing.T) {
+// TestGameInstanceStore_FindByNodeID 测试按节点ID查找实例
+func TestGameInstanceStore_FindByNodeID(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -428,10 +428,10 @@ func TestInstanceStore_FindByNodeID(t *testing.T) {
 	assert.Equal(t, testInstance.ID, instances[0].ID)
 }
 
-// TestInstanceStore_FindByCardID 测试按卡片ID查找实例
-func TestInstanceStore_FindByCardID(t *testing.T) {
+// TestGameInstanceStore_FindByCardID 测试按卡片ID查找实例
+func TestGameInstanceStore_FindByCardID(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 	defer store.Cleanup()
 
@@ -451,10 +451,10 @@ func TestInstanceStore_FindByCardID(t *testing.T) {
 	assert.Equal(t, testInstance.ID, instances[0].ID)
 }
 
-// TestInstanceStore_Cleanup 测试清理文件
-func TestInstanceStore_Cleanup(t *testing.T) {
+// TestGameInstanceStore_Cleanup 测试清理文件
+func TestGameInstanceStore_Cleanup(t *testing.T) {
 	tmpFile := utils.CreateTempTestFile(t)
-	store, err := NewInstanceStore(tmpFile)
+	store, err := NewGameInstanceStore(tmpFile)
 	assert.NoError(t, err)
 
 	// 添加测试数据
