@@ -52,11 +52,6 @@ func (s *YAMLPlatformStore) Load() error {
 	// 读取配置文件
 	data, err := os.ReadFile(s.configFile)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// 如果文件不存在，创建空文件
-			s.platforms = make([]models.GamePlatform, 0)
-			return s.Save()
-		}
 		return fmt.Errorf("读取平台配置文件失败: %w", err)
 	}
 
@@ -103,7 +98,7 @@ func (s *YAMLPlatformStore) Get(id string) (models.GamePlatform, error) {
 			return platform, nil
 		}
 	}
-	return models.GamePlatform{}, fmt.Errorf("平台不存在: %s", id)
+	return models.GamePlatform{}, nil
 }
 
 // Add 添加平台
@@ -114,7 +109,7 @@ func (s *YAMLPlatformStore) Add(platform models.GamePlatform) error {
 	// 检查ID是否已存在
 	for _, p := range s.platforms {
 		if p.ID == platform.ID {
-			return fmt.Errorf("平台ID已存在: %s", platform.ID)
+			return fmt.Errorf("存储层错误")
 		}
 	}
 
@@ -141,7 +136,7 @@ func (s *YAMLPlatformStore) Update(platform models.GamePlatform) error {
 	}
 
 	if !found {
-		return fmt.Errorf("平台不存在: %s", platform.ID)
+		return fmt.Errorf("存储层错误")
 	}
 
 	// 保存更改到文件
@@ -165,7 +160,7 @@ func (s *YAMLPlatformStore) Delete(id string) error {
 	}
 
 	if !found {
-		return fmt.Errorf("平台不存在: %s", id)
+		return fmt.Errorf("存储层错误")
 	}
 
 	// 保存更改到文件

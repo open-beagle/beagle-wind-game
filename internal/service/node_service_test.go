@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -15,19 +16,29 @@ import (
 var testNode = models.GameNode{
 	ID:       "test-node-1",
 	Name:     "Test Node",
-	Model:    "test-model",
+	Model:    "Test Model",
 	Type:     models.GameNodeTypePhysical,
-	Location: "test-location",
-	Hardware: map[string]string{"cpu": "2", "memory": "4"},
-	Network:  map[string]string{"ip": "127.0.0.1"},
-	Labels:   map[string]string{"region": "test"},
+	Location: "Test Location",
+	Hardware: map[string]string{
+		"cpu":    "Test CPU",
+		"memory": "16GB",
+		"gpu":    "Test GPU",
+	},
+	Network: map[string]string{
+		"ip":       "192.168.1.1",
+		"port":     "8080",
+		"protocol": "TCP",
+	},
+	Labels: map[string]string{
+		"key1": "value1",
+	},
 	Status: models.GameNodeStatus{
-		State:      models.GameNodeStateOnline,
-		Online:     true,
+		State:      models.GameNodeStateOffline,
+		Online:     false,
 		LastOnline: time.Now(),
 		UpdatedAt:  time.Now(),
-		Resources:  map[string]string{"cpu": "2", "memory": "4"},
-		Metrics:    map[string]interface{}{"cpu_usage": 0.5, "latency": 100},
+		Resources:  map[string]string{},
+		Metrics:    map[string]interface{}{},
 	},
 	CreatedAt: time.Now(),
 	UpdatedAt: time.Now(),
@@ -76,7 +87,7 @@ func TestListNodes(t *testing.T) {
 				os.Remove(tmpFile)
 			},
 			expectedResult: NodeListResult{},
-			expectedError:  assert.AnError,
+			expectedError:  fmt.Errorf("存储层错误"),
 		},
 	}
 
@@ -88,7 +99,7 @@ func TestListNodes(t *testing.T) {
 			result, err := service.ListNodes(tt.params)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -130,14 +141,11 @@ func TestGetNode(t *testing.T) {
 			expectedError:  nil,
 		},
 		{
-			name:   "节点不存在",
-			nodeID: "non-existent-node",
-			setup: func() {
-				err := nodeStore.Add(testNode)
-				assert.NoError(t, err)
-			},
+			name:           "节点不存在",
+			nodeID:         "non-existent-node",
+			setup:          nil,
 			expectedResult: nil,
-			expectedError:  nil,
+			expectedError:  fmt.Errorf("节点不存在: non-existent-node"),
 		},
 		{
 			name:   "存储层返回错误",
@@ -147,7 +155,7 @@ func TestGetNode(t *testing.T) {
 				os.Remove(tmpFile)
 			},
 			expectedResult: nil,
-			expectedError:  assert.AnError,
+			expectedError:  fmt.Errorf("存储层错误"),
 		},
 	}
 
@@ -159,7 +167,7 @@ func TestGetNode(t *testing.T) {
 			result, err := service.GetNode(tt.nodeID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -198,13 +206,22 @@ func TestCreateNode(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			name: "节点ID已存在",
+			node: testNode,
+			setup: func() {
+				err := nodeStore.Add(testNode)
+				assert.NoError(t, err)
+			},
+			expectedError: fmt.Errorf("节点ID已存在: %s", testNode.ID),
+		},
+		{
 			name: "存储层返回错误",
 			node: testNode,
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
 			},
-			expectedError: assert.AnError,
+			expectedError: fmt.Errorf("存储层错误"),
 		},
 	}
 
@@ -216,7 +233,7 @@ func TestCreateNode(t *testing.T) {
 			err := service.CreateNode(tt.node)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -233,6 +250,9 @@ func TestUpdateNode(t *testing.T) {
 
 	service := NewNodeService(nodeStore)
 
+	updatedNode := testNode
+	updatedNode.Name = "Updated Node"
+
 	tests := []struct {
 		name          string
 		nodeID        string
@@ -243,7 +263,7 @@ func TestUpdateNode(t *testing.T) {
 		{
 			name:   "成功更新节点",
 			nodeID: "test-node-1",
-			node:   testNode,
+			node:   updatedNode,
 			setup: func() {
 				err := nodeStore.Add(testNode)
 				assert.NoError(t, err)
@@ -251,24 +271,21 @@ func TestUpdateNode(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:   "节点不存在",
-			nodeID: "non-existent-node",
-			node:   testNode,
-			setup: func() {
-				err := nodeStore.Add(testNode)
-				assert.NoError(t, err)
-			},
-			expectedError: assert.AnError,
+			name:          "节点不存在",
+			nodeID:        "non-existent-node",
+			node:          updatedNode,
+			setup:         nil,
+			expectedError: fmt.Errorf("节点不存在: non-existent-node"),
 		},
 		{
 			name:   "存储层返回错误",
 			nodeID: "test-node-1",
-			node:   testNode,
+			node:   updatedNode,
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
 			},
-			expectedError: assert.AnError,
+			expectedError: fmt.Errorf("存储层错误"),
 		},
 	}
 
@@ -280,7 +297,7 @@ func TestUpdateNode(t *testing.T) {
 			err := service.UpdateNode(tt.nodeID, tt.node)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -313,13 +330,19 @@ func TestDeleteNode(t *testing.T) {
 			expectedError: nil,
 		},
 		{
+			name:          "节点不存在",
+			nodeID:        "non-existent-node",
+			setup:         nil,
+			expectedError: fmt.Errorf("节点不存在: non-existent-node"),
+		},
+		{
 			name:   "存储层返回错误",
 			nodeID: "test-node-1",
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
 			},
-			expectedError: assert.AnError,
+			expectedError: fmt.Errorf("存储层错误"),
 		},
 	}
 
@@ -331,7 +354,7 @@ func TestDeleteNode(t *testing.T) {
 			err := service.DeleteNode(tt.nodeID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -358,7 +381,7 @@ func TestUpdateNodeStatus(t *testing.T) {
 		{
 			name:   "成功更新节点状态",
 			nodeID: "test-node-1",
-			status: "offline",
+			status: string(models.GameNodeStateOnline),
 			setup: func() {
 				err := nodeStore.Add(testNode)
 				assert.NoError(t, err)
@@ -366,24 +389,21 @@ func TestUpdateNodeStatus(t *testing.T) {
 			expectedError: nil,
 		},
 		{
-			name:   "节点不存在",
-			nodeID: "non-existent-node",
-			status: "offline",
-			setup: func() {
-				err := nodeStore.Add(testNode)
-				assert.NoError(t, err)
-			},
-			expectedError: nil,
+			name:          "节点不存在",
+			nodeID:        "non-existent-node",
+			status:        string(models.GameNodeStateOnline),
+			setup:         nil,
+			expectedError: fmt.Errorf("节点不存在: non-existent-node"),
 		},
 		{
 			name:   "存储层返回错误",
 			nodeID: "test-node-1",
-			status: "offline",
+			status: string(models.GameNodeStateOnline),
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
 			},
-			expectedError: assert.AnError,
+			expectedError: fmt.Errorf("存储层错误"),
 		},
 	}
 
@@ -395,7 +415,7 @@ func TestUpdateNodeStatus(t *testing.T) {
 			err := service.UpdateNodeStatus(tt.nodeID, tt.status)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -403,7 +423,7 @@ func TestUpdateNodeStatus(t *testing.T) {
 	}
 }
 
-func TestUpdateNodeMetrics(t *testing.T) {
+func TestGetNodeAccess(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
 	nodeStore, err := store.NewNodeStore(tmpFile)
@@ -415,46 +435,39 @@ func TestUpdateNodeMetrics(t *testing.T) {
 	tests := []struct {
 		name          string
 		nodeID        string
-		metrics       map[string]interface{}
 		setup         func()
 		expectedError error
+		checkResult   func(t *testing.T, result NodeAccessResult)
 	}{
 		{
-			name:   "成功更新节点指标",
+			name:   "成功获取节点访问链接",
 			nodeID: "test-node-1",
-			metrics: map[string]interface{}{
-				"cpu_usage": 0.8,
-				"memory":    "4GB",
-			},
 			setup: func() {
 				err := nodeStore.Add(testNode)
 				assert.NoError(t, err)
 			},
 			expectedError: nil,
+			checkResult: func(t *testing.T, result NodeAccessResult) {
+				assert.NotEmpty(t, result.Link)
+				assert.True(t, result.ExpiresAt.After(time.Now()))
+			},
 		},
 		{
-			name:   "节点不存在",
-			nodeID: "non-existent-node",
-			metrics: map[string]interface{}{
-				"cpu_usage": 0.8,
-			},
-			setup: func() {
-				err := nodeStore.Add(testNode)
-				assert.NoError(t, err)
-			},
-			expectedError: assert.AnError,
+			name:          "节点不存在",
+			nodeID:        "non-existent-node",
+			setup:         nil,
+			expectedError: fmt.Errorf("节点不存在: non-existent-node"),
+			checkResult:   nil,
 		},
 		{
 			name:   "存储层返回错误",
 			nodeID: "test-node-1",
-			metrics: map[string]interface{}{
-				"cpu_usage": 0.8,
-			},
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
 			},
-			expectedError: assert.AnError,
+			expectedError: fmt.Errorf("存储层错误"),
+			checkResult:   nil,
 		},
 	}
 
@@ -463,18 +476,21 @@ func TestUpdateNodeMetrics(t *testing.T) {
 			if tt.setup != nil {
 				tt.setup()
 			}
-			err := service.UpdateNodeMetrics(tt.nodeID, tt.metrics)
+			result, err := service.GetNodeAccess(tt.nodeID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
+			if tt.checkResult != nil {
+				tt.checkResult(t, result)
+			}
 		})
 	}
 }
 
-func TestUpdateNodeResources(t *testing.T) {
+func TestRefreshNodeAccess(t *testing.T) {
 	// 创建临时测试文件
 	tmpFile := utils.CreateTempTestFile(t)
 	nodeStore, err := store.NewNodeStore(tmpFile)
@@ -486,46 +502,39 @@ func TestUpdateNodeResources(t *testing.T) {
 	tests := []struct {
 		name          string
 		nodeID        string
-		resources     map[string]interface{}
 		setup         func()
 		expectedError error
+		checkResult   func(t *testing.T, result NodeAccessResult)
 	}{
 		{
-			name:   "成功更新节点资源",
+			name:   "成功刷新节点访问链接",
 			nodeID: "test-node-1",
-			resources: map[string]interface{}{
-				"cpu":    "4",
-				"memory": "8GB",
-			},
 			setup: func() {
 				err := nodeStore.Add(testNode)
 				assert.NoError(t, err)
 			},
 			expectedError: nil,
+			checkResult: func(t *testing.T, result NodeAccessResult) {
+				assert.NotEmpty(t, result.Link)
+				assert.True(t, result.ExpiresAt.After(time.Now()))
+			},
 		},
 		{
-			name:   "节点不存在",
-			nodeID: "non-existent-node",
-			resources: map[string]interface{}{
-				"cpu": "4",
-			},
-			setup: func() {
-				err := nodeStore.Add(testNode)
-				assert.NoError(t, err)
-			},
-			expectedError: assert.AnError,
+			name:          "节点不存在",
+			nodeID:        "non-existent-node",
+			setup:         nil,
+			expectedError: fmt.Errorf("节点不存在: non-existent-node"),
+			checkResult:   nil,
 		},
 		{
 			name:   "存储层返回错误",
 			nodeID: "test-node-1",
-			resources: map[string]interface{}{
-				"cpu": "4",
-			},
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
 			},
-			expectedError: assert.AnError,
+			expectedError: fmt.Errorf("存储层错误"),
+			checkResult:   nil,
 		},
 	}
 
@@ -534,77 +543,16 @@ func TestUpdateNodeResources(t *testing.T) {
 			if tt.setup != nil {
 				tt.setup()
 			}
-			err := service.UpdateNodeResources(tt.nodeID, tt.resources)
+			result, err := service.RefreshNodeAccess(tt.nodeID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
-		})
-	}
-}
-
-func TestUpdateNodeOnlineStatus(t *testing.T) {
-	// 创建临时测试文件
-	tmpFile := utils.CreateTempTestFile(t)
-	nodeStore, err := store.NewNodeStore(tmpFile)
-	assert.NoError(t, err)
-	defer nodeStore.Cleanup()
-
-	service := NewNodeService(nodeStore)
-
-	tests := []struct {
-		name          string
-		nodeID        string
-		online        bool
-		setup         func()
-		expectedError error
-	}{
-		{
-			name:   "成功更新节点在线状态",
-			nodeID: "test-node-1",
-			online: false,
-			setup: func() {
-				err := nodeStore.Add(testNode)
-				assert.NoError(t, err)
-			},
-			expectedError: nil,
-		},
-		{
-			name:   "节点不存在",
-			nodeID: "non-existent-node",
-			online: false,
-			setup: func() {
-				err := nodeStore.Add(testNode)
-				assert.NoError(t, err)
-			},
-			expectedError: nil,
-		},
-		{
-			name:   "存储层返回错误",
-			nodeID: "test-node-1",
-			online: false,
-			setup: func() {
-				// 删除临时文件以模拟存储层错误
-				os.Remove(tmpFile)
-			},
-			expectedError: assert.AnError,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup()
+			if tt.checkResult != nil {
+				tt.checkResult(t, result)
 			}
-			err := service.UpdateNodeOnlineStatus(tt.nodeID, tt.online)
-			if tt.expectedError != nil {
-				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
-				return
-			}
-			assert.NoError(t, err)
 		})
 	}
 }

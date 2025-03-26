@@ -53,14 +53,25 @@ func NewInstanceStore(dataFile string) (InstanceStore, error) {
 
 // Load 加载实例数据
 func (s *YAMLInstanceStore) Load() error {
-	// 读取数据文件
-	data, err := os.ReadFile(s.dataFile)
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// 如果文件不存在，创建空文件
 			s.instances = make([]models.GameInstance, 0)
 			return s.Save()
 		}
+		return fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	// 如果是目录，返回错误
+	if fileInfo.IsDir() {
+		return fmt.Errorf("读取文件失败: 目标是一个目录")
+	}
+
+	// 读取数据文件
+	data, err := os.ReadFile(s.dataFile)
+	if err != nil {
 		return fmt.Errorf("读取实例数据文件失败: %w", err)
 	}
 
@@ -77,6 +88,12 @@ func (s *YAMLInstanceStore) Load() error {
 
 // Save 保存实例数据
 func (s *YAMLInstanceStore) Save() error {
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err == nil && fileInfo.IsDir() {
+		return fmt.Errorf("写入文件失败: 目标是一个目录")
+	}
+
 	// 序列化为YAML
 	data, err := yaml.Marshal(s.instances)
 	if err != nil {
@@ -94,6 +111,20 @@ func (s *YAMLInstanceStore) Save() error {
 
 // List 获取所有实例
 func (s *YAMLInstanceStore) List() ([]models.GameInstance, error) {
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []models.GameInstance{}, nil
+		}
+		return nil, fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	// 如果是目录，返回错误
+	if fileInfo.IsDir() {
+		return nil, fmt.Errorf("读取文件失败: 目标是一个目录")
+	}
+
 	// 创建副本避免修改原始数据
 	instances := make([]models.GameInstance, len(s.instances))
 	copy(instances, s.instances)
@@ -102,6 +133,20 @@ func (s *YAMLInstanceStore) List() ([]models.GameInstance, error) {
 
 // Get 获取指定ID的实例
 func (s *YAMLInstanceStore) Get(id string) (models.GameInstance, error) {
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return models.GameInstance{}, nil
+		}
+		return models.GameInstance{}, fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	// 如果是目录，返回错误
+	if fileInfo.IsDir() {
+		return models.GameInstance{}, fmt.Errorf("读取文件失败: 目标是一个目录")
+	}
+
 	for _, instance := range s.instances {
 		if instance.ID == id {
 			return instance, nil
@@ -114,6 +159,12 @@ func (s *YAMLInstanceStore) Get(id string) (models.GameInstance, error) {
 func (s *YAMLInstanceStore) Add(instance models.GameInstance) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err == nil && fileInfo.IsDir() {
+		return fmt.Errorf("写入文件失败: 目标是一个目录")
+	}
 
 	// 检查ID是否已存在
 	for _, i := range s.instances {
@@ -134,6 +185,12 @@ func (s *YAMLInstanceStore) Update(instance models.GameInstance) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err == nil && fileInfo.IsDir() {
+		return fmt.Errorf("写入文件失败: 目标是一个目录")
+	}
+
 	// 查找并更新实例
 	for i, inst := range s.instances {
 		if inst.ID == instance.ID {
@@ -150,6 +207,12 @@ func (s *YAMLInstanceStore) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err == nil && fileInfo.IsDir() {
+		return fmt.Errorf("写入文件失败: 目标是一个目录")
+	}
+
 	// 查找并删除实例
 	for i, instance := range s.instances {
 		if instance.ID == id {
@@ -164,6 +227,20 @@ func (s *YAMLInstanceStore) Delete(id string) error {
 
 // FindByNodeID 根据节点ID查找实例
 func (s *YAMLInstanceStore) FindByNodeID(nodeID string) ([]models.GameInstance, error) {
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []models.GameInstance{}, nil
+		}
+		return nil, fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	// 如果是目录，返回错误
+	if fileInfo.IsDir() {
+		return nil, fmt.Errorf("读取文件失败: 目标是一个目录")
+	}
+
 	var result []models.GameInstance
 	for _, instance := range s.instances {
 		if instance.NodeID == nodeID {
@@ -175,6 +252,20 @@ func (s *YAMLInstanceStore) FindByNodeID(nodeID string) ([]models.GameInstance, 
 
 // FindByCardID 根据卡片ID查找实例
 func (s *YAMLInstanceStore) FindByCardID(cardID string) ([]models.GameInstance, error) {
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []models.GameInstance{}, nil
+		}
+		return nil, fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	// 如果是目录，返回错误
+	if fileInfo.IsDir() {
+		return nil, fmt.Errorf("读取文件失败: 目标是一个目录")
+	}
+
 	var result []models.GameInstance
 	for _, instance := range s.instances {
 		if instance.CardID == cardID {

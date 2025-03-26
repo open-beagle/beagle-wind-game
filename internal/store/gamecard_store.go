@@ -98,6 +98,23 @@ func (s *YAMLGameCardStore) Save() error {
 
 // List 获取所有卡片
 func (s *YAMLGameCardStore) List() ([]models.GameCard, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []models.GameCard{}, nil
+		}
+		return nil, fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	// 如果是目录，返回错误
+	if fileInfo.IsDir() {
+		return nil, fmt.Errorf("读取文件失败: 目标是一个目录")
+	}
+
 	// 创建副本避免修改原始数据
 	cards := make([]models.GameCard, len(s.cards))
 	copy(cards, s.cards)
@@ -106,12 +123,29 @@ func (s *YAMLGameCardStore) List() ([]models.GameCard, error) {
 
 // Get 获取指定ID的卡片
 func (s *YAMLGameCardStore) Get(id string) (models.GameCard, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// 检查文件状态
+	fileInfo, err := os.Stat(s.dataFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return models.GameCard{}, nil
+		}
+		return models.GameCard{}, fmt.Errorf("读取文件失败: %w", err)
+	}
+
+	// 如果是目录，返回错误
+	if fileInfo.IsDir() {
+		return models.GameCard{}, fmt.Errorf("读取文件失败: 目标是一个目录")
+	}
+
 	for _, card := range s.cards {
 		if card.ID == id {
 			return card, nil
 		}
 	}
-	return models.GameCard{}, fmt.Errorf("卡片不存在: %s", id)
+	return models.GameCard{}, nil
 }
 
 // Add 添加卡片

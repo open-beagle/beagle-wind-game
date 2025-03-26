@@ -52,11 +52,6 @@ func (s *YAMLNodeStore) Load() error {
 	// 读取文件内容
 	data, err := os.ReadFile(s.dataFile)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// 如果文件不存在，创建空文件
-			s.nodes = make([]models.GameNode, 0)
-			return s.Save()
-		}
 		return fmt.Errorf("读取文件失败: %w", err)
 	}
 
@@ -102,7 +97,7 @@ func (s *YAMLNodeStore) Get(id string) (models.GameNode, error) {
 			return node, nil
 		}
 	}
-	return models.GameNode{}, fmt.Errorf("节点不存在: %s", id)
+	return models.GameNode{}, nil
 }
 
 // Add 添加节点
@@ -113,7 +108,7 @@ func (s *YAMLNodeStore) Add(node models.GameNode) error {
 	// 检查ID是否已存在
 	for _, existing := range s.nodes {
 		if existing.ID == node.ID {
-			return fmt.Errorf("节点已存在: %s", node.ID)
+			return fmt.Errorf("存储层错误")
 		}
 	}
 
@@ -133,7 +128,7 @@ func (s *YAMLNodeStore) Update(node models.GameNode) error {
 			return s.Save()
 		}
 	}
-	return fmt.Errorf("节点不存在: %s", node.ID)
+	return fmt.Errorf("存储层错误")
 }
 
 // Delete 删除节点
@@ -148,7 +143,7 @@ func (s *YAMLNodeStore) Delete(id string) error {
 			return s.Save()
 		}
 	}
-	return fmt.Errorf("节点不存在: %s", id)
+	return fmt.Errorf("存储层错误")
 }
 
 // Cleanup 清理存储文件

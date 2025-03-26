@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -13,12 +14,13 @@ import (
 
 // 测试数据
 var testInstance = models.GameInstance{
-	ID:        "test-instance-1",
-	NodeID:    "test-node-1",
-	CardID:    "test-card-1",
-	Status:    "stopped",
-	CreatedAt: time.Now(),
-	UpdatedAt: time.Now(),
+	ID:         "test-instance-1",
+	NodeID:     "test-node-1",
+	CardID:     "test-card-1",
+	PlatformID: "test-platform-1",
+	Status:     "stopped",
+	CreatedAt:  time.Now(),
+	UpdatedAt:  time.Now(),
 }
 
 func TestListInstances(t *testing.T) {
@@ -62,9 +64,12 @@ func TestListInstances(t *testing.T) {
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
+				// 创建一个目录来替代文件，这样会导致读取错误
+				err := os.MkdirAll(tmpFile, 0755)
+				assert.NoError(t, err)
 			},
 			expectedResult: InstanceListResult{},
-			expectedError:  assert.AnError,
+			expectedError:  fmt.Errorf("存储层错误"),
 		},
 	}
 
@@ -76,7 +81,8 @@ func TestListInstances(t *testing.T) {
 			result, err := service.ListInstances(tt.params)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				assert.Equal(t, tt.expectedResult, result)
 				return
 			}
 			assert.NoError(t, err)
@@ -105,7 +111,7 @@ func TestGetInstance(t *testing.T) {
 		name           string
 		instanceID     string
 		setup          func()
-		expectedResult *models.GameInstance
+		expectedResult models.GameInstance
 		expectedError  error
 	}{
 		{
@@ -115,7 +121,7 @@ func TestGetInstance(t *testing.T) {
 				err := instanceStore.Add(testInstance)
 				assert.NoError(t, err)
 			},
-			expectedResult: &testInstance,
+			expectedResult: testInstance,
 			expectedError:  nil,
 		},
 		{
@@ -125,8 +131,8 @@ func TestGetInstance(t *testing.T) {
 				err := instanceStore.Add(testInstance)
 				assert.NoError(t, err)
 			},
-			expectedResult: nil,
-			expectedError:  nil,
+			expectedResult: models.GameInstance{},
+			expectedError:  fmt.Errorf("实例不存在: non-existent-instance"),
 		},
 		{
 			name:       "存储层返回错误",
@@ -134,9 +140,12 @@ func TestGetInstance(t *testing.T) {
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
+				// 创建一个目录来替代文件，这样会导致读取错误
+				err := os.MkdirAll(tmpFile, 0755)
+				assert.NoError(t, err)
 			},
-			expectedResult: nil,
-			expectedError:  assert.AnError,
+			expectedResult: models.GameInstance{},
+			expectedError:  fmt.Errorf("存储层错误"),
 		},
 	}
 
@@ -148,14 +157,11 @@ func TestGetInstance(t *testing.T) {
 			result, err := service.GetInstance(tt.instanceID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
+				assert.Equal(t, tt.expectedResult, result)
 				return
 			}
 			assert.NoError(t, err)
-			if tt.expectedResult == nil {
-				assert.Nil(t, result)
-				return
-			}
 			assert.Equal(t, tt.expectedResult.ID, result.ID)
 			assert.Equal(t, tt.expectedResult.NodeID, result.NodeID)
 			assert.Equal(t, tt.expectedResult.CardID, result.CardID)
@@ -195,7 +201,7 @@ func TestStartInstance(t *testing.T) {
 				err := instanceStore.Add(testInstance)
 				assert.NoError(t, err)
 			},
-			expectedError: nil,
+			expectedError: fmt.Errorf("实例不存在: non-existent-instance"),
 		},
 		{
 			name:       "存储层返回错误",
@@ -203,8 +209,22 @@ func TestStartInstance(t *testing.T) {
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
+				// 创建一个目录来替代文件，这样会导致读取错误
+				err := os.MkdirAll(tmpFile, 0755)
+				assert.NoError(t, err)
 			},
-			expectedError: assert.AnError,
+			expectedError: fmt.Errorf("存储层错误"),
+		},
+		{
+			name:       "实例已在运行中",
+			instanceID: "test-instance-1",
+			setup: func() {
+				runningInstance := testInstance
+				runningInstance.Status = "running"
+				err := instanceStore.Add(runningInstance)
+				assert.NoError(t, err)
+			},
+			expectedError: ErrInstanceAlreadyRunning,
 		},
 	}
 
@@ -216,7 +236,7 @@ func TestStartInstance(t *testing.T) {
 			err := service.StartInstance(tt.instanceID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)
@@ -243,7 +263,9 @@ func TestStopInstance(t *testing.T) {
 			name:       "成功停止实例",
 			instanceID: "test-instance-1",
 			setup: func() {
-				err := instanceStore.Add(testInstance)
+				runningInstance := testInstance
+				runningInstance.Status = "running"
+				err := instanceStore.Add(runningInstance)
 				assert.NoError(t, err)
 			},
 			expectedError: nil,
@@ -255,7 +277,7 @@ func TestStopInstance(t *testing.T) {
 				err := instanceStore.Add(testInstance)
 				assert.NoError(t, err)
 			},
-			expectedError: nil,
+			expectedError: fmt.Errorf("实例不存在: non-existent-instance"),
 		},
 		{
 			name:       "存储层返回错误",
@@ -263,8 +285,22 @@ func TestStopInstance(t *testing.T) {
 			setup: func() {
 				// 删除临时文件以模拟存储层错误
 				os.Remove(tmpFile)
+				// 创建一个目录来替代文件，这样会导致读取错误
+				err := os.MkdirAll(tmpFile, 0755)
+				assert.NoError(t, err)
 			},
-			expectedError: assert.AnError,
+			expectedError: fmt.Errorf("存储层错误"),
+		},
+		{
+			name:       "实例未在运行中",
+			instanceID: "test-instance-1",
+			setup: func() {
+				stoppedInstance := testInstance
+				stoppedInstance.Status = "stopped"
+				err := instanceStore.Add(stoppedInstance)
+				assert.NoError(t, err)
+			},
+			expectedError: ErrInstanceNotRunning,
 		},
 	}
 
@@ -276,7 +312,7 @@ func TestStopInstance(t *testing.T) {
 			err := service.StopInstance(tt.instanceID)
 			if tt.expectedError != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.expectedError, err)
+				assert.Equal(t, tt.expectedError.Error(), err.Error())
 				return
 			}
 			assert.NoError(t, err)

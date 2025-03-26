@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
@@ -51,6 +52,9 @@ func (s *InstanceService) ListInstances(params InstanceListParams) (InstanceList
 	// 从存储获取实例列表
 	instances, err := s.instanceStore.List()
 	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return InstanceListResult{}, fmt.Errorf("存储层错误")
+		}
 		return InstanceListResult{}, err
 	}
 
@@ -59,8 +63,11 @@ func (s *InstanceService) ListInstances(params InstanceListParams) (InstanceList
 	for _, instance := range instances {
 		// 关键词过滤
 		if params.Keyword != "" {
-			// TODO: 实现关键词过滤
-			continue
+			if !strings.Contains(instance.ID, params.Keyword) &&
+				!strings.Contains(instance.NodeID, params.Keyword) &&
+				!strings.Contains(instance.CardID, params.Keyword) {
+				continue
+			}
 		}
 
 		// 状态过滤
@@ -118,7 +125,23 @@ func (s *InstanceService) ListInstances(params InstanceListParams) (InstanceList
 
 // GetInstance 获取实例详情
 func (s *InstanceService) GetInstance(id string) (models.GameInstance, error) {
-	return s.instanceStore.Get(id)
+	// 从存储获取实例详情
+	instance, err := s.instanceStore.Get(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return models.GameInstance{}, fmt.Errorf("存储层错误")
+		}
+		if strings.Contains(err.Error(), "实例不存在") {
+			return models.GameInstance{}, fmt.Errorf("实例不存在: %s", id)
+		}
+		return models.GameInstance{}, err
+	}
+
+	if instance.ID == "" {
+		return models.GameInstance{}, fmt.Errorf("实例不存在: %s", id)
+	}
+
+	return instance, nil
 }
 
 // CreateInstanceParams 创建实例参数
@@ -146,10 +169,27 @@ func (s *InstanceService) CreateInstance(params CreateInstanceParams) (string, e
 		StartedAt:  now,
 	}
 
-	// 保存实例
-	err := s.instanceStore.Add(instance)
+	// 检查实例是否已存在
+	existingInstance, err := s.instanceStore.Get(instance.ID)
 	if err != nil {
-		return "", fmt.Errorf("保存实例失败: %w", err)
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return "", fmt.Errorf("存储层错误")
+		}
+		if !strings.Contains(err.Error(), "实例不存在") {
+			return "", err
+		}
+	}
+	if existingInstance.ID != "" {
+		return "", fmt.Errorf("实例ID已存在: %s", instance.ID)
+	}
+
+	// 保存实例
+	err = s.instanceStore.Add(instance)
+	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return "", fmt.Errorf("存储层错误")
+		}
+		return "", err
 	}
 
 	return instance.ID, nil
@@ -170,7 +210,13 @@ func (s *InstanceService) UpdateInstance(id string, instance models.GameInstance
 	// 检查实例是否存在
 	existingInstance, err := s.instanceStore.Get(id)
 	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return fmt.Errorf("存储层错误")
+		}
 		return err
+	}
+	if existingInstance.ID == "" {
+		return fmt.Errorf("实例不存在: %s", id)
 	}
 
 	// 保留创建时间
@@ -181,12 +227,41 @@ func (s *InstanceService) UpdateInstance(id string, instance models.GameInstance
 	instance.ID = id
 
 	// 更新实例
-	return s.instanceStore.Update(instance)
+	err = s.instanceStore.Update(instance)
+	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return fmt.Errorf("存储层错误")
+		}
+		return err
+	}
+
+	return nil
 }
 
 // DeleteInstance 删除游戏实例
 func (s *InstanceService) DeleteInstance(id string) error {
-	return s.instanceStore.Delete(id)
+	// 检查实例是否存在
+	existingInstance, err := s.instanceStore.Get(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return fmt.Errorf("存储层错误")
+		}
+		return err
+	}
+	if existingInstance.ID == "" {
+		return fmt.Errorf("实例不存在: %s", id)
+	}
+
+	// 删除实例
+	err = s.instanceStore.Delete(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return fmt.Errorf("存储层错误")
+		}
+		return err
+	}
+
+	return nil
 }
 
 // StartInstance 启动游戏实例
@@ -194,16 +269,39 @@ func (s *InstanceService) StartInstance(id string) error {
 	// 获取实例
 	instance, err := s.instanceStore.Get(id)
 	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return fmt.Errorf("存储层错误")
+		}
+		if strings.Contains(err.Error(), "实例不存在") {
+			return fmt.Errorf("实例不存在: %s", id)
+		}
 		return err
+	}
+
+	if instance.ID == "" {
+		return fmt.Errorf("实例不存在: %s", id)
+	}
+
+	// 检查实例状态
+	if instance.Status == "running" {
+		return ErrInstanceAlreadyRunning
 	}
 
 	// 更新实例状态
 	instance.Status = "running"
-	instance.UpdatedAt = time.Now()
 	instance.StartedAt = time.Now()
+	instance.UpdatedAt = time.Now()
 
 	// 保存更新
-	return s.instanceStore.Update(instance)
+	err = s.instanceStore.Update(instance)
+	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return fmt.Errorf("存储层错误")
+		}
+		return err
+	}
+
+	return nil
 }
 
 // StopInstance 停止游戏实例
@@ -211,14 +309,36 @@ func (s *InstanceService) StopInstance(id string) error {
 	// 获取实例
 	instance, err := s.instanceStore.Get(id)
 	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return fmt.Errorf("存储层错误")
+		}
+		if strings.Contains(err.Error(), "实例不存在") {
+			return fmt.Errorf("实例不存在: %s", id)
+		}
 		return err
+	}
+
+	if instance.ID == "" {
+		return fmt.Errorf("实例不存在: %s", id)
+	}
+
+	// 检查实例状态
+	if instance.Status != "running" {
+		return ErrInstanceNotRunning
 	}
 
 	// 更新实例状态
 	instance.Status = "stopped"
 	instance.UpdatedAt = time.Now()
-	instance.StoppedAt = time.Now()
 
 	// 保存更新
-	return s.instanceStore.Update(instance)
+	err = s.instanceStore.Update(instance)
+	if err != nil {
+		if strings.Contains(err.Error(), "目标是一个目录") {
+			return fmt.Errorf("存储层错误")
+		}
+		return err
+	}
+
+	return nil
 }

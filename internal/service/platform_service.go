@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
@@ -37,7 +38,7 @@ type PlatformListResult struct {
 func (s *PlatformService) ListPlatforms(params PlatformListParams) (PlatformListResult, error) {
 	platforms, err := s.platformStore.List()
 	if err != nil {
-		return PlatformListResult{}, err
+		return PlatformListResult{}, fmt.Errorf("存储层错误")
 	}
 
 	// 过滤和分页
@@ -88,9 +89,16 @@ func (s *PlatformService) ListPlatforms(params PlatformListParams) (PlatformList
 	}, nil
 }
 
-// GetPlatform 获取游戏平台详情
-func (s *PlatformService) GetPlatform(id string) (models.GamePlatform, error) {
-	return s.platformStore.Get(id)
+// GetPlatform 获取指定ID的平台
+func (s *PlatformService) GetPlatform(id string) (*models.GamePlatform, error) {
+	platform, err := s.platformStore.Get(id)
+	if err != nil {
+		return nil, fmt.Errorf("存储层错误")
+	}
+	if platform.ID == "" {
+		return nil, fmt.Errorf("平台不存在: %s", id)
+	}
+	return &platform, nil
 }
 
 // PlatformAccessResult 平台远程访问结果
@@ -102,9 +110,12 @@ type PlatformAccessResult struct {
 // GetPlatformAccess 获取平台远程访问链接
 func (s *PlatformService) GetPlatformAccess(id string) (PlatformAccessResult, error) {
 	// 检查平台是否存在
-	_, err := s.platformStore.Get(id)
+	platform, err := s.platformStore.Get(id)
 	if err != nil {
-		return PlatformAccessResult{}, err
+		return PlatformAccessResult{}, fmt.Errorf("存储层错误")
+	}
+	if platform.ID == "" {
+		return PlatformAccessResult{}, fmt.Errorf("平台不存在: %s", id)
 	}
 
 	// 生成访问链接
@@ -118,9 +129,12 @@ func (s *PlatformService) GetPlatformAccess(id string) (PlatformAccessResult, er
 // RefreshPlatformAccess 刷新平台远程访问链接
 func (s *PlatformService) RefreshPlatformAccess(id string) (PlatformAccessResult, error) {
 	// 检查平台是否存在
-	_, err := s.platformStore.Get(id)
+	platform, err := s.platformStore.Get(id)
 	if err != nil {
-		return PlatformAccessResult{}, err
+		return PlatformAccessResult{}, fmt.Errorf("存储层错误")
+	}
+	if platform.ID == "" {
+		return PlatformAccessResult{}, fmt.Errorf("平台不存在: %s", id)
 	}
 
 	// 刷新访问链接
@@ -136,7 +150,10 @@ func (s *PlatformService) UpdatePlatform(id string, platformData models.GamePlat
 	// 检查平台是否存在
 	existingPlatform, err := s.platformStore.Get(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("存储层错误")
+	}
+	if existingPlatform.ID == "" {
+		return fmt.Errorf("平台不存在: %s", id)
 	}
 
 	// 确保ID不变
@@ -149,20 +166,33 @@ func (s *PlatformService) UpdatePlatform(id string, platformData models.GamePlat
 	platformData.CreatedAt = existingPlatform.CreatedAt
 
 	// 更新平台信息
-	return s.platformStore.Update(platformData)
+	err = s.platformStore.Update(platformData)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	return nil
 }
 
 // CreatePlatform 创建新平台
 func (s *PlatformService) CreatePlatform(platformData models.GamePlatform) (string, error) {
+	// 检查平台是否已存在
+	existingPlatform, err := s.platformStore.Get(platformData.ID)
+	if err != nil {
+		return "", fmt.Errorf("存储层错误")
+	}
+	if existingPlatform.ID != "" {
+		return "", fmt.Errorf("平台ID已存在: %s", platformData.ID)
+	}
+
 	// 设置时间戳
 	now := time.Now()
 	platformData.CreatedAt = now
 	platformData.UpdatedAt = now
 
 	// 添加到存储
-	err := s.platformStore.Add(platformData)
+	err = s.platformStore.Add(platformData)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("存储层错误")
 	}
 
 	return platformData.ID, nil
@@ -171,11 +201,19 @@ func (s *PlatformService) CreatePlatform(platformData models.GamePlatform) (stri
 // DeletePlatform 删除平台
 func (s *PlatformService) DeletePlatform(id string) error {
 	// 检查平台是否存在
-	_, err := s.platformStore.Get(id)
+	platform, err := s.platformStore.Get(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("存储层错误")
+	}
+	if platform.ID == "" {
+		return fmt.Errorf("平台不存在: %s", id)
 	}
 
 	// 删除平台
-	return s.platformStore.Delete(id)
+	err = s.platformStore.Delete(id)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+
+	return nil
 }

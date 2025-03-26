@@ -34,12 +34,18 @@ type NodeListResult struct {
 	Items []models.GameNode `json:"items"`
 }
 
+// NodeAccessResult 节点访问链接结果
+type NodeAccessResult struct {
+	Link      string    `json:"link"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
 // ListNodes 获取游戏节点列表
 func (s *NodeService) ListNodes(params NodeListParams) (NodeListResult, error) {
 	// 从存储获取节点列表
 	nodes, err := s.nodeStore.List()
 	if err != nil {
-		return NodeListResult{}, err
+		return NodeListResult{}, fmt.Errorf("存储层错误")
 	}
 
 	// 过滤和分页
@@ -93,12 +99,12 @@ func (s *NodeService) ListNodes(params NodeListParams) (NodeListResult, error) {
 func (s *NodeService) GetNode(id string) (*models.GameNode, error) {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("存储层错误")
 	}
 
-	// 如果节点不存在，返回 nil
+	// 如果节点不存在，返回错误
 	if node.ID == "" {
-		return nil, nil
+		return nil, fmt.Errorf("节点不存在: %s", id)
 	}
 
 	return &node, nil
@@ -106,6 +112,15 @@ func (s *NodeService) GetNode(id string) (*models.GameNode, error) {
 
 // CreateNode 创建游戏节点
 func (s *NodeService) CreateNode(node models.GameNode) error {
+	// 检查节点是否已存在
+	existingNode, err := s.nodeStore.Get(node.ID)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	if existingNode.ID != "" {
+		return fmt.Errorf("节点ID已存在: %s", node.ID)
+	}
+
 	// 设置创建时间和更新时间
 	now := time.Now()
 	node.CreatedAt = now
@@ -121,7 +136,11 @@ func (s *NodeService) CreateNode(node models.GameNode) error {
 		Metrics:    make(map[string]interface{}),
 	}
 
-	return s.nodeStore.Add(node)
+	err = s.nodeStore.Add(node)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	return nil
 }
 
 // UpdateNode 更新游戏节点
@@ -129,7 +148,10 @@ func (s *NodeService) UpdateNode(id string, node models.GameNode) error {
 	// 检查节点是否存在
 	existingNode, err := s.nodeStore.Get(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("存储层错误")
+	}
+	if existingNode.ID == "" {
+		return fmt.Errorf("节点不存在: %s", id)
 	}
 
 	// 保留创建时间
@@ -139,50 +161,84 @@ func (s *NodeService) UpdateNode(id string, node models.GameNode) error {
 	// 确保ID一致
 	node.ID = id
 
-	return s.nodeStore.Update(node)
+	err = s.nodeStore.Update(node)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	return nil
 }
 
 // DeleteNode 删除游戏节点
 func (s *NodeService) DeleteNode(id string) error {
-	return s.nodeStore.Delete(id)
+	// 检查节点是否存在
+	node, err := s.nodeStore.Get(id)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	if node.ID == "" {
+		return fmt.Errorf("节点不存在: %s", id)
+	}
+
+	err = s.nodeStore.Delete(id)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	return nil
 }
 
 // UpdateNodeStatus 更新节点状态
 func (s *NodeService) UpdateNodeStatus(id string, status string) error {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("存储层错误")
+	}
+	if node.ID == "" {
+		return fmt.Errorf("节点不存在: %s", id)
 	}
 
 	node.Status.State = models.GameNodeState(status)
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
-	return s.nodeStore.Update(node)
+	err = s.nodeStore.Update(node)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	return nil
 }
 
 // UpdateNodeMetrics 更新节点指标
 func (s *NodeService) UpdateNodeMetrics(id string, metrics map[string]interface{}) error {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("存储层错误")
+	}
+	if node.ID == "" {
+		return fmt.Errorf("节点不存在: %s", id)
 	}
 
 	node.Status.Metrics = metrics
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
-	return s.nodeStore.Update(node)
+	err = s.nodeStore.Update(node)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	return nil
 }
 
-// UpdateNodeResources 更新节点资源使用情况
+// UpdateNodeResources 更新节点资源
 func (s *NodeService) UpdateNodeResources(id string, resources map[string]interface{}) error {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("存储层错误")
+	}
+	if node.ID == "" {
+		return fmt.Errorf("节点不存在: %s", id)
 	}
 
-	// 转换资源使用情况为字符串格式
+	// 将 interface{} 转换为 string
 	stringResources := make(map[string]string)
 	for k, v := range resources {
 		if str, ok := v.(string); ok {
@@ -196,25 +252,73 @@ func (s *NodeService) UpdateNodeResources(id string, resources map[string]interf
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
-	return s.nodeStore.Update(node)
+	err = s.nodeStore.Update(node)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	return nil
 }
 
 // UpdateNodeOnlineStatus 更新节点在线状态
 func (s *NodeService) UpdateNodeOnlineStatus(id string, online bool) error {
 	node, err := s.nodeStore.Get(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("存储层错误")
+	}
+	if node.ID == "" {
+		return fmt.Errorf("节点不存在: %s", id)
 	}
 
 	node.Status.Online = online
 	if online {
 		node.Status.LastOnline = time.Now()
-		node.Status.State = models.GameNodeStateOnline
-	} else {
-		node.Status.State = models.GameNodeStateOffline
 	}
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
-	return s.nodeStore.Update(node)
+	err = s.nodeStore.Update(node)
+	if err != nil {
+		return fmt.Errorf("存储层错误")
+	}
+	return nil
+}
+
+// GetNodeAccess 获取节点访问链接
+func (s *NodeService) GetNodeAccess(id string) (NodeAccessResult, error) {
+	node, err := s.nodeStore.Get(id)
+	if err != nil {
+		return NodeAccessResult{}, fmt.Errorf("存储层错误")
+	}
+	if node.ID == "" {
+		return NodeAccessResult{}, fmt.Errorf("节点不存在: %s", id)
+	}
+
+	// 生成访问链接和过期时间
+	link := fmt.Sprintf("http://%s:%s", node.Network["ip"], node.Network["port"])
+	expiresAt := time.Now().Add(24 * time.Hour)
+
+	return NodeAccessResult{
+		Link:      link,
+		ExpiresAt: expiresAt,
+	}, nil
+}
+
+// RefreshNodeAccess 刷新节点访问链接
+func (s *NodeService) RefreshNodeAccess(id string) (NodeAccessResult, error) {
+	node, err := s.nodeStore.Get(id)
+	if err != nil {
+		return NodeAccessResult{}, fmt.Errorf("存储层错误")
+	}
+	if node.ID == "" {
+		return NodeAccessResult{}, fmt.Errorf("节点不存在: %s", id)
+	}
+
+	// 生成新的访问链接和过期时间
+	link := fmt.Sprintf("http://%s:%s", node.Network["ip"], node.Network["port"])
+	expiresAt := time.Now().Add(24 * time.Hour)
+
+	return NodeAccessResult{
+		Link:      link,
+		ExpiresAt: expiresAt,
+	}, nil
 }

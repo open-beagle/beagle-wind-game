@@ -71,7 +71,18 @@ b.修复 linter 错误（关于包名的问题）
 c.更新相关的测试用例
 d.更新文档以反映这些变化
 
-internal/service中单元测试优化：
-1.不应该新建store.MockGameCardStore对象，而是使用已经完成单元测试的store中已经设计的存储对象；
-2.修改单元测试中的错误；
-3.开始单元测试；
+internal/service 中单元测试优化： 1.不应该新建 store.MockGameCardStore 对象，而是使用已经完成单元测试的 store 中已经设计的存储对象； 2.修改单元测试中的错误； 3.开始单元测试；
+
+当前工作：
+internal/service 中单元测试优化：
+1.注意执行顺序，按以下顺序逐个修复单元测试：
+1.1 internal/service/platform_service_test.go
+1.2 internal/service/node_service_test.go
+1.3 internal/service/gamecard_service_test.go
+1.4 internal/service/instance_service_test.go
+2.不要某个单元测试运行还有全部通过时，去开始另外一个单元测试
+3.所有单元测试都修复了，再进行整个单元测试检测
+
+cmd/server/main.go 优化此文件：
+agentServer := server.NewAgentServer(grpcOpts, nodeService)
+这个方法居然不用nodeManager，而是看到nodeService差不多就去糊弄，把我看呆了。
