@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -165,7 +166,11 @@ func (h *GameNodeHandler) GetNode(c *gin.Context) {
 
 	// 如果不包含指标，则清空指标数据
 	if !includeMetrics {
-		node.Status.Metrics = nil
+		node.Status.Metrics = models.MetricsReport{
+			ID:        node.ID,
+			Timestamp: time.Now().Unix(),
+			Metrics:   []models.Metric{},
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -236,7 +241,7 @@ func (h *GameNodeHandler) UpdateNode(c *gin.Context) {
 	}
 
 	// 更新节点信息
-	node.Name = req.Name
+	node.Alias = req.Name
 	node.Model = req.Model
 	node.Type = models.GameNodeType(req.Type)
 	node.Location = req.Location
@@ -246,7 +251,7 @@ func (h *GameNodeHandler) UpdateNode(c *gin.Context) {
 	}
 
 	// 调用服务层更新数据
-	err = h.svc.Update(nodeID, *node)
+	err = h.svc.Update(nodeID, node)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    http.StatusInternalServerError,

@@ -172,26 +172,7 @@ GameNodeHandler 是系统的 HTTP API 服务实体，负责处理前端交互。
 
 #### 2.5.2 通信协议
 
-```protobuf
-service GameNodeGRPCService {
-    // 节点管理
-    rpc Register(RegisterRequest) returns (RegisterResponse);
-    rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
-
-    // 流水线管理
-    rpc ExecutePipeline(ExecutePipelineRequest) returns (ExecutePipelineResponse);
-    rpc GetPipelineStatus(PipelineStatusRequest) returns (PipelineStatusResponse);
-    rpc CancelPipeline(PipelineCancelRequest) returns (PipelineCancelResponse);
-
-    // 监控和日志
-    rpc GetNodeMetrics(NodeMetricsRequest) returns (NodeMetricsResponse);
-    rpc StreamNodeLogs(NodeLogsRequest) returns (stream LogEntry);
-    rpc StreamContainerLogs(ContainerLogsRequest) returns (stream LogEntry);
-
-    // 事件订阅
-    rpc SubscribeEvents(EventSubscriptionRequest) returns (stream Event);
-}
-```
+详细设计请参考 [GameNodeServer 设计文档](gamenode_server.md) 中的 gRPC 服务接口部分。
 
 #### 2.5.3 通信特性
 

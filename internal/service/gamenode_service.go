@@ -101,18 +101,18 @@ func (s *GameNodeService) List(params GameNodeListParams) (*GameNodeListResult, 
 }
 
 // Get 获取节点信息
-func (s *GameNodeService) Get(id string) (*models.GameNode, error) {
+func (s *GameNodeService) Get(id string) (models.GameNode, error) {
 	node, err := s.store.Get(id)
 	if err != nil {
-		return nil, fmt.Errorf("存储层错误: %w", err)
+		return models.GameNode{}, fmt.Errorf("存储层错误: %w", err)
 	}
 
 	// 如果节点不存在，返回错误
 	if node.ID == "" {
-		return nil, fmt.Errorf("节点不存在: %s", id)
+		return models.GameNode{}, fmt.Errorf("节点不存在: %s", id)
 	}
 
-	return &node, nil
+	return node, nil
 }
 
 // Create 创建游戏节点
@@ -137,8 +137,14 @@ func (s *GameNodeService) Create(node models.GameNode) error {
 		Online:     false,
 		LastOnline: now,
 		UpdatedAt:  now,
-		Resources:  make(map[string]string),
-		Metrics:    make(map[string]interface{}),
+		Resource: models.ResourceInfo{
+			ID:        node.ID,
+			Timestamp: now.Unix(),
+		},
+		Metrics: models.MetricsReport{
+			ID:        node.ID,
+			Timestamp: now.Unix(),
+		},
 	}
 
 	err = s.store.Add(node)
@@ -218,7 +224,7 @@ func (s *GameNodeService) UpdateStatusState(id string, state string) error {
 }
 
 // UpdateStatusMetrics 更新节点指标
-func (s *GameNodeService) UpdateStatusMetrics(id string, metrics map[string]interface{}) error {
+func (s *GameNodeService) UpdateStatusMetrics(id string, metrics models.MetricsReport) error {
 	node, err := s.store.Get(id)
 	if err != nil {
 		return fmt.Errorf("存储层错误: %w", err)
@@ -238,8 +244,8 @@ func (s *GameNodeService) UpdateStatusMetrics(id string, metrics map[string]inte
 	return nil
 }
 
-// UpdateStatusResources 更新节点资源
-func (s *GameNodeService) UpdateStatusResources(id string, resources map[string]interface{}) error {
+// UpdateStatusResource 更新节点资源信息
+func (s *GameNodeService) UpdateStatusResource(id string, resource models.ResourceInfo) error {
 	node, err := s.store.Get(id)
 	if err != nil {
 		return fmt.Errorf("存储层错误: %w", err)
@@ -248,17 +254,7 @@ func (s *GameNodeService) UpdateStatusResources(id string, resources map[string]
 		return fmt.Errorf("节点不存在: %s", id)
 	}
 
-	// 将 interface{} 转换为 string
-	stringResources := make(map[string]string)
-	for k, v := range resources {
-		if str, ok := v.(string); ok {
-			stringResources[k] = str
-		} else {
-			stringResources[k] = fmt.Sprintf("%v", v)
-		}
-	}
-
-	node.Status.Resources = stringResources
+	node.Status.Resource = resource
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 
@@ -282,6 +278,9 @@ func (s *GameNodeService) UpdateStatusOnlineStatus(id string, online bool) error
 	node.Status.Online = online
 	if online {
 		node.Status.LastOnline = time.Now()
+		node.Status.State = models.GameNodeStateOnline
+	} else {
+		node.Status.State = models.GameNodeStateOffline
 	}
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
@@ -296,39 +295,33 @@ func (s *GameNodeService) UpdateStatusOnlineStatus(id string, online bool) error
 // GetAccess 获取节点访问链接
 func (s *GameNodeService) GetAccess(id string) (NodeAccessResult, error) {
 	node, err := s.store.Get(id)
-	if err != nil && !strings.Contains(err.Error(), "节点不存在") {
+	if err != nil {
 		return NodeAccessResult{}, fmt.Errorf("存储层错误: %w", err)
 	}
 	if node.ID == "" {
 		return NodeAccessResult{}, fmt.Errorf("节点不存在: %s", id)
 	}
 
-	// 生成访问链接和过期时间
-	link := fmt.Sprintf("http://%s:%s", node.Network["ip"], node.Network["port"])
-	expiresAt := time.Now().Add(24 * time.Hour)
-
+	// TODO: 实现访问链接生成逻辑
 	return NodeAccessResult{
-		Link:      link,
-		ExpiresAt: expiresAt,
+		Link:      fmt.Sprintf("https://node-%s.example.com", id),
+		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}, nil
 }
 
 // RefreshAccess 刷新节点访问链接
 func (s *GameNodeService) RefreshAccess(id string) (NodeAccessResult, error) {
 	node, err := s.store.Get(id)
-	if err != nil && !strings.Contains(err.Error(), "节点不存在") {
+	if err != nil {
 		return NodeAccessResult{}, fmt.Errorf("存储层错误: %w", err)
 	}
 	if node.ID == "" {
 		return NodeAccessResult{}, fmt.Errorf("节点不存在: %s", id)
 	}
 
-	// 生成新的访问链接和过期时间
-	link := fmt.Sprintf("http://%s:%s", node.Network["ip"], node.Network["port"])
-	expiresAt := time.Now().Add(24 * time.Hour)
-
+	// TODO: 实现访问链接刷新逻辑
 	return NodeAccessResult{
-		Link:      link,
-		ExpiresAt: expiresAt,
+		Link:      fmt.Sprintf("https://node-%s.example.com", id),
+		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}, nil
 }

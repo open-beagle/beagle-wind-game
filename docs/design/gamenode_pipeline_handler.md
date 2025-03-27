@@ -103,62 +103,6 @@ type GameNodePipelineStore interface {
 
 #### 4.2.2 数据模型
 
-Pipeline 数据模型使用 `gamenode.GameNodePipeline`，定义在 [gamenode_pipeline.go](../../internal/gamenode/gamenode_pipeline.go) 中：
+Pipeline 数据模型使用 `models.GameNodePipeline`，定义在 [gamenode_pipeline.go](../../internal/models/gamenode_pipeline.go) 中：
 
-```go
-// GameNodePipeline 表示一个游戏节点流水线模板
-type GameNodePipeline struct {
-    // 静态信息（模板定义）
-    Name        string         `yaml:"name"`
-    Description string         `yaml:"description"`
-    Envs        []string       `yaml:"envs"`
-    Args        []string       `yaml:"args"`
-    Steps       []PipelineStep `yaml:"steps"`
-
-    // 动态信息（执行状态）
-    status *PipelineStatus
-}
 ```
-
-#### 4.2.3 存储实现
-
-- 使用 YAML 文件存储 Pipeline 配置
-- 使用内存缓存存储 Pipeline 状态
-- 定期将状态持久化到磁盘
-- 支持 Pipeline 历史数据归档
-
-### 4.3 性能优化
-
-- Pipeline 查询性能优化
-- Pipeline 状态缓存策略
-- Pipeline 历史数据管理
-
-## 5. 待办事项
-
-### 5.1 功能增强
-
-1. 查询功能
-
-   - 添加更多过滤条件
-   - 支持复杂查询条件
-   - 优化查询性能
-
-2. 数据管理
-   - 数据清理策略
-   - 数据归档功能
-   - 数据导出功能
-
-### 5.2 优化方向
-
-1. 性能优化
-   - 优化查询性能
-   - 改进缓存策略
-   - 优化数据存储
-
-## 6. 变更历史
-
-### 6.1 2024-03-21
-
-- 修改：使用 `gamenode.GameNodePipeline` 替代自定义的 `Pipeline` 类型
-- 原因：统一使用 `gamenode` 包中定义的数据模型，避免重复定义
-- 影响：需要更新 `GameNodePipelineService` 和 `GameNodePipelineStore` 的实现

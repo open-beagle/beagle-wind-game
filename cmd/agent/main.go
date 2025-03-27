@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"log"
+	stdlog "log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/docker/docker/client"
+	"github.com/open-beagle/beagle-wind-game/internal/event"
 	"github.com/open-beagle/beagle-wind-game/internal/gamenode"
+	"github.com/open-beagle/beagle-wind-game/internal/log"
 )
 
 var (
@@ -32,35 +35,49 @@ func main() {
 	}
 
 	// 配置日志
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	stdlog.SetFlags(stdlog.Ldate | stdlog.Ltime | stdlog.Lshortfile)
 
 	// 验证必要参数
 	if *nodeID == "" {
-		log.Fatal("必须指定节点ID (--node-id)")
+		stdlog.Fatal("必须指定节点ID (--node-id)")
 	}
 	if *nodeName == "" {
-		log.Fatal("必须指定节点名称 (--node-name)")
+		stdlog.Fatal("必须指定节点名称 (--node-name)")
 	}
 
 	// 创建 Docker 客户端
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		log.Printf("警告: 无法创建 Docker 客户端: %v", err)
+		stdlog.Printf("警告: 无法创建 Docker 客户端: %v", err)
 		dockerClient = nil
 	}
 
 	// 创建 GameNodeAgent 实例
-	agent := gamenode.NewGameNodeAgent(*nodeID, dockerClient)
+	agent := gamenode.NewGameNodeAgent(
+		*nodeID,
+		*nodeName,
+		"", // serverAddr
+		"", // grpcAddr
+		"", // logAddr
+		event.NewDefaultEventManager(),
+		log.NewDefaultLogManager(),
+		dockerClient,
+		&gamenode.AgentConfig{},
+	)
 	if agent == nil {
-		log.Fatal("创建 GameNodeAgent 失败")
+		stdlog.Fatal("创建 GameNodeAgent 失败")
 	}
 
 	// 创建错误通道
 	errCh := make(chan error, 1)
 
+	// 创建上下文
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// 启动 Agent
 	go func() {
-		if err := agent.Start(); err != nil {
+		if err := agent.Start(ctx); err != nil {
 			errCh <- fmt.Errorf("启动 Agent 失败: %v", err)
 		}
 	}()
@@ -72,18 +89,16 @@ func main() {
 	// 等待信号或错误
 	select {
 	case sig := <-sigCh:
-		log.Printf("收到信号: %v\n", sig)
+		stdlog.Printf("收到信号: %v\n", sig)
 	case err := <-errCh:
-		log.Printf("Agent 错误: %v\n", err)
+		stdlog.Printf("Agent 错误: %v\n", err)
 	}
 
 	// 优雅关闭
-	log.Println("正在关闭 Agent...")
+	stdlog.Println("正在关闭 Agent...")
 
 	// 停止 Agent
-	if err := agent.Stop(); err != nil {
-		log.Printf("关闭 Agent 时出错: %v\n", err)
-	}
+	agent.Stop()
 
-	log.Println("Agent 已关闭")
+	stdlog.Println("Agent 已关闭")
 }

@@ -22,12 +22,74 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Step 状态枚举
+type StepStatus int32
+
+const (
+	StepStatus_PENDING   StepStatus = 0
+	StepStatus_RUNNING   StepStatus = 1
+	StepStatus_COMPLETED StepStatus = 2
+	StepStatus_FAILED    StepStatus = 3
+	StepStatus_CANCELLED StepStatus = 4
+)
+
+// Enum value maps for StepStatus.
+var (
+	StepStatus_name = map[int32]string{
+		0: "PENDING",
+		1: "RUNNING",
+		2: "COMPLETED",
+		3: "FAILED",
+		4: "CANCELLED",
+	}
+	StepStatus_value = map[string]int32{
+		"PENDING":   0,
+		"RUNNING":   1,
+		"COMPLETED": 2,
+		"FAILED":    3,
+		"CANCELLED": 4,
+	}
+)
+
+func (x StepStatus) Enum() *StepStatus {
+	p := new(StepStatus)
+	*p = x
+	return p
+}
+
+func (x StepStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StepStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_internal_proto_gamenode_proto_enumTypes[0].Descriptor()
+}
+
+func (StepStatus) Type() protoreflect.EnumType {
+	return &file_internal_proto_gamenode_proto_enumTypes[0]
+}
+
+func (x StepStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StepStatus.Descriptor instead.
+func (StepStatus) EnumDescriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{0}
+}
+
 // 节点注册
 type RegisterRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	Hostname      string                 `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	NodeInfo      *NodeInfo              `protobuf:"bytes,3,opt,name=node_info,json=nodeInfo,proto3" json:"node_info,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Alias         string                 `protobuf:"bytes,2,opt,name=alias,proto3" json:"alias,omitempty"`
+	Model         string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
+	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	Location      string                 `protobuf:"bytes,5,opt,name=location,proto3" json:"location,omitempty"`
+	Hardware      map[string]string      `protobuf:"bytes,6,rep,name=hardware,proto3" json:"hardware,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Network       map[string]string      `protobuf:"bytes,7,rep,name=network,proto3" json:"network,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Labels        map[string]string      `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	ResourceInfo  *ResourceInfo          `protobuf:"bytes,9,opt,name=resource_info,json=resourceInfo,proto3" json:"resource_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -62,23 +124,65 @@ func (*RegisterRequest) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *RegisterRequest) GetNodeId() string {
+func (x *RegisterRequest) GetId() string {
 	if x != nil {
-		return x.NodeId
+		return x.Id
 	}
 	return ""
 }
 
-func (x *RegisterRequest) GetHostname() string {
+func (x *RegisterRequest) GetAlias() string {
 	if x != nil {
-		return x.Hostname
+		return x.Alias
 	}
 	return ""
 }
 
-func (x *RegisterRequest) GetNodeInfo() *NodeInfo {
+func (x *RegisterRequest) GetModel() string {
 	if x != nil {
-		return x.NodeInfo
+		return x.Model
+	}
+	return ""
+}
+
+func (x *RegisterRequest) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *RegisterRequest) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *RegisterRequest) GetHardware() map[string]string {
+	if x != nil {
+		return x.Hardware
+	}
+	return nil
+}
+
+func (x *RegisterRequest) GetNetwork() map[string]string {
+	if x != nil {
+		return x.Network
+	}
+	return nil
+}
+
+func (x *RegisterRequest) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *RegisterRequest) GetResourceInfo() *ResourceInfo {
+	if x != nil {
+		return x.ResourceInfo
 	}
 	return nil
 }
@@ -86,7 +190,7 @@ func (x *RegisterRequest) GetNodeInfo() *NodeInfo {
 type RegisterResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -129,11 +233,11 @@ func (x *RegisterResponse) GetSessionId() string {
 	return ""
 }
 
-func (x *RegisterResponse) GetSuccess() bool {
+func (x *RegisterResponse) GetStatus() string {
 	if x != nil {
-		return x.Success
+		return x.Status
 	}
-	return false
+	return ""
 }
 
 func (x *RegisterResponse) GetMessage() string {
@@ -146,9 +250,10 @@ func (x *RegisterResponse) GetMessage() string {
 // 心跳
 type HeartbeatRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Metrics       *NodeMetrics           `protobuf:"bytes,3,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	ResourceInfo  *ResourceInfo          `protobuf:"bytes,4,opt,name=resource_info,json=resourceInfo,proto3" json:"resource_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -183,9 +288,9 @@ func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *HeartbeatRequest) GetNodeId() string {
+func (x *HeartbeatRequest) GetId() string {
 	if x != nil {
-		return x.NodeId
+		return x.Id
 	}
 	return ""
 }
@@ -197,17 +302,24 @@ func (x *HeartbeatRequest) GetSessionId() string {
 	return ""
 }
 
-func (x *HeartbeatRequest) GetMetrics() *NodeMetrics {
+func (x *HeartbeatRequest) GetTimestamp() int64 {
 	if x != nil {
-		return x.Metrics
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *HeartbeatRequest) GetResourceInfo() *ResourceInfo {
+	if x != nil {
+		return x.ResourceInfo
 	}
 	return nil
 }
 
 type HeartbeatResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	ServerTime    *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=server_time,json=serverTime,proto3" json:"server_time,omitempty"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -242,26 +354,884 @@ func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *HeartbeatResponse) GetSuccess() bool {
+func (x *HeartbeatResponse) GetStatus() string {
 	if x != nil {
-		return x.Success
+		return x.Status
 	}
-	return false
+	return ""
 }
 
-func (x *HeartbeatResponse) GetServerTime() *timestamppb.Timestamp {
+func (x *HeartbeatResponse) GetMessage() string {
 	if x != nil {
-		return x.ServerTime
+		return x.Message
+	}
+	return ""
+}
+
+// 节点指标报告
+type MetricsReport struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Metrics       []*Metric              `protobuf:"bytes,3,rep,name=metrics,proto3" json:"metrics,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MetricsReport) Reset() {
+	*x = MetricsReport{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MetricsReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MetricsReport) ProtoMessage() {}
+
+func (x *MetricsReport) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MetricsReport.ProtoReflect.Descriptor instead.
+func (*MetricsReport) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *MetricsReport) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MetricsReport) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *MetricsReport) GetMetrics() []*Metric {
+	if x != nil {
+		return x.Metrics
 	}
 	return nil
 }
 
-// Pipeline执行
+type Metric struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Value         float64                `protobuf:"fixed64,3,opt,name=value,proto3" json:"value,omitempty"`
+	Labels        map[string]string      `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Metric) Reset() {
+	*x = Metric{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Metric) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Metric) ProtoMessage() {}
+
+func (x *Metric) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Metric.ProtoReflect.Descriptor instead.
+func (*Metric) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Metric) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Metric) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *Metric) GetValue() float64 {
+	if x != nil {
+		return x.Value
+	}
+	return 0
+}
+
+func (x *Metric) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+// 资源信息更新
+type ResourceInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Hardware      *HardwareInfo          `protobuf:"bytes,3,opt,name=hardware,proto3" json:"hardware,omitempty"`
+	Software      *SoftwareInfo          `protobuf:"bytes,4,opt,name=software,proto3" json:"software,omitempty"`
+	Network       *NetworkInfo           `protobuf:"bytes,5,opt,name=network,proto3" json:"network,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResourceInfo) Reset() {
+	*x = ResourceInfo{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResourceInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceInfo) ProtoMessage() {}
+
+func (x *ResourceInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceInfo.ProtoReflect.Descriptor instead.
+func (*ResourceInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ResourceInfo) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ResourceInfo) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *ResourceInfo) GetHardware() *HardwareInfo {
+	if x != nil {
+		return x.Hardware
+	}
+	return nil
+}
+
+func (x *ResourceInfo) GetSoftware() *SoftwareInfo {
+	if x != nil {
+		return x.Software
+	}
+	return nil
+}
+
+func (x *ResourceInfo) GetNetwork() *NetworkInfo {
+	if x != nil {
+		return x.Network
+	}
+	return nil
+}
+
+type HardwareInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Cpu           *CPUInfo               `protobuf:"bytes,1,opt,name=cpu,proto3" json:"cpu,omitempty"`
+	Memory        *MemoryInfo            `protobuf:"bytes,2,opt,name=memory,proto3" json:"memory,omitempty"`
+	Gpu           *GPUInfo               `protobuf:"bytes,3,opt,name=gpu,proto3" json:"gpu,omitempty"`
+	Disk          *DiskInfo              `protobuf:"bytes,4,opt,name=disk,proto3" json:"disk,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HardwareInfo) Reset() {
+	*x = HardwareInfo{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HardwareInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HardwareInfo) ProtoMessage() {}
+
+func (x *HardwareInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HardwareInfo.ProtoReflect.Descriptor instead.
+func (*HardwareInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *HardwareInfo) GetCpu() *CPUInfo {
+	if x != nil {
+		return x.Cpu
+	}
+	return nil
+}
+
+func (x *HardwareInfo) GetMemory() *MemoryInfo {
+	if x != nil {
+		return x.Memory
+	}
+	return nil
+}
+
+func (x *HardwareInfo) GetGpu() *GPUInfo {
+	if x != nil {
+		return x.Gpu
+	}
+	return nil
+}
+
+func (x *HardwareInfo) GetDisk() *DiskInfo {
+	if x != nil {
+		return x.Disk
+	}
+	return nil
+}
+
+type CPUInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	Cores         int32                  `protobuf:"varint,2,opt,name=cores,proto3" json:"cores,omitempty"`
+	Threads       int32                  `protobuf:"varint,3,opt,name=threads,proto3" json:"threads,omitempty"`
+	Frequency     float64                `protobuf:"fixed64,4,opt,name=frequency,proto3" json:"frequency,omitempty"`
+	Temperature   float64                `protobuf:"fixed64,5,opt,name=temperature,proto3" json:"temperature,omitempty"`
+	Usage         float64                `protobuf:"fixed64,6,opt,name=usage,proto3" json:"usage,omitempty"`
+	Cache         int64                  `protobuf:"varint,7,opt,name=cache,proto3" json:"cache,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CPUInfo) Reset() {
+	*x = CPUInfo{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CPUInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CPUInfo) ProtoMessage() {}
+
+func (x *CPUInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CPUInfo.ProtoReflect.Descriptor instead.
+func (*CPUInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CPUInfo) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *CPUInfo) GetCores() int32 {
+	if x != nil {
+		return x.Cores
+	}
+	return 0
+}
+
+func (x *CPUInfo) GetThreads() int32 {
+	if x != nil {
+		return x.Threads
+	}
+	return 0
+}
+
+func (x *CPUInfo) GetFrequency() float64 {
+	if x != nil {
+		return x.Frequency
+	}
+	return 0
+}
+
+func (x *CPUInfo) GetTemperature() float64 {
+	if x != nil {
+		return x.Temperature
+	}
+	return 0
+}
+
+func (x *CPUInfo) GetUsage() float64 {
+	if x != nil {
+		return x.Usage
+	}
+	return 0
+}
+
+func (x *CPUInfo) GetCache() int64 {
+	if x != nil {
+		return x.Cache
+	}
+	return 0
+}
+
+type MemoryInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Total         int64                  `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	Available     int64                  `protobuf:"varint,2,opt,name=available,proto3" json:"available,omitempty"`
+	Used          int64                  `protobuf:"varint,3,opt,name=used,proto3" json:"used,omitempty"`
+	Usage         float64                `protobuf:"fixed64,4,opt,name=usage,proto3" json:"usage,omitempty"`
+	Type          string                 `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`
+	Frequency     float64                `protobuf:"fixed64,6,opt,name=frequency,proto3" json:"frequency,omitempty"`
+	Channels      int32                  `protobuf:"varint,7,opt,name=channels,proto3" json:"channels,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MemoryInfo) Reset() {
+	*x = MemoryInfo{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MemoryInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MemoryInfo) ProtoMessage() {}
+
+func (x *MemoryInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MemoryInfo.ProtoReflect.Descriptor instead.
+func (*MemoryInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *MemoryInfo) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *MemoryInfo) GetAvailable() int64 {
+	if x != nil {
+		return x.Available
+	}
+	return 0
+}
+
+func (x *MemoryInfo) GetUsed() int64 {
+	if x != nil {
+		return x.Used
+	}
+	return 0
+}
+
+func (x *MemoryInfo) GetUsage() float64 {
+	if x != nil {
+		return x.Usage
+	}
+	return 0
+}
+
+func (x *MemoryInfo) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *MemoryInfo) GetFrequency() float64 {
+	if x != nil {
+		return x.Frequency
+	}
+	return 0
+}
+
+func (x *MemoryInfo) GetChannels() int32 {
+	if x != nil {
+		return x.Channels
+	}
+	return 0
+}
+
+type GPUInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	MemoryTotal   int64                  `protobuf:"varint,2,opt,name=memory_total,json=memoryTotal,proto3" json:"memory_total,omitempty"`
+	MemoryUsed    int64                  `protobuf:"varint,3,opt,name=memory_used,json=memoryUsed,proto3" json:"memory_used,omitempty"`
+	MemoryFree    int64                  `protobuf:"varint,4,opt,name=memory_free,json=memoryFree,proto3" json:"memory_free,omitempty"`
+	MemoryUsage   float64                `protobuf:"fixed64,5,opt,name=memory_usage,json=memoryUsage,proto3" json:"memory_usage,omitempty"`
+	Usage         float64                `protobuf:"fixed64,6,opt,name=usage,proto3" json:"usage,omitempty"`
+	Temperature   float64                `protobuf:"fixed64,7,opt,name=temperature,proto3" json:"temperature,omitempty"`
+	Power         float64                `protobuf:"fixed64,8,opt,name=power,proto3" json:"power,omitempty"`
+	CudaCores     int32                  `protobuf:"varint,9,opt,name=cuda_cores,json=cudaCores,proto3" json:"cuda_cores,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GPUInfo) Reset() {
+	*x = GPUInfo{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GPUInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GPUInfo) ProtoMessage() {}
+
+func (x *GPUInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GPUInfo.ProtoReflect.Descriptor instead.
+func (*GPUInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GPUInfo) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *GPUInfo) GetMemoryTotal() int64 {
+	if x != nil {
+		return x.MemoryTotal
+	}
+	return 0
+}
+
+func (x *GPUInfo) GetMemoryUsed() int64 {
+	if x != nil {
+		return x.MemoryUsed
+	}
+	return 0
+}
+
+func (x *GPUInfo) GetMemoryFree() int64 {
+	if x != nil {
+		return x.MemoryFree
+	}
+	return 0
+}
+
+func (x *GPUInfo) GetMemoryUsage() float64 {
+	if x != nil {
+		return x.MemoryUsage
+	}
+	return 0
+}
+
+func (x *GPUInfo) GetUsage() float64 {
+	if x != nil {
+		return x.Usage
+	}
+	return 0
+}
+
+func (x *GPUInfo) GetTemperature() float64 {
+	if x != nil {
+		return x.Temperature
+	}
+	return 0
+}
+
+func (x *GPUInfo) GetPower() float64 {
+	if x != nil {
+		return x.Power
+	}
+	return 0
+}
+
+func (x *GPUInfo) GetCudaCores() int32 {
+	if x != nil {
+		return x.CudaCores
+	}
+	return 0
+}
+
+type DiskInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	Capacity      int64                  `protobuf:"varint,2,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	Used          int64                  `protobuf:"varint,3,opt,name=used,proto3" json:"used,omitempty"`
+	Free          int64                  `protobuf:"varint,4,opt,name=free,proto3" json:"free,omitempty"`
+	Usage         float64                `protobuf:"fixed64,5,opt,name=usage,proto3" json:"usage,omitempty"`
+	Type          string                 `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
+	Interface     string                 `protobuf:"bytes,7,opt,name=interface,proto3" json:"interface,omitempty"`
+	ReadSpeed     float64                `protobuf:"fixed64,8,opt,name=read_speed,json=readSpeed,proto3" json:"read_speed,omitempty"`
+	WriteSpeed    float64                `protobuf:"fixed64,9,opt,name=write_speed,json=writeSpeed,proto3" json:"write_speed,omitempty"`
+	Iops          int64                  `protobuf:"varint,10,opt,name=iops,proto3" json:"iops,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiskInfo) Reset() {
+	*x = DiskInfo{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiskInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiskInfo) ProtoMessage() {}
+
+func (x *DiskInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiskInfo.ProtoReflect.Descriptor instead.
+func (*DiskInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DiskInfo) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *DiskInfo) GetCapacity() int64 {
+	if x != nil {
+		return x.Capacity
+	}
+	return 0
+}
+
+func (x *DiskInfo) GetUsed() int64 {
+	if x != nil {
+		return x.Used
+	}
+	return 0
+}
+
+func (x *DiskInfo) GetFree() int64 {
+	if x != nil {
+		return x.Free
+	}
+	return 0
+}
+
+func (x *DiskInfo) GetUsage() float64 {
+	if x != nil {
+		return x.Usage
+	}
+	return 0
+}
+
+func (x *DiskInfo) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *DiskInfo) GetInterface() string {
+	if x != nil {
+		return x.Interface
+	}
+	return ""
+}
+
+func (x *DiskInfo) GetReadSpeed() float64 {
+	if x != nil {
+		return x.ReadSpeed
+	}
+	return 0
+}
+
+func (x *DiskInfo) GetWriteSpeed() float64 {
+	if x != nil {
+		return x.WriteSpeed
+	}
+	return 0
+}
+
+func (x *DiskInfo) GetIops() int64 {
+	if x != nil {
+		return x.Iops
+	}
+	return 0
+}
+
+type SoftwareInfo struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	OsDistribution    string                 `protobuf:"bytes,1,opt,name=os_distribution,json=osDistribution,proto3" json:"os_distribution,omitempty"`
+	OsVersion         string                 `protobuf:"bytes,2,opt,name=os_version,json=osVersion,proto3" json:"os_version,omitempty"`
+	OsArchitecture    string                 `protobuf:"bytes,3,opt,name=os_architecture,json=osArchitecture,proto3" json:"os_architecture,omitempty"`
+	KernelVersion     string                 `protobuf:"bytes,4,opt,name=kernel_version,json=kernelVersion,proto3" json:"kernel_version,omitempty"`
+	GpuDriverVersion  string                 `protobuf:"bytes,5,opt,name=gpu_driver_version,json=gpuDriverVersion,proto3" json:"gpu_driver_version,omitempty"`
+	CudaVersion       string                 `protobuf:"bytes,6,opt,name=cuda_version,json=cudaVersion,proto3" json:"cuda_version,omitempty"`
+	DockerVersion     string                 `protobuf:"bytes,7,opt,name=docker_version,json=dockerVersion,proto3" json:"docker_version,omitempty"`
+	ContainerdVersion string                 `protobuf:"bytes,8,opt,name=containerd_version,json=containerdVersion,proto3" json:"containerd_version,omitempty"`
+	RuncVersion       string                 `protobuf:"bytes,9,opt,name=runc_version,json=runcVersion,proto3" json:"runc_version,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *SoftwareInfo) Reset() {
+	*x = SoftwareInfo{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SoftwareInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SoftwareInfo) ProtoMessage() {}
+
+func (x *SoftwareInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SoftwareInfo.ProtoReflect.Descriptor instead.
+func (*SoftwareInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *SoftwareInfo) GetOsDistribution() string {
+	if x != nil {
+		return x.OsDistribution
+	}
+	return ""
+}
+
+func (x *SoftwareInfo) GetOsVersion() string {
+	if x != nil {
+		return x.OsVersion
+	}
+	return ""
+}
+
+func (x *SoftwareInfo) GetOsArchitecture() string {
+	if x != nil {
+		return x.OsArchitecture
+	}
+	return ""
+}
+
+func (x *SoftwareInfo) GetKernelVersion() string {
+	if x != nil {
+		return x.KernelVersion
+	}
+	return ""
+}
+
+func (x *SoftwareInfo) GetGpuDriverVersion() string {
+	if x != nil {
+		return x.GpuDriverVersion
+	}
+	return ""
+}
+
+func (x *SoftwareInfo) GetCudaVersion() string {
+	if x != nil {
+		return x.CudaVersion
+	}
+	return ""
+}
+
+func (x *SoftwareInfo) GetDockerVersion() string {
+	if x != nil {
+		return x.DockerVersion
+	}
+	return ""
+}
+
+func (x *SoftwareInfo) GetContainerdVersion() string {
+	if x != nil {
+		return x.ContainerdVersion
+	}
+	return ""
+}
+
+func (x *SoftwareInfo) GetRuncVersion() string {
+	if x != nil {
+		return x.RuncVersion
+	}
+	return ""
+}
+
+type NetworkInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Bandwidth     float64                `protobuf:"fixed64,1,opt,name=bandwidth,proto3" json:"bandwidth,omitempty"`
+	Latency       float64                `protobuf:"fixed64,2,opt,name=latency,proto3" json:"latency,omitempty"`
+	Connections   int32                  `protobuf:"varint,3,opt,name=connections,proto3" json:"connections,omitempty"`
+	PacketLoss    float64                `protobuf:"fixed64,4,opt,name=packet_loss,json=packetLoss,proto3" json:"packet_loss,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NetworkInfo) Reset() {
+	*x = NetworkInfo{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkInfo) ProtoMessage() {}
+
+func (x *NetworkInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkInfo.ProtoReflect.Descriptor instead.
+func (*NetworkInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *NetworkInfo) GetBandwidth() float64 {
+	if x != nil {
+		return x.Bandwidth
+	}
+	return 0
+}
+
+func (x *NetworkInfo) GetLatency() float64 {
+	if x != nil {
+		return x.Latency
+	}
+	return 0
+}
+
+func (x *NetworkInfo) GetConnections() int32 {
+	if x != nil {
+		return x.Connections
+	}
+	return 0
+}
+
+func (x *NetworkInfo) GetPacketLoss() float64 {
+	if x != nil {
+		return x.PacketLoss
+	}
+	return 0
+}
+
+// Pipeline 执行请求
 type ExecutePipelineRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	PipelineId    string                 `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
-	PipelineData  []byte                 `protobuf:"bytes,3,opt,name=pipeline_data,json=pipelineData,proto3" json:"pipeline_data,omitempty"` // Pipeline 的二进制数据
+	PipelineData  []byte                 `protobuf:"bytes,3,opt,name=pipeline_data,json=pipelineData,proto3" json:"pipeline_data,omitempty"`
 	Envs          map[string]string      `protobuf:"bytes,4,rep,name=envs,proto3" json:"envs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Args          map[string]string      `protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
@@ -270,7 +1240,7 @@ type ExecutePipelineRequest struct {
 
 func (x *ExecutePipelineRequest) Reset() {
 	*x = ExecutePipelineRequest{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[4]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -282,7 +1252,7 @@ func (x *ExecutePipelineRequest) String() string {
 func (*ExecutePipelineRequest) ProtoMessage() {}
 
 func (x *ExecutePipelineRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[4]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -295,12 +1265,12 @@ func (x *ExecutePipelineRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecutePipelineRequest.ProtoReflect.Descriptor instead.
 func (*ExecutePipelineRequest) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{4}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{14}
 }
 
-func (x *ExecutePipelineRequest) GetNodeId() string {
+func (x *ExecutePipelineRequest) GetId() string {
 	if x != nil {
-		return x.NodeId
+		return x.Id
 	}
 	return ""
 }
@@ -335,16 +1305,15 @@ func (x *ExecutePipelineRequest) GetArgs() map[string]string {
 
 type ExecutePipelineResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ExecutionId   string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	Accepted      bool                   `protobuf:"varint,2,opt,name=accepted,proto3" json:"accepted,omitempty"`
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExecutePipelineResponse) Reset() {
 	*x = ExecutePipelineResponse{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[5]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -356,7 +1325,7 @@ func (x *ExecutePipelineResponse) String() string {
 func (*ExecutePipelineResponse) ProtoMessage() {}
 
 func (x *ExecutePipelineResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[5]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -369,21 +1338,14 @@ func (x *ExecutePipelineResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecutePipelineResponse.ProtoReflect.Descriptor instead.
 func (*ExecutePipelineResponse) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{5}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *ExecutePipelineResponse) GetExecutionId() string {
+func (x *ExecutePipelineResponse) GetStatus() string {
 	if x != nil {
-		return x.ExecutionId
+		return x.Status
 	}
 	return ""
-}
-
-func (x *ExecutePipelineResponse) GetAccepted() bool {
-	if x != nil {
-		return x.Accepted
-	}
-	return false
 }
 
 func (x *ExecutePipelineResponse) GetMessage() string {
@@ -393,29 +1355,35 @@ func (x *ExecutePipelineResponse) GetMessage() string {
 	return ""
 }
 
-type PipelineStatusRequest struct {
+// Pipeline 状态更新
+type PipelineStatusUpdate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	ExecutionId   string                 `protobuf:"bytes,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	PipelineId    string                 `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	CurrentStep   int32                  `protobuf:"varint,4,opt,name=current_step,json=currentStep,proto3" json:"current_step,omitempty"`
+	Progress      float32                `protobuf:"fixed32,5,opt,name=progress,proto3" json:"progress,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,6,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	UpdateTime    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *PipelineStatusRequest) Reset() {
-	*x = PipelineStatusRequest{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[6]
+func (x *PipelineStatusUpdate) Reset() {
+	*x = PipelineStatusUpdate{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *PipelineStatusRequest) String() string {
+func (x *PipelineStatusUpdate) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*PipelineStatusRequest) ProtoMessage() {}
+func (*PipelineStatusUpdate) ProtoMessage() {}
 
-func (x *PipelineStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[6]
+func (x *PipelineStatusUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -426,172 +1394,89 @@ func (x *PipelineStatusRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use PipelineStatusRequest.ProtoReflect.Descriptor instead.
-func (*PipelineStatusRequest) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{6}
+// Deprecated: Use PipelineStatusUpdate.ProtoReflect.Descriptor instead.
+func (*PipelineStatusUpdate) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{16}
 }
 
-func (x *PipelineStatusRequest) GetNodeId() string {
+func (x *PipelineStatusUpdate) GetId() string {
 	if x != nil {
-		return x.NodeId
+		return x.Id
 	}
 	return ""
 }
 
-func (x *PipelineStatusRequest) GetExecutionId() string {
+func (x *PipelineStatusUpdate) GetPipelineId() string {
 	if x != nil {
-		return x.ExecutionId
+		return x.PipelineId
 	}
 	return ""
 }
 
-type PipelineStatusResponse struct {
-	state                  protoimpl.MessageState `protogen:"open.v1"`
-	ExecutionId            string                 `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	Status                 string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"` // "pending", "running", "completed", "failed", "canceled"
-	CurrentStep            int32                  `protobuf:"varint,3,opt,name=current_step,json=currentStep,proto3" json:"current_step,omitempty"`
-	TotalSteps             int32                  `protobuf:"varint,4,opt,name=total_steps,json=totalSteps,proto3" json:"total_steps,omitempty"`
-	CurrentStepDescription string                 `protobuf:"bytes,5,opt,name=current_step_description,json=currentStepDescription,proto3" json:"current_step_description,omitempty"`
-	Progress               float32                `protobuf:"fixed32,6,opt,name=progress,proto3" json:"progress,omitempty"` // 0.0 - 1.0
-	ErrorMessage           string                 `protobuf:"bytes,7,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	StartTime              *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime                *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	ContainerStatuses      []*ContainerStatus     `protobuf:"bytes,10,rep,name=container_statuses,json=containerStatuses,proto3" json:"container_statuses,omitempty"` // 所有容器的状态
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *PipelineStatusResponse) Reset() {
-	*x = PipelineStatusResponse{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PipelineStatusResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PipelineStatusResponse) ProtoMessage() {}
-
-func (x *PipelineStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PipelineStatusResponse.ProtoReflect.Descriptor instead.
-func (*PipelineStatusResponse) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *PipelineStatusResponse) GetExecutionId() string {
-	if x != nil {
-		return x.ExecutionId
-	}
-	return ""
-}
-
-func (x *PipelineStatusResponse) GetStatus() string {
+func (x *PipelineStatusUpdate) GetStatus() string {
 	if x != nil {
 		return x.Status
 	}
 	return ""
 }
 
-func (x *PipelineStatusResponse) GetCurrentStep() int32 {
+func (x *PipelineStatusUpdate) GetCurrentStep() int32 {
 	if x != nil {
 		return x.CurrentStep
 	}
 	return 0
 }
 
-func (x *PipelineStatusResponse) GetTotalSteps() int32 {
-	if x != nil {
-		return x.TotalSteps
-	}
-	return 0
-}
-
-func (x *PipelineStatusResponse) GetCurrentStepDescription() string {
-	if x != nil {
-		return x.CurrentStepDescription
-	}
-	return ""
-}
-
-func (x *PipelineStatusResponse) GetProgress() float32 {
+func (x *PipelineStatusUpdate) GetProgress() float32 {
 	if x != nil {
 		return x.Progress
 	}
 	return 0
 }
 
-func (x *PipelineStatusResponse) GetErrorMessage() string {
+func (x *PipelineStatusUpdate) GetErrorMessage() string {
 	if x != nil {
 		return x.ErrorMessage
 	}
 	return ""
 }
 
-func (x *PipelineStatusResponse) GetStartTime() *timestamppb.Timestamp {
+func (x *PipelineStatusUpdate) GetUpdateTime() *timestamppb.Timestamp {
 	if x != nil {
-		return x.StartTime
+		return x.UpdateTime
 	}
 	return nil
 }
 
-func (x *PipelineStatusResponse) GetEndTime() *timestamppb.Timestamp {
-	if x != nil {
-		return x.EndTime
-	}
-	return nil
-}
-
-func (x *PipelineStatusResponse) GetContainerStatuses() []*ContainerStatus {
-	if x != nil {
-		return x.ContainerStatuses
-	}
-	return nil
-}
-
-type ContainerStatus struct {
+// Step 状态更新
+type StepStatusUpdate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"` // "running", "stopped", "failed"
-	ErrorMessage  string                 `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	StartTime     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	Metrics       *ContainerMetrics      `protobuf:"bytes,7,opt,name=metrics,proto3" json:"metrics,omitempty"`
-	Logs          []*LogEntry            `protobuf:"bytes,8,rep,name=logs,proto3" json:"logs,omitempty"`                                   // 容器运行日志
-	ExitCode      int32                  `protobuf:"varint,9,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`          // 容器退出码
-	ExitMessage   string                 `protobuf:"bytes,10,opt,name=exit_message,json=exitMessage,proto3" json:"exit_message,omitempty"` // 容器退出信息
+	PipelineId    string                 `protobuf:"bytes,1,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	StepId        string                 `protobuf:"bytes,2,opt,name=step_id,json=stepId,proto3" json:"step_id,omitempty"`
+	Status        StepStatus             `protobuf:"varint,3,opt,name=status,proto3,enum=gamenode.StepStatus" json:"status,omitempty"`
+	StartTime     int64                  `protobuf:"varint,4,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	EndTime       int64                  `protobuf:"varint,5,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,6,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Logs          []byte                 `protobuf:"bytes,7,opt,name=logs,proto3" json:"logs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ContainerStatus) Reset() {
-	*x = ContainerStatus{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[8]
+func (x *StepStatusUpdate) Reset() {
+	*x = StepStatusUpdate{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ContainerStatus) String() string {
+func (x *StepStatusUpdate) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ContainerStatus) ProtoMessage() {}
+func (*StepStatusUpdate) ProtoMessage() {}
 
-func (x *ContainerStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[8]
+func (x *StepStatusUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -602,93 +1487,72 @@ func (x *ContainerStatus) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ContainerStatus.ProtoReflect.Descriptor instead.
-func (*ContainerStatus) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{8}
+// Deprecated: Use StepStatusUpdate.ProtoReflect.Descriptor instead.
+func (*StepStatusUpdate) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{17}
 }
 
-func (x *ContainerStatus) GetContainerId() string {
+func (x *StepStatusUpdate) GetPipelineId() string {
 	if x != nil {
-		return x.ContainerId
+		return x.PipelineId
 	}
 	return ""
 }
 
-func (x *ContainerStatus) GetName() string {
+func (x *StepStatusUpdate) GetStepId() string {
 	if x != nil {
-		return x.Name
+		return x.StepId
 	}
 	return ""
 }
 
-func (x *ContainerStatus) GetStatus() string {
+func (x *StepStatusUpdate) GetStatus() StepStatus {
 	if x != nil {
 		return x.Status
 	}
-	return ""
+	return StepStatus_PENDING
 }
 
-func (x *ContainerStatus) GetErrorMessage() string {
+func (x *StepStatusUpdate) GetStartTime() int64 {
+	if x != nil {
+		return x.StartTime
+	}
+	return 0
+}
+
+func (x *StepStatusUpdate) GetEndTime() int64 {
+	if x != nil {
+		return x.EndTime
+	}
+	return 0
+}
+
+func (x *StepStatusUpdate) GetErrorMessage() string {
 	if x != nil {
 		return x.ErrorMessage
 	}
 	return ""
 }
 
-func (x *ContainerStatus) GetStartTime() *timestamppb.Timestamp {
-	if x != nil {
-		return x.StartTime
-	}
-	return nil
-}
-
-func (x *ContainerStatus) GetEndTime() *timestamppb.Timestamp {
-	if x != nil {
-		return x.EndTime
-	}
-	return nil
-}
-
-func (x *ContainerStatus) GetMetrics() *ContainerMetrics {
-	if x != nil {
-		return x.Metrics
-	}
-	return nil
-}
-
-func (x *ContainerStatus) GetLogs() []*LogEntry {
+func (x *StepStatusUpdate) GetLogs() []byte {
 	if x != nil {
 		return x.Logs
 	}
 	return nil
 }
 
-func (x *ContainerStatus) GetExitCode() int32 {
-	if x != nil {
-		return x.ExitCode
-	}
-	return 0
-}
-
-func (x *ContainerStatus) GetExitMessage() string {
-	if x != nil {
-		return x.ExitMessage
-	}
-	return ""
-}
-
+// Pipeline 取消请求
 type PipelineCancelRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	ExecutionId   string                 `protobuf:"bytes,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	Force         bool                   `protobuf:"varint,3,opt,name=force,proto3" json:"force,omitempty"`
+	PipelineId    string                 `protobuf:"bytes,1,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PipelineCancelRequest) Reset() {
 	*x = PipelineCancelRequest{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[9]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -700,7 +1564,7 @@ func (x *PipelineCancelRequest) String() string {
 func (*PipelineCancelRequest) ProtoMessage() {}
 
 func (x *PipelineCancelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[9]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -713,555 +1577,45 @@ func (x *PipelineCancelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PipelineCancelRequest.ProtoReflect.Descriptor instead.
 func (*PipelineCancelRequest) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *PipelineCancelRequest) GetNodeId() string {
-	if x != nil {
-		return x.NodeId
-	}
-	return ""
-}
-
-func (x *PipelineCancelRequest) GetExecutionId() string {
-	if x != nil {
-		return x.ExecutionId
-	}
-	return ""
-}
-
-func (x *PipelineCancelRequest) GetForce() bool {
-	if x != nil {
-		return x.Force
-	}
-	return false
-}
-
-type PipelineCancelResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PipelineCancelResponse) Reset() {
-	*x = PipelineCancelResponse{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PipelineCancelResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PipelineCancelResponse) ProtoMessage() {}
-
-func (x *PipelineCancelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PipelineCancelResponse.ProtoReflect.Descriptor instead.
-func (*PipelineCancelResponse) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *PipelineCancelResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-func (x *PipelineCancelResponse) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-// 容器管理
-type StartContainerRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	ContainerId   string                 `protobuf:"bytes,2,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	Config        *ContainerConfig       `protobuf:"bytes,3,opt,name=config,proto3" json:"config,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StartContainerRequest) Reset() {
-	*x = StartContainerRequest{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StartContainerRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StartContainerRequest) ProtoMessage() {}
-
-func (x *StartContainerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StartContainerRequest.ProtoReflect.Descriptor instead.
-func (*StartContainerRequest) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *StartContainerRequest) GetNodeId() string {
-	if x != nil {
-		return x.NodeId
-	}
-	return ""
-}
-
-func (x *StartContainerRequest) GetContainerId() string {
-	if x != nil {
-		return x.ContainerId
-	}
-	return ""
-}
-
-func (x *StartContainerRequest) GetConfig() *ContainerConfig {
-	if x != nil {
-		return x.Config
-	}
-	return nil
-}
-
-type StartContainerResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	ContainerId   string                 `protobuf:"bytes,2,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StartContainerResponse) Reset() {
-	*x = StartContainerResponse{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StartContainerResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StartContainerResponse) ProtoMessage() {}
-
-func (x *StartContainerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StartContainerResponse.ProtoReflect.Descriptor instead.
-func (*StartContainerResponse) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *StartContainerResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-func (x *StartContainerResponse) GetContainerId() string {
-	if x != nil {
-		return x.ContainerId
-	}
-	return ""
-}
-
-func (x *StartContainerResponse) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-type StopContainerRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	ContainerId   string                 `protobuf:"bytes,2,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	Timeout       int32                  `protobuf:"varint,3,opt,name=timeout,proto3" json:"timeout,omitempty"` // 停止容器的超时时间(秒)
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StopContainerRequest) Reset() {
-	*x = StopContainerRequest{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StopContainerRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StopContainerRequest) ProtoMessage() {}
-
-func (x *StopContainerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StopContainerRequest.ProtoReflect.Descriptor instead.
-func (*StopContainerRequest) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *StopContainerRequest) GetNodeId() string {
-	if x != nil {
-		return x.NodeId
-	}
-	return ""
-}
-
-func (x *StopContainerRequest) GetContainerId() string {
-	if x != nil {
-		return x.ContainerId
-	}
-	return ""
-}
-
-func (x *StopContainerRequest) GetTimeout() int32 {
-	if x != nil {
-		return x.Timeout
-	}
-	return 0
-}
-
-type StopContainerResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StopContainerResponse) Reset() {
-	*x = StopContainerResponse{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[14]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StopContainerResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StopContainerResponse) ProtoMessage() {}
-
-func (x *StopContainerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[14]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StopContainerResponse.ProtoReflect.Descriptor instead.
-func (*StopContainerResponse) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *StopContainerResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-func (x *StopContainerResponse) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-type RestartContainerRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	ContainerId   string                 `protobuf:"bytes,2,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	Timeout       int32                  `protobuf:"varint,3,opt,name=timeout,proto3" json:"timeout,omitempty"` // 停止容器的超时时间(秒)
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RestartContainerRequest) Reset() {
-	*x = RestartContainerRequest{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[15]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RestartContainerRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RestartContainerRequest) ProtoMessage() {}
-
-func (x *RestartContainerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[15]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RestartContainerRequest.ProtoReflect.Descriptor instead.
-func (*RestartContainerRequest) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{15}
-}
-
-func (x *RestartContainerRequest) GetNodeId() string {
-	if x != nil {
-		return x.NodeId
-	}
-	return ""
-}
-
-func (x *RestartContainerRequest) GetContainerId() string {
-	if x != nil {
-		return x.ContainerId
-	}
-	return ""
-}
-
-func (x *RestartContainerRequest) GetTimeout() int32 {
-	if x != nil {
-		return x.Timeout
-	}
-	return 0
-}
-
-type RestartContainerResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *RestartContainerResponse) Reset() {
-	*x = RestartContainerResponse{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RestartContainerResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RestartContainerResponse) ProtoMessage() {}
-
-func (x *RestartContainerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RestartContainerResponse.ProtoReflect.Descriptor instead.
-func (*RestartContainerResponse) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *RestartContainerResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-func (x *RestartContainerResponse) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-// 状态监控
-type NodeMetricsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *NodeMetricsRequest) Reset() {
-	*x = NodeMetricsRequest{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[17]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NodeMetricsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NodeMetricsRequest) ProtoMessage() {}
-
-func (x *NodeMetricsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[17]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NodeMetricsRequest.ProtoReflect.Descriptor instead.
-func (*NodeMetricsRequest) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{17}
-}
-
-func (x *NodeMetricsRequest) GetNodeId() string {
-	if x != nil {
-		return x.NodeId
-	}
-	return ""
-}
-
-type NodeMetricsResponse struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	NodeId           string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	Metrics          *NodeMetrics           `protobuf:"bytes,2,opt,name=metrics,proto3" json:"metrics,omitempty"`
-	ContainerMetrics []*ContainerMetrics    `protobuf:"bytes,3,rep,name=container_metrics,json=containerMetrics,proto3" json:"container_metrics,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *NodeMetricsResponse) Reset() {
-	*x = NodeMetricsResponse{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[18]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NodeMetricsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NodeMetricsResponse) ProtoMessage() {}
-
-func (x *NodeMetricsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[18]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NodeMetricsResponse.ProtoReflect.Descriptor instead.
-func (*NodeMetricsResponse) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{18}
 }
 
-func (x *NodeMetricsResponse) GetNodeId() string {
+func (x *PipelineCancelRequest) GetPipelineId() string {
 	if x != nil {
-		return x.NodeId
+		return x.PipelineId
 	}
 	return ""
 }
 
-func (x *NodeMetricsResponse) GetMetrics() *NodeMetrics {
+func (x *PipelineCancelRequest) GetReason() string {
 	if x != nil {
-		return x.Metrics
+		return x.Reason
 	}
-	return nil
+	return ""
 }
 
-func (x *NodeMetricsResponse) GetContainerMetrics() []*ContainerMetrics {
-	if x != nil {
-		return x.ContainerMetrics
-	}
-	return nil
-}
-
-type NodeLogsRequest struct {
+type CancelResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	TailLines     int32                  `protobuf:"varint,2,opt,name=tail_lines,json=tailLines,proto3" json:"tail_lines,omitempty"` // 返回最后的行数，0表示所有
-	Follow        bool                   `protobuf:"varint,3,opt,name=follow,proto3" json:"follow,omitempty"`                        // 是否持续获取新日志
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *NodeLogsRequest) Reset() {
-	*x = NodeLogsRequest{}
+func (x *CancelResponse) Reset() {
+	*x = CancelResponse{}
 	mi := &file_internal_proto_gamenode_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *NodeLogsRequest) String() string {
+func (x *CancelResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*NodeLogsRequest) ProtoMessage() {}
+func (*CancelResponse) ProtoMessage() {}
 
-func (x *NodeLogsRequest) ProtoReflect() protoreflect.Message {
+func (x *CancelResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_internal_proto_gamenode_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1273,56 +1627,51 @@ func (x *NodeLogsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use NodeLogsRequest.ProtoReflect.Descriptor instead.
-func (*NodeLogsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use CancelResponse.ProtoReflect.Descriptor instead.
+func (*CancelResponse) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{19}
 }
 
-func (x *NodeLogsRequest) GetNodeId() string {
+func (x *CancelResponse) GetStatus() string {
 	if x != nil {
-		return x.NodeId
+		return x.Status
 	}
 	return ""
 }
 
-func (x *NodeLogsRequest) GetTailLines() int32 {
+func (x *CancelResponse) GetMessage() string {
 	if x != nil {
-		return x.TailLines
+		return x.Message
 	}
-	return 0
+	return ""
 }
 
-func (x *NodeLogsRequest) GetFollow() bool {
-	if x != nil {
-		return x.Follow
-	}
-	return false
-}
-
-type ContainerLogsRequest struct {
+// 日志请求
+type LogRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	ContainerId   string                 `protobuf:"bytes,2,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	TailLines     int32                  `protobuf:"varint,3,opt,name=tail_lines,json=tailLines,proto3" json:"tail_lines,omitempty"` // 返回最后的行数，0表示所有
-	Follow        bool                   `protobuf:"varint,4,opt,name=follow,proto3" json:"follow,omitempty"`                        // 是否持续获取新日志
+	PipelineId    string                 `protobuf:"bytes,1,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	StepId        string                 `protobuf:"bytes,2,opt,name=step_id,json=stepId,proto3" json:"step_id,omitempty"`
+	Level         string                 `protobuf:"bytes,3,opt,name=level,proto3" json:"level,omitempty"`
+	StartTime     int64                  `protobuf:"varint,4,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	EndTime       int64                  `protobuf:"varint,5,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ContainerLogsRequest) Reset() {
-	*x = ContainerLogsRequest{}
+func (x *LogRequest) Reset() {
+	*x = LogRequest{}
 	mi := &file_internal_proto_gamenode_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ContainerLogsRequest) String() string {
+func (x *LogRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ContainerLogsRequest) ProtoMessage() {}
+func (*LogRequest) ProtoMessage() {}
 
-func (x *ContainerLogsRequest) ProtoReflect() protoreflect.Message {
+func (x *LogRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_internal_proto_gamenode_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1334,44 +1683,54 @@ func (x *ContainerLogsRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ContainerLogsRequest.ProtoReflect.Descriptor instead.
-func (*ContainerLogsRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use LogRequest.ProtoReflect.Descriptor instead.
+func (*LogRequest) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{20}
 }
 
-func (x *ContainerLogsRequest) GetNodeId() string {
+func (x *LogRequest) GetPipelineId() string {
 	if x != nil {
-		return x.NodeId
+		return x.PipelineId
 	}
 	return ""
 }
 
-func (x *ContainerLogsRequest) GetContainerId() string {
+func (x *LogRequest) GetStepId() string {
 	if x != nil {
-		return x.ContainerId
+		return x.StepId
 	}
 	return ""
 }
 
-func (x *ContainerLogsRequest) GetTailLines() int32 {
+func (x *LogRequest) GetLevel() string {
 	if x != nil {
-		return x.TailLines
+		return x.Level
+	}
+	return ""
+}
+
+func (x *LogRequest) GetStartTime() int64 {
+	if x != nil {
+		return x.StartTime
 	}
 	return 0
 }
 
-func (x *ContainerLogsRequest) GetFollow() bool {
+func (x *LogRequest) GetEndTime() int64 {
 	if x != nil {
-		return x.Follow
+		return x.EndTime
 	}
-	return false
+	return 0
 }
 
+// 日志条目
 type LogEntry struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Source        string                 `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`   // "stdout" 或 "stderr"
-	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"` // 日志内容
-	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	PipelineId    string                 `protobuf:"bytes,1,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	StepId        string                 `protobuf:"bytes,2,opt,name=step_id,json=stepId,proto3" json:"step_id,omitempty"`
+	Level         string                 `protobuf:"bytes,3,opt,name=level,proto3" json:"level,omitempty"`
+	Message       string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1406,16 +1765,30 @@ func (*LogEntry) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{21}
 }
 
-func (x *LogEntry) GetSource() string {
+func (x *LogEntry) GetPipelineId() string {
 	if x != nil {
-		return x.Source
+		return x.PipelineId
 	}
 	return ""
 }
 
-func (x *LogEntry) GetContent() string {
+func (x *LogEntry) GetStepId() string {
 	if x != nil {
-		return x.Content
+		return x.StepId
+	}
+	return ""
+}
+
+func (x *LogEntry) GetLevel() string {
+	if x != nil {
+		return x.Level
+	}
+	return ""
+}
+
+func (x *LogEntry) GetMessage() string {
+	if x != nil {
+		return x.Message
 	}
 	return ""
 }
@@ -1427,29 +1800,29 @@ func (x *LogEntry) GetTimestamp() *timestamppb.Timestamp {
 	return nil
 }
 
-// 事件订阅
-type EventSubscriptionRequest struct {
+// 通用响应
+type UpdateResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	EventTypes    []string               `protobuf:"bytes,2,rep,name=event_types,json=eventTypes,proto3" json:"event_types,omitempty"` // 需要订阅的事件类型
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *EventSubscriptionRequest) Reset() {
-	*x = EventSubscriptionRequest{}
+func (x *UpdateResponse) Reset() {
+	*x = UpdateResponse{}
 	mi := &file_internal_proto_gamenode_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *EventSubscriptionRequest) String() string {
+func (x *UpdateResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*EventSubscriptionRequest) ProtoMessage() {}
+func (*UpdateResponse) ProtoMessage() {}
 
-func (x *EventSubscriptionRequest) ProtoReflect() protoreflect.Message {
+func (x *UpdateResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_internal_proto_gamenode_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1461,41 +1834,94 @@ func (x *EventSubscriptionRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use EventSubscriptionRequest.ProtoReflect.Descriptor instead.
-func (*EventSubscriptionRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use UpdateResponse.ProtoReflect.Descriptor instead.
+func (*UpdateResponse) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{22}
 }
 
-func (x *EventSubscriptionRequest) GetNodeId() string {
+func (x *UpdateResponse) GetStatus() string {
 	if x != nil {
-		return x.NodeId
+		return x.Status
 	}
 	return ""
 }
 
-func (x *EventSubscriptionRequest) GetEventTypes() []string {
+func (x *UpdateResponse) GetMessage() string {
 	if x != nil {
-		return x.EventTypes
+		return x.Message
 	}
-	return nil
+	return ""
 }
 
+type ReportResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportResponse) Reset() {
+	*x = ReportResponse{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportResponse) ProtoMessage() {}
+
+func (x *ReportResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportResponse.ProtoReflect.Descriptor instead.
+func (*ReportResponse) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ReportResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ReportResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// 事件
 type Event struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"` // 事件类型
-	NodeId        string                 `protobuf:"bytes,2,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	EntityId      string                 `protobuf:"bytes,3,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"` // container_id, pipeline_id 等
+	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	EntityId      string                 `protobuf:"bytes,3,opt,name=entity_id,json=entityId,proto3" json:"entity_id,omitempty"`
 	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
 	Message       string                 `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
-	Data          map[string]string      `protobuf:"bytes,6,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // 事件相关的其他数据
-	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Data          map[string]string      `protobuf:"bytes,7,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Event) Reset() {
 	*x = Event{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[23]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1507,7 +1933,7 @@ func (x *Event) String() string {
 func (*Event) ProtoMessage() {}
 
 func (x *Event) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[23]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1520,7 +1946,7 @@ func (x *Event) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Event.ProtoReflect.Descriptor instead.
 func (*Event) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{23}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *Event) GetType() string {
@@ -1530,9 +1956,9 @@ func (x *Event) GetType() string {
 	return ""
 }
 
-func (x *Event) GetNodeId() string {
+func (x *Event) GetId() string {
 	if x != nil {
-		return x.NodeId
+		return x.Id
 	}
 	return ""
 }
@@ -1558,13 +1984,6 @@ func (x *Event) GetMessage() string {
 	return ""
 }
 
-func (x *Event) GetData() map[string]string {
-	if x != nil {
-		return x.Data
-	}
-	return nil
-}
-
 func (x *Event) GetTimestamp() *timestamppb.Timestamp {
 	if x != nil {
 		return x.Timestamp
@@ -1572,1734 +1991,137 @@ func (x *Event) GetTimestamp() *timestamppb.Timestamp {
 	return nil
 }
 
-// 数据模型
-type NodeInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Hostname      string                 `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	Ip            string                 `protobuf:"bytes,2,opt,name=ip,proto3" json:"ip,omitempty"`
-	Os            string                 `protobuf:"bytes,3,opt,name=os,proto3" json:"os,omitempty"`
-	Arch          string                 `protobuf:"bytes,4,opt,name=arch,proto3" json:"arch,omitempty"`
-	Kernel        string                 `protobuf:"bytes,5,opt,name=kernel,proto3" json:"kernel,omitempty"`
-	Hardware      *HardwareInfo          `protobuf:"bytes,6,opt,name=hardware,proto3" json:"hardware,omitempty"`
-	Labels        map[string]string      `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *NodeInfo) Reset() {
-	*x = NodeInfo{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[24]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NodeInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NodeInfo) ProtoMessage() {}
-
-func (x *NodeInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[24]
+func (x *Event) GetData() map[string]string {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NodeInfo.ProtoReflect.Descriptor instead.
-func (*NodeInfo) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{24}
-}
-
-func (x *NodeInfo) GetHostname() string {
-	if x != nil {
-		return x.Hostname
-	}
-	return ""
-}
-
-func (x *NodeInfo) GetIp() string {
-	if x != nil {
-		return x.Ip
-	}
-	return ""
-}
-
-func (x *NodeInfo) GetOs() string {
-	if x != nil {
-		return x.Os
-	}
-	return ""
-}
-
-func (x *NodeInfo) GetArch() string {
-	if x != nil {
-		return x.Arch
-	}
-	return ""
-}
-
-func (x *NodeInfo) GetKernel() string {
-	if x != nil {
-		return x.Kernel
-	}
-	return ""
-}
-
-func (x *NodeInfo) GetHardware() *HardwareInfo {
-	if x != nil {
-		return x.Hardware
+		return x.Data
 	}
 	return nil
-}
-
-func (x *NodeInfo) GetLabels() map[string]string {
-	if x != nil {
-		return x.Labels
-	}
-	return nil
-}
-
-type HardwareInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Cpu           *CpuInfo               `protobuf:"bytes,1,opt,name=cpu,proto3" json:"cpu,omitempty"`
-	Memory        *MemoryInfo            `protobuf:"bytes,2,opt,name=memory,proto3" json:"memory,omitempty"`
-	Disk          *DiskInfo              `protobuf:"bytes,3,opt,name=disk,proto3" json:"disk,omitempty"`
-	Gpus          []*GpuInfo             `protobuf:"bytes,4,rep,name=gpus,proto3" json:"gpus,omitempty"`
-	Network       *NetworkInfo           `protobuf:"bytes,5,opt,name=network,proto3" json:"network,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *HardwareInfo) Reset() {
-	*x = HardwareInfo{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[25]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *HardwareInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*HardwareInfo) ProtoMessage() {}
-
-func (x *HardwareInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[25]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use HardwareInfo.ProtoReflect.Descriptor instead.
-func (*HardwareInfo) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{25}
-}
-
-func (x *HardwareInfo) GetCpu() *CpuInfo {
-	if x != nil {
-		return x.Cpu
-	}
-	return nil
-}
-
-func (x *HardwareInfo) GetMemory() *MemoryInfo {
-	if x != nil {
-		return x.Memory
-	}
-	return nil
-}
-
-func (x *HardwareInfo) GetDisk() *DiskInfo {
-	if x != nil {
-		return x.Disk
-	}
-	return nil
-}
-
-func (x *HardwareInfo) GetGpus() []*GpuInfo {
-	if x != nil {
-		return x.Gpus
-	}
-	return nil
-}
-
-func (x *HardwareInfo) GetNetwork() *NetworkInfo {
-	if x != nil {
-		return x.Network
-	}
-	return nil
-}
-
-type CpuInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Cores         int32                  `protobuf:"varint,1,opt,name=cores,proto3" json:"cores,omitempty"`
-	Model         string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
-	ClockSpeed    float32                `protobuf:"fixed32,3,opt,name=clock_speed,json=clockSpeed,proto3" json:"clock_speed,omitempty"` // GHz
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CpuInfo) Reset() {
-	*x = CpuInfo{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[26]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CpuInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CpuInfo) ProtoMessage() {}
-
-func (x *CpuInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[26]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CpuInfo.ProtoReflect.Descriptor instead.
-func (*CpuInfo) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{26}
-}
-
-func (x *CpuInfo) GetCores() int32 {
-	if x != nil {
-		return x.Cores
-	}
-	return 0
-}
-
-func (x *CpuInfo) GetModel() string {
-	if x != nil {
-		return x.Model
-	}
-	return ""
-}
-
-func (x *CpuInfo) GetClockSpeed() float32 {
-	if x != nil {
-		return x.ClockSpeed
-	}
-	return 0
-}
-
-type MemoryInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Total         int64                  `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"` // 单位: 字节
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`    // DDR4, etc.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *MemoryInfo) Reset() {
-	*x = MemoryInfo{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[27]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *MemoryInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*MemoryInfo) ProtoMessage() {}
-
-func (x *MemoryInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[27]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use MemoryInfo.ProtoReflect.Descriptor instead.
-func (*MemoryInfo) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{27}
-}
-
-func (x *MemoryInfo) GetTotal() int64 {
-	if x != nil {
-		return x.Total
-	}
-	return 0
-}
-
-func (x *MemoryInfo) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-type DiskInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Total         int64                  `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"` // 单位: 字节
-	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`    // SSD, HDD, etc.
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DiskInfo) Reset() {
-	*x = DiskInfo{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[28]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DiskInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DiskInfo) ProtoMessage() {}
-
-func (x *DiskInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[28]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DiskInfo.ProtoReflect.Descriptor instead.
-func (*DiskInfo) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{28}
-}
-
-func (x *DiskInfo) GetTotal() int64 {
-	if x != nil {
-		return x.Total
-	}
-	return 0
-}
-
-func (x *DiskInfo) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-type GpuInfo struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
-	Memory        int64                  `protobuf:"varint,2,opt,name=memory,proto3" json:"memory,omitempty"` // 显存，单位: 字节
-	Driver        string                 `protobuf:"bytes,3,opt,name=driver,proto3" json:"driver,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GpuInfo) Reset() {
-	*x = GpuInfo{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[29]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GpuInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GpuInfo) ProtoMessage() {}
-
-func (x *GpuInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[29]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GpuInfo.ProtoReflect.Descriptor instead.
-func (*GpuInfo) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{29}
-}
-
-func (x *GpuInfo) GetModel() string {
-	if x != nil {
-		return x.Model
-	}
-	return ""
-}
-
-func (x *GpuInfo) GetMemory() int64 {
-	if x != nil {
-		return x.Memory
-	}
-	return 0
-}
-
-func (x *GpuInfo) GetDriver() string {
-	if x != nil {
-		return x.Driver
-	}
-	return ""
-}
-
-type NetworkInfo struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	PrimaryInterface string                 `protobuf:"bytes,1,opt,name=primary_interface,json=primaryInterface,proto3" json:"primary_interface,omitempty"`
-	Bandwidth        int32                  `protobuf:"varint,2,opt,name=bandwidth,proto3" json:"bandwidth,omitempty"` // Mbps
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *NetworkInfo) Reset() {
-	*x = NetworkInfo{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[30]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NetworkInfo) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NetworkInfo) ProtoMessage() {}
-
-func (x *NetworkInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[30]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NetworkInfo.ProtoReflect.Descriptor instead.
-func (*NetworkInfo) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{30}
-}
-
-func (x *NetworkInfo) GetPrimaryInterface() string {
-	if x != nil {
-		return x.PrimaryInterface
-	}
-	return ""
-}
-
-func (x *NetworkInfo) GetBandwidth() int32 {
-	if x != nil {
-		return x.Bandwidth
-	}
-	return 0
-}
-
-type NodeMetrics struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	CpuUsage       float32                `protobuf:"fixed32,1,opt,name=cpu_usage,json=cpuUsage,proto3" json:"cpu_usage,omitempty"`          // 百分比
-	MemoryUsage    float32                `protobuf:"fixed32,2,opt,name=memory_usage,json=memoryUsage,proto3" json:"memory_usage,omitempty"` // 百分比
-	DiskUsage      float32                `protobuf:"fixed32,3,opt,name=disk_usage,json=diskUsage,proto3" json:"disk_usage,omitempty"`       // 百分比
-	GpuMetrics     []*GpuMetrics          `protobuf:"bytes,4,rep,name=gpu_metrics,json=gpuMetrics,proto3" json:"gpu_metrics,omitempty"`
-	NetworkMetrics *NetworkMetrics        `protobuf:"bytes,5,opt,name=network_metrics,json=networkMetrics,proto3" json:"network_metrics,omitempty"`
-	ContainerCount int32                  `protobuf:"varint,6,opt,name=container_count,json=containerCount,proto3" json:"container_count,omitempty"`
-	CollectedAt    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=collected_at,json=collectedAt,proto3" json:"collected_at,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *NodeMetrics) Reset() {
-	*x = NodeMetrics{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[31]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NodeMetrics) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NodeMetrics) ProtoMessage() {}
-
-func (x *NodeMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[31]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NodeMetrics.ProtoReflect.Descriptor instead.
-func (*NodeMetrics) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{31}
-}
-
-func (x *NodeMetrics) GetCpuUsage() float32 {
-	if x != nil {
-		return x.CpuUsage
-	}
-	return 0
-}
-
-func (x *NodeMetrics) GetMemoryUsage() float32 {
-	if x != nil {
-		return x.MemoryUsage
-	}
-	return 0
-}
-
-func (x *NodeMetrics) GetDiskUsage() float32 {
-	if x != nil {
-		return x.DiskUsage
-	}
-	return 0
-}
-
-func (x *NodeMetrics) GetGpuMetrics() []*GpuMetrics {
-	if x != nil {
-		return x.GpuMetrics
-	}
-	return nil
-}
-
-func (x *NodeMetrics) GetNetworkMetrics() *NetworkMetrics {
-	if x != nil {
-		return x.NetworkMetrics
-	}
-	return nil
-}
-
-func (x *NodeMetrics) GetContainerCount() int32 {
-	if x != nil {
-		return x.ContainerCount
-	}
-	return 0
-}
-
-func (x *NodeMetrics) GetCollectedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.CollectedAt
-	}
-	return nil
-}
-
-type GpuMetrics struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Index         int32                  `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
-	Usage         float32                `protobuf:"fixed32,2,opt,name=usage,proto3" json:"usage,omitempty"`                                // 百分比
-	MemoryUsage   float32                `protobuf:"fixed32,3,opt,name=memory_usage,json=memoryUsage,proto3" json:"memory_usage,omitempty"` // 百分比
-	Temperature   float32                `protobuf:"fixed32,4,opt,name=temperature,proto3" json:"temperature,omitempty"`                    // 摄氏度
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GpuMetrics) Reset() {
-	*x = GpuMetrics{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[32]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GpuMetrics) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GpuMetrics) ProtoMessage() {}
-
-func (x *GpuMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[32]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GpuMetrics.ProtoReflect.Descriptor instead.
-func (*GpuMetrics) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{32}
-}
-
-func (x *GpuMetrics) GetIndex() int32 {
-	if x != nil {
-		return x.Index
-	}
-	return 0
-}
-
-func (x *GpuMetrics) GetUsage() float32 {
-	if x != nil {
-		return x.Usage
-	}
-	return 0
-}
-
-func (x *GpuMetrics) GetMemoryUsage() float32 {
-	if x != nil {
-		return x.MemoryUsage
-	}
-	return 0
-}
-
-func (x *GpuMetrics) GetTemperature() float32 {
-	if x != nil {
-		return x.Temperature
-	}
-	return 0
-}
-
-type NetworkMetrics struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	RxBytesPerSec float32                `protobuf:"fixed32,1,opt,name=rx_bytes_per_sec,json=rxBytesPerSec,proto3" json:"rx_bytes_per_sec,omitempty"` // 字节/秒
-	TxBytesPerSec float32                `protobuf:"fixed32,2,opt,name=tx_bytes_per_sec,json=txBytesPerSec,proto3" json:"tx_bytes_per_sec,omitempty"` // 字节/秒
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *NetworkMetrics) Reset() {
-	*x = NetworkMetrics{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[33]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NetworkMetrics) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NetworkMetrics) ProtoMessage() {}
-
-func (x *NetworkMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[33]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NetworkMetrics.ProtoReflect.Descriptor instead.
-func (*NetworkMetrics) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{33}
-}
-
-func (x *NetworkMetrics) GetRxBytesPerSec() float32 {
-	if x != nil {
-		return x.RxBytesPerSec
-	}
-	return 0
-}
-
-func (x *NetworkMetrics) GetTxBytesPerSec() float32 {
-	if x != nil {
-		return x.TxBytesPerSec
-	}
-	return 0
-}
-
-type ContainerMetrics struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ContainerId   string                 `protobuf:"bytes,1,opt,name=container_id,json=containerId,proto3" json:"container_id,omitempty"`
-	CpuUsage      float32                `protobuf:"fixed32,2,opt,name=cpu_usage,json=cpuUsage,proto3" json:"cpu_usage,omitempty"`          // 百分比
-	MemoryUsage   float32                `protobuf:"fixed32,3,opt,name=memory_usage,json=memoryUsage,proto3" json:"memory_usage,omitempty"` // 百分比
-	MemoryUsed    int64                  `protobuf:"varint,4,opt,name=memory_used,json=memoryUsed,proto3" json:"memory_used,omitempty"`     // 字节
-	Network       *NetworkMetrics        `protobuf:"bytes,5,opt,name=network,proto3" json:"network,omitempty"`
-	CollectedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=collected_at,json=collectedAt,proto3" json:"collected_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ContainerMetrics) Reset() {
-	*x = ContainerMetrics{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[34]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ContainerMetrics) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ContainerMetrics) ProtoMessage() {}
-
-func (x *ContainerMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[34]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ContainerMetrics.ProtoReflect.Descriptor instead.
-func (*ContainerMetrics) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{34}
-}
-
-func (x *ContainerMetrics) GetContainerId() string {
-	if x != nil {
-		return x.ContainerId
-	}
-	return ""
-}
-
-func (x *ContainerMetrics) GetCpuUsage() float32 {
-	if x != nil {
-		return x.CpuUsage
-	}
-	return 0
-}
-
-func (x *ContainerMetrics) GetMemoryUsage() float32 {
-	if x != nil {
-		return x.MemoryUsage
-	}
-	return 0
-}
-
-func (x *ContainerMetrics) GetMemoryUsed() int64 {
-	if x != nil {
-		return x.MemoryUsed
-	}
-	return 0
-}
-
-func (x *ContainerMetrics) GetNetwork() *NetworkMetrics {
-	if x != nil {
-		return x.Network
-	}
-	return nil
-}
-
-func (x *ContainerMetrics) GetCollectedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.CollectedAt
-	}
-	return nil
-}
-
-// Pipeline定义
-type Pipeline struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Envs          []string               `protobuf:"bytes,4,rep,name=envs,proto3" json:"envs,omitempty"` // 环境变量列表
-	Args          []string               `protobuf:"bytes,5,rep,name=args,proto3" json:"args,omitempty"` // 运行时参数列表
-	Steps         []*PipelineStep        `protobuf:"bytes,6,rep,name=steps,proto3" json:"steps,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Pipeline) Reset() {
-	*x = Pipeline{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[35]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Pipeline) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Pipeline) ProtoMessage() {}
-
-func (x *Pipeline) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[35]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Pipeline.ProtoReflect.Descriptor instead.
-func (*Pipeline) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{35}
-}
-
-func (x *Pipeline) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *Pipeline) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Pipeline) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *Pipeline) GetEnvs() []string {
-	if x != nil {
-		return x.Envs
-	}
-	return nil
-}
-
-func (x *Pipeline) GetArgs() []string {
-	if x != nil {
-		return x.Args
-	}
-	return nil
-}
-
-func (x *Pipeline) GetSteps() []*PipelineStep {
-	if x != nil {
-		return x.Steps
-	}
-	return nil
-}
-
-type PipelineStep struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name            string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description     string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Type            string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"` // "service" 表示后台服务，未指定表示普通任务
-	Container       *ContainerConfig       `protobuf:"bytes,5,opt,name=container,proto3" json:"container,omitempty"`
-	ContinueOnError bool                   `protobuf:"varint,6,opt,name=continue_on_error,json=continueOnError,proto3" json:"continue_on_error,omitempty"`
-	Timeout         int32                  `protobuf:"varint,7,opt,name=timeout,proto3" json:"timeout,omitempty"` // 超时时间（秒）
-	Environment     map[string]string      `protobuf:"bytes,8,rep,name=environment,proto3" json:"environment,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *PipelineStep) Reset() {
-	*x = PipelineStep{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[36]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PipelineStep) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PipelineStep) ProtoMessage() {}
-
-func (x *PipelineStep) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[36]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PipelineStep.ProtoReflect.Descriptor instead.
-func (*PipelineStep) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{36}
-}
-
-func (x *PipelineStep) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *PipelineStep) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *PipelineStep) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *PipelineStep) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-func (x *PipelineStep) GetContainer() *ContainerConfig {
-	if x != nil {
-		return x.Container
-	}
-	return nil
-}
-
-func (x *PipelineStep) GetContinueOnError() bool {
-	if x != nil {
-		return x.ContinueOnError
-	}
-	return false
-}
-
-func (x *PipelineStep) GetTimeout() int32 {
-	if x != nil {
-		return x.Timeout
-	}
-	return 0
-}
-
-func (x *PipelineStep) GetEnvironment() map[string]string {
-	if x != nil {
-		return x.Environment
-	}
-	return nil
-}
-
-// 容器配置
-type ContainerConfig struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Image          string                 `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
-	ContainerName  string                 `protobuf:"bytes,2,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
-	Hostname       string                 `protobuf:"bytes,3,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	Privileged     bool                   `protobuf:"varint,4,opt,name=privileged,proto3" json:"privileged,omitempty"`
-	SecurityOpt    []string               `protobuf:"bytes,5,rep,name=security_opt,json=securityOpt,proto3" json:"security_opt,omitempty"`
-	CapAdd         []string               `protobuf:"bytes,6,rep,name=cap_add,json=capAdd,proto3" json:"cap_add,omitempty"`
-	Tmpfs          []string               `protobuf:"bytes,7,rep,name=tmpfs,proto3" json:"tmpfs,omitempty"`
-	Devices        []*DeviceMapping       `protobuf:"bytes,8,rep,name=devices,proto3" json:"devices,omitempty"`
-	Volumes        []*VolumeMapping       `protobuf:"bytes,9,rep,name=volumes,proto3" json:"volumes,omitempty"`
-	Ports          []*PortMapping         `protobuf:"bytes,10,rep,name=ports,proto3" json:"ports,omitempty"`
-	Environment    map[string]string      `protobuf:"bytes,11,rep,name=environment,proto3" json:"environment,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Command        []string               `protobuf:"bytes,12,rep,name=command,proto3" json:"command,omitempty"`
-	WorkingDir     string                 `protobuf:"bytes,13,opt,name=working_dir,json=workingDir,proto3" json:"working_dir,omitempty"`
-	NetworkMode    string                 `protobuf:"bytes,14,opt,name=network_mode,json=networkMode,proto3" json:"network_mode,omitempty"`
-	RestartPolicy  string                 `protobuf:"bytes,15,opt,name=restart_policy,json=restartPolicy,proto3" json:"restart_policy,omitempty"`
-	Deploy         *ResourceRequirements  `protobuf:"bytes,16,opt,name=deploy,proto3" json:"deploy,omitempty"`
-	Mounts         []*Mount               `protobuf:"bytes,17,rep,name=mounts,proto3" json:"mounts,omitempty"`
-	ExtraHosts     []string               `protobuf:"bytes,18,rep,name=extra_hosts,json=extraHosts,proto3" json:"extra_hosts,omitempty"`
-	Dns            []string               `protobuf:"bytes,19,rep,name=dns,proto3" json:"dns,omitempty"`
-	DnsSearch      []string               `protobuf:"bytes,20,rep,name=dns_search,json=dnsSearch,proto3" json:"dns_search,omitempty"`
-	DnsOptions     []string               `protobuf:"bytes,21,rep,name=dns_options,json=dnsOptions,proto3" json:"dns_options,omitempty"`
-	Capabilities   []string               `protobuf:"bytes,22,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
-	StorageOpt     map[string]string      `protobuf:"bytes,23,rep,name=storage_opt,json=storageOpt,proto3" json:"storage_opt,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Sysctls        map[string]string      `protobuf:"bytes,24,rep,name=sysctls,proto3" json:"sysctls,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Runtime        string                 `protobuf:"bytes,25,opt,name=runtime,proto3" json:"runtime,omitempty"`
-	Init           bool                   `protobuf:"varint,26,opt,name=init,proto3" json:"init,omitempty"`
-	AutoRemove     bool                   `protobuf:"varint,27,opt,name=auto_remove,json=autoRemove,proto3" json:"auto_remove,omitempty"`
-	OomKillDisable bool                   `protobuf:"varint,28,opt,name=oom_kill_disable,json=oomKillDisable,proto3" json:"oom_kill_disable,omitempty"`
-	OomScoreAdj    int32                  `protobuf:"varint,29,opt,name=oom_score_adj,json=oomScoreAdj,proto3" json:"oom_score_adj,omitempty"`
-	PidMode        string                 `protobuf:"bytes,30,opt,name=pid_mode,json=pidMode,proto3" json:"pid_mode,omitempty"`
-	UtsMode        string                 `protobuf:"bytes,31,opt,name=uts_mode,json=utsMode,proto3" json:"uts_mode,omitempty"`
-	UsernsMode     string                 `protobuf:"bytes,32,opt,name=userns_mode,json=usernsMode,proto3" json:"userns_mode,omitempty"`
-	ShmSize        int64                  `protobuf:"varint,33,opt,name=shm_size,json=shmSize,proto3" json:"shm_size,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *ContainerConfig) Reset() {
-	*x = ContainerConfig{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[37]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ContainerConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ContainerConfig) ProtoMessage() {}
-
-func (x *ContainerConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[37]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ContainerConfig.ProtoReflect.Descriptor instead.
-func (*ContainerConfig) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{37}
-}
-
-func (x *ContainerConfig) GetImage() string {
-	if x != nil {
-		return x.Image
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetContainerName() string {
-	if x != nil {
-		return x.ContainerName
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetHostname() string {
-	if x != nil {
-		return x.Hostname
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetPrivileged() bool {
-	if x != nil {
-		return x.Privileged
-	}
-	return false
-}
-
-func (x *ContainerConfig) GetSecurityOpt() []string {
-	if x != nil {
-		return x.SecurityOpt
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetCapAdd() []string {
-	if x != nil {
-		return x.CapAdd
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetTmpfs() []string {
-	if x != nil {
-		return x.Tmpfs
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetDevices() []*DeviceMapping {
-	if x != nil {
-		return x.Devices
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetVolumes() []*VolumeMapping {
-	if x != nil {
-		return x.Volumes
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetPorts() []*PortMapping {
-	if x != nil {
-		return x.Ports
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetEnvironment() map[string]string {
-	if x != nil {
-		return x.Environment
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetCommand() []string {
-	if x != nil {
-		return x.Command
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetWorkingDir() string {
-	if x != nil {
-		return x.WorkingDir
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetNetworkMode() string {
-	if x != nil {
-		return x.NetworkMode
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetRestartPolicy() string {
-	if x != nil {
-		return x.RestartPolicy
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetDeploy() *ResourceRequirements {
-	if x != nil {
-		return x.Deploy
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetMounts() []*Mount {
-	if x != nil {
-		return x.Mounts
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetExtraHosts() []string {
-	if x != nil {
-		return x.ExtraHosts
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetDns() []string {
-	if x != nil {
-		return x.Dns
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetDnsSearch() []string {
-	if x != nil {
-		return x.DnsSearch
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetDnsOptions() []string {
-	if x != nil {
-		return x.DnsOptions
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetCapabilities() []string {
-	if x != nil {
-		return x.Capabilities
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetStorageOpt() map[string]string {
-	if x != nil {
-		return x.StorageOpt
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetSysctls() map[string]string {
-	if x != nil {
-		return x.Sysctls
-	}
-	return nil
-}
-
-func (x *ContainerConfig) GetRuntime() string {
-	if x != nil {
-		return x.Runtime
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetInit() bool {
-	if x != nil {
-		return x.Init
-	}
-	return false
-}
-
-func (x *ContainerConfig) GetAutoRemove() bool {
-	if x != nil {
-		return x.AutoRemove
-	}
-	return false
-}
-
-func (x *ContainerConfig) GetOomKillDisable() bool {
-	if x != nil {
-		return x.OomKillDisable
-	}
-	return false
-}
-
-func (x *ContainerConfig) GetOomScoreAdj() int32 {
-	if x != nil {
-		return x.OomScoreAdj
-	}
-	return 0
-}
-
-func (x *ContainerConfig) GetPidMode() string {
-	if x != nil {
-		return x.PidMode
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetUtsMode() string {
-	if x != nil {
-		return x.UtsMode
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetUsernsMode() string {
-	if x != nil {
-		return x.UsernsMode
-	}
-	return ""
-}
-
-func (x *ContainerConfig) GetShmSize() int64 {
-	if x != nil {
-		return x.ShmSize
-	}
-	return 0
-}
-
-type DeviceMapping struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	HostPath          string                 `protobuf:"bytes,1,opt,name=host_path,json=hostPath,proto3" json:"host_path,omitempty"`
-	ContainerPath     string                 `protobuf:"bytes,2,opt,name=container_path,json=containerPath,proto3" json:"container_path,omitempty"`
-	CgroupPermissions string                 `protobuf:"bytes,3,opt,name=cgroup_permissions,json=cgroupPermissions,proto3" json:"cgroup_permissions,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *DeviceMapping) Reset() {
-	*x = DeviceMapping{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[38]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeviceMapping) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeviceMapping) ProtoMessage() {}
-
-func (x *DeviceMapping) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[38]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeviceMapping.ProtoReflect.Descriptor instead.
-func (*DeviceMapping) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{38}
-}
-
-func (x *DeviceMapping) GetHostPath() string {
-	if x != nil {
-		return x.HostPath
-	}
-	return ""
-}
-
-func (x *DeviceMapping) GetContainerPath() string {
-	if x != nil {
-		return x.ContainerPath
-	}
-	return ""
-}
-
-func (x *DeviceMapping) GetCgroupPermissions() string {
-	if x != nil {
-		return x.CgroupPermissions
-	}
-	return ""
-}
-
-type VolumeMapping struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	HostPath      string                 `protobuf:"bytes,1,opt,name=host_path,json=hostPath,proto3" json:"host_path,omitempty"`
-	ContainerPath string                 `protobuf:"bytes,2,opt,name=container_path,json=containerPath,proto3" json:"container_path,omitempty"`
-	Readonly      bool                   `protobuf:"varint,3,opt,name=readonly,proto3" json:"readonly,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *VolumeMapping) Reset() {
-	*x = VolumeMapping{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[39]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *VolumeMapping) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*VolumeMapping) ProtoMessage() {}
-
-func (x *VolumeMapping) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[39]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use VolumeMapping.ProtoReflect.Descriptor instead.
-func (*VolumeMapping) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{39}
-}
-
-func (x *VolumeMapping) GetHostPath() string {
-	if x != nil {
-		return x.HostPath
-	}
-	return ""
-}
-
-func (x *VolumeMapping) GetContainerPath() string {
-	if x != nil {
-		return x.ContainerPath
-	}
-	return ""
-}
-
-func (x *VolumeMapping) GetReadonly() bool {
-	if x != nil {
-		return x.Readonly
-	}
-	return false
-}
-
-type PortMapping struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	HostPort      int32                  `protobuf:"varint,1,opt,name=host_port,json=hostPort,proto3" json:"host_port,omitempty"`
-	ContainerPort int32                  `protobuf:"varint,2,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
-	Protocol      string                 `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"` // "tcp", "udp"
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PortMapping) Reset() {
-	*x = PortMapping{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[40]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PortMapping) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PortMapping) ProtoMessage() {}
-
-func (x *PortMapping) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[40]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PortMapping.ProtoReflect.Descriptor instead.
-func (*PortMapping) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{40}
-}
-
-func (x *PortMapping) GetHostPort() int32 {
-	if x != nil {
-		return x.HostPort
-	}
-	return 0
-}
-
-func (x *PortMapping) GetContainerPort() int32 {
-	if x != nil {
-		return x.ContainerPort
-	}
-	return 0
-}
-
-func (x *PortMapping) GetProtocol() string {
-	if x != nil {
-		return x.Protocol
-	}
-	return ""
-}
-
-type Mount struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Source        string                 `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
-	Target        string                 `protobuf:"bytes,3,opt,name=target,proto3" json:"target,omitempty"`
-	ReadOnly      bool                   `protobuf:"varint,4,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
-	Consistency   string                 `protobuf:"bytes,5,opt,name=consistency,proto3" json:"consistency,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Mount) Reset() {
-	*x = Mount{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[41]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Mount) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Mount) ProtoMessage() {}
-
-func (x *Mount) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[41]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Mount.ProtoReflect.Descriptor instead.
-func (*Mount) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{41}
-}
-
-func (x *Mount) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
-func (x *Mount) GetSource() string {
-	if x != nil {
-		return x.Source
-	}
-	return ""
-}
-
-func (x *Mount) GetTarget() string {
-	if x != nil {
-		return x.Target
-	}
-	return ""
-}
-
-func (x *Mount) GetReadOnly() bool {
-	if x != nil {
-		return x.ReadOnly
-	}
-	return false
-}
-
-func (x *Mount) GetConsistency() string {
-	if x != nil {
-		return x.Consistency
-	}
-	return ""
-}
-
-type ResourceRequirements struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Resources     *Resources             `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ResourceRequirements) Reset() {
-	*x = ResourceRequirements{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[42]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ResourceRequirements) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ResourceRequirements) ProtoMessage() {}
-
-func (x *ResourceRequirements) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[42]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ResourceRequirements.ProtoReflect.Descriptor instead.
-func (*ResourceRequirements) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{42}
-}
-
-func (x *ResourceRequirements) GetResources() *Resources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-type Resources struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	CpuPeriod        int64                  `protobuf:"varint,1,opt,name=cpu_period,json=cpuPeriod,proto3" json:"cpu_period,omitempty"`
-	CpuQuota         int64                  `protobuf:"varint,2,opt,name=cpu_quota,json=cpuQuota,proto3" json:"cpu_quota,omitempty"`
-	CpuShares        int64                  `protobuf:"varint,3,opt,name=cpu_shares,json=cpuShares,proto3" json:"cpu_shares,omitempty"`
-	Memory           int64                  `protobuf:"varint,4,opt,name=memory,proto3" json:"memory,omitempty"`
-	MemorySwap       int64                  `protobuf:"varint,5,opt,name=memory_swap,json=memorySwap,proto3" json:"memory_swap,omitempty"`
-	MemorySwappiness int64                  `protobuf:"varint,6,opt,name=memory_swappiness,json=memorySwappiness,proto3" json:"memory_swappiness,omitempty"`
-	OomKillDisable   bool                   `protobuf:"varint,7,opt,name=oom_kill_disable,json=oomKillDisable,proto3" json:"oom_kill_disable,omitempty"`
-	PidsLimit        int64                  `protobuf:"varint,8,opt,name=pids_limit,json=pidsLimit,proto3" json:"pids_limit,omitempty"`
-	Ulimits          []*Ulimit              `protobuf:"bytes,9,rep,name=ulimits,proto3" json:"ulimits,omitempty"`
-	Devices          []*DeviceMapping       `protobuf:"bytes,10,rep,name=devices,proto3" json:"devices,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *Resources) Reset() {
-	*x = Resources{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[43]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Resources) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Resources) ProtoMessage() {}
-
-func (x *Resources) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[43]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Resources.ProtoReflect.Descriptor instead.
-func (*Resources) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{43}
-}
-
-func (x *Resources) GetCpuPeriod() int64 {
-	if x != nil {
-		return x.CpuPeriod
-	}
-	return 0
-}
-
-func (x *Resources) GetCpuQuota() int64 {
-	if x != nil {
-		return x.CpuQuota
-	}
-	return 0
-}
-
-func (x *Resources) GetCpuShares() int64 {
-	if x != nil {
-		return x.CpuShares
-	}
-	return 0
-}
-
-func (x *Resources) GetMemory() int64 {
-	if x != nil {
-		return x.Memory
-	}
-	return 0
-}
-
-func (x *Resources) GetMemorySwap() int64 {
-	if x != nil {
-		return x.MemorySwap
-	}
-	return 0
-}
-
-func (x *Resources) GetMemorySwappiness() int64 {
-	if x != nil {
-		return x.MemorySwappiness
-	}
-	return 0
-}
-
-func (x *Resources) GetOomKillDisable() bool {
-	if x != nil {
-		return x.OomKillDisable
-	}
-	return false
-}
-
-func (x *Resources) GetPidsLimit() int64 {
-	if x != nil {
-		return x.PidsLimit
-	}
-	return 0
-}
-
-func (x *Resources) GetUlimits() []*Ulimit {
-	if x != nil {
-		return x.Ulimits
-	}
-	return nil
-}
-
-func (x *Resources) GetDevices() []*DeviceMapping {
-	if x != nil {
-		return x.Devices
-	}
-	return nil
-}
-
-type Ulimit struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Soft          int64                  `protobuf:"varint,2,opt,name=soft,proto3" json:"soft,omitempty"`
-	Hard          int64                  `protobuf:"varint,3,opt,name=hard,proto3" json:"hard,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Ulimit) Reset() {
-	*x = Ulimit{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[44]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Ulimit) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Ulimit) ProtoMessage() {}
-
-func (x *Ulimit) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[44]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Ulimit.ProtoReflect.Descriptor instead.
-func (*Ulimit) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{44}
-}
-
-func (x *Ulimit) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Ulimit) GetSoft() int64 {
-	if x != nil {
-		return x.Soft
-	}
-	return 0
-}
-
-func (x *Ulimit) GetHard() int64 {
-	if x != nil {
-		return x.Hard
-	}
-	return 0
 }
 
 var File_internal_proto_gamenode_proto protoreflect.FileDescriptor
 
 const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\n" +
-	"\x1dinternal/proto/gamenode.proto\x12\bgamenode\x1a\x1fgoogle/protobuf/timestamp.proto\"w\n" +
-	"\x0fRegisterRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname\x12/\n" +
-	"\tnode_info\x18\x03 \x01(\v2\x12.gamenode.NodeInfoR\bnodeInfo\"e\n" +
+	"\x1dinternal/proto/gamenode.proto\x12\bgamenode\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb4\x04\n" +
+	"\x0fRegisterRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05alias\x18\x02 \x01(\tR\x05alias\x12\x14\n" +
+	"\x05model\x18\x03 \x01(\tR\x05model\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1a\n" +
+	"\blocation\x18\x05 \x01(\tR\blocation\x12C\n" +
+	"\bhardware\x18\x06 \x03(\v2'.gamenode.RegisterRequest.HardwareEntryR\bhardware\x12@\n" +
+	"\anetwork\x18\a \x03(\v2&.gamenode.RegisterRequest.NetworkEntryR\anetwork\x12=\n" +
+	"\x06labels\x18\b \x03(\v2%.gamenode.RegisterRequest.LabelsEntryR\x06labels\x12;\n" +
+	"\rresource_info\x18\t \x01(\v2\x16.gamenode.ResourceInfoR\fresourceInfo\x1a;\n" +
+	"\rHardwareEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a:\n" +
+	"\fNetworkEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"c\n" +
 	"\x10RegisterResponse\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"{\n" +
-	"\x10HeartbeatRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1d\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"\x9c\x01\n" +
+	"\x10HeartbeatRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x02 \x01(\tR\tsessionId\x12/\n" +
-	"\ametrics\x18\x03 \x01(\v2\x15.gamenode.NodeMetricsR\ametrics\"j\n" +
-	"\x11HeartbeatResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12;\n" +
-	"\vserver_time\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"serverTime\"\xe9\x02\n" +
-	"\x16ExecutePipelineRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1f\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x1c\n" +
+	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\x12;\n" +
+	"\rresource_info\x18\x04 \x01(\v2\x16.gamenode.ResourceInfoR\fresourceInfo\"E\n" +
+	"\x11HeartbeatResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"i\n" +
+	"\rMetricsReport\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
+	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12*\n" +
+	"\ametrics\x18\x03 \x03(\v2\x10.gamenode.MetricR\ametrics\"\xb7\x01\n" +
+	"\x06Metric\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x14\n" +
+	"\x05value\x18\x03 \x01(\x01R\x05value\x124\n" +
+	"\x06labels\x18\x04 \x03(\v2\x1c.gamenode.Metric.LabelsEntryR\x06labels\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd5\x01\n" +
+	"\fResourceInfo\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
+	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x122\n" +
+	"\bhardware\x18\x03 \x01(\v2\x16.gamenode.HardwareInfoR\bhardware\x122\n" +
+	"\bsoftware\x18\x04 \x01(\v2\x16.gamenode.SoftwareInfoR\bsoftware\x12/\n" +
+	"\anetwork\x18\x05 \x01(\v2\x15.gamenode.NetworkInfoR\anetwork\"\xae\x01\n" +
+	"\fHardwareInfo\x12#\n" +
+	"\x03cpu\x18\x01 \x01(\v2\x11.gamenode.CPUInfoR\x03cpu\x12,\n" +
+	"\x06memory\x18\x02 \x01(\v2\x14.gamenode.MemoryInfoR\x06memory\x12#\n" +
+	"\x03gpu\x18\x03 \x01(\v2\x11.gamenode.GPUInfoR\x03gpu\x12&\n" +
+	"\x04disk\x18\x04 \x01(\v2\x12.gamenode.DiskInfoR\x04disk\"\xbb\x01\n" +
+	"\aCPUInfo\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x12\x14\n" +
+	"\x05cores\x18\x02 \x01(\x05R\x05cores\x12\x18\n" +
+	"\athreads\x18\x03 \x01(\x05R\athreads\x12\x1c\n" +
+	"\tfrequency\x18\x04 \x01(\x01R\tfrequency\x12 \n" +
+	"\vtemperature\x18\x05 \x01(\x01R\vtemperature\x12\x14\n" +
+	"\x05usage\x18\x06 \x01(\x01R\x05usage\x12\x14\n" +
+	"\x05cache\x18\a \x01(\x03R\x05cache\"\xb8\x01\n" +
+	"\n" +
+	"MemoryInfo\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x03R\x05total\x12\x1c\n" +
+	"\tavailable\x18\x02 \x01(\x03R\tavailable\x12\x12\n" +
+	"\x04used\x18\x03 \x01(\x03R\x04used\x12\x14\n" +
+	"\x05usage\x18\x04 \x01(\x01R\x05usage\x12\x12\n" +
+	"\x04type\x18\x05 \x01(\tR\x04type\x12\x1c\n" +
+	"\tfrequency\x18\x06 \x01(\x01R\tfrequency\x12\x1a\n" +
+	"\bchannels\x18\a \x01(\x05R\bchannels\"\x94\x02\n" +
+	"\aGPUInfo\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x12!\n" +
+	"\fmemory_total\x18\x02 \x01(\x03R\vmemoryTotal\x12\x1f\n" +
+	"\vmemory_used\x18\x03 \x01(\x03R\n" +
+	"memoryUsed\x12\x1f\n" +
+	"\vmemory_free\x18\x04 \x01(\x03R\n" +
+	"memoryFree\x12!\n" +
+	"\fmemory_usage\x18\x05 \x01(\x01R\vmemoryUsage\x12\x14\n" +
+	"\x05usage\x18\x06 \x01(\x01R\x05usage\x12 \n" +
+	"\vtemperature\x18\a \x01(\x01R\vtemperature\x12\x14\n" +
+	"\x05power\x18\b \x01(\x01R\x05power\x12\x1d\n" +
+	"\n" +
+	"cuda_cores\x18\t \x01(\x05R\tcudaCores\"\x80\x02\n" +
+	"\bDiskInfo\x12\x14\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x12\x1a\n" +
+	"\bcapacity\x18\x02 \x01(\x03R\bcapacity\x12\x12\n" +
+	"\x04used\x18\x03 \x01(\x03R\x04used\x12\x12\n" +
+	"\x04free\x18\x04 \x01(\x03R\x04free\x12\x14\n" +
+	"\x05usage\x18\x05 \x01(\x01R\x05usage\x12\x12\n" +
+	"\x04type\x18\x06 \x01(\tR\x04type\x12\x1c\n" +
+	"\tinterface\x18\a \x01(\tR\tinterface\x12\x1d\n" +
+	"\n" +
+	"read_speed\x18\b \x01(\x01R\treadSpeed\x12\x1f\n" +
+	"\vwrite_speed\x18\t \x01(\x01R\n" +
+	"writeSpeed\x12\x12\n" +
+	"\x04iops\x18\n" +
+	" \x01(\x03R\x04iops\"\xf0\x02\n" +
+	"\fSoftwareInfo\x12'\n" +
+	"\x0fos_distribution\x18\x01 \x01(\tR\x0eosDistribution\x12\x1d\n" +
+	"\n" +
+	"os_version\x18\x02 \x01(\tR\tosVersion\x12'\n" +
+	"\x0fos_architecture\x18\x03 \x01(\tR\x0eosArchitecture\x12%\n" +
+	"\x0ekernel_version\x18\x04 \x01(\tR\rkernelVersion\x12,\n" +
+	"\x12gpu_driver_version\x18\x05 \x01(\tR\x10gpuDriverVersion\x12!\n" +
+	"\fcuda_version\x18\x06 \x01(\tR\vcudaVersion\x12%\n" +
+	"\x0edocker_version\x18\a \x01(\tR\rdockerVersion\x12-\n" +
+	"\x12containerd_version\x18\b \x01(\tR\x11containerdVersion\x12!\n" +
+	"\frunc_version\x18\t \x01(\tR\vruncVersion\"\x88\x01\n" +
+	"\vNetworkInfo\x12\x1c\n" +
+	"\tbandwidth\x18\x01 \x01(\x01R\tbandwidth\x12\x18\n" +
+	"\alatency\x18\x02 \x01(\x01R\alatency\x12 \n" +
+	"\vconnections\x18\x03 \x01(\x05R\vconnections\x12\x1f\n" +
+	"\vpacket_loss\x18\x04 \x01(\x01R\n" +
+	"packetLoss\"\xe0\x02\n" +
+	"\x16ExecutePipelineRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vpipeline_id\x18\x02 \x01(\tR\n" +
 	"pipelineId\x12#\n" +
 	"\rpipeline_data\x18\x03 \x01(\fR\fpipelineData\x12>\n" +
@@ -3310,294 +2132,89 @@ const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
 	"\tArgsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"r\n" +
-	"\x17ExecutePipelineResponse\x12!\n" +
-	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12\x1a\n" +
-	"\baccepted\x18\x02 \x01(\bR\baccepted\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"S\n" +
-	"\x15PipelineStatusRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12!\n" +
-	"\fexecution_id\x18\x02 \x01(\tR\vexecutionId\"\xce\x03\n" +
-	"\x16PipelineStatusResponse\x12!\n" +
-	"\fexecution_id\x18\x01 \x01(\tR\vexecutionId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\x12!\n" +
-	"\fcurrent_step\x18\x03 \x01(\x05R\vcurrentStep\x12\x1f\n" +
-	"\vtotal_steps\x18\x04 \x01(\x05R\n" +
-	"totalSteps\x128\n" +
-	"\x18current_step_description\x18\x05 \x01(\tR\x16currentStepDescription\x12\x1a\n" +
-	"\bprogress\x18\x06 \x01(\x02R\bprogress\x12#\n" +
-	"\rerror_message\x18\a \x01(\tR\ferrorMessage\x129\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"K\n" +
+	"\x17ExecutePipelineResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x80\x02\n" +
+	"\x14PipelineStatusUpdate\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vpipeline_id\x18\x02 \x01(\tR\n" +
+	"pipelineId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12!\n" +
+	"\fcurrent_step\x18\x04 \x01(\x05R\vcurrentStep\x12\x1a\n" +
+	"\bprogress\x18\x05 \x01(\x02R\bprogress\x12#\n" +
+	"\rerror_message\x18\x06 \x01(\tR\ferrorMessage\x12;\n" +
+	"\vupdate_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"updateTime\"\xed\x01\n" +
+	"\x10StepStatusUpdate\x12\x1f\n" +
+	"\vpipeline_id\x18\x01 \x01(\tR\n" +
+	"pipelineId\x12\x17\n" +
+	"\astep_id\x18\x02 \x01(\tR\x06stepId\x12,\n" +
+	"\x06status\x18\x03 \x01(\x0e2\x14.gamenode.StepStatusR\x06status\x12\x1d\n" +
 	"\n" +
-	"start_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x125\n" +
-	"\bend_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\aendTime\x12H\n" +
-	"\x12container_statuses\x18\n" +
-	" \x03(\v2\x19.gamenode.ContainerStatusR\x11containerStatuses\"\x95\x03\n" +
-	"\x0fContainerStatus\x12!\n" +
-	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
-	"\x06status\x18\x03 \x01(\tR\x06status\x12#\n" +
-	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage\x129\n" +
+	"start_time\x18\x04 \x01(\x03R\tstartTime\x12\x19\n" +
+	"\bend_time\x18\x05 \x01(\x03R\aendTime\x12#\n" +
+	"\rerror_message\x18\x06 \x01(\tR\ferrorMessage\x12\x12\n" +
+	"\x04logs\x18\a \x01(\fR\x04logs\"P\n" +
+	"\x15PipelineCancelRequest\x12\x1f\n" +
+	"\vpipeline_id\x18\x01 \x01(\tR\n" +
+	"pipelineId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"B\n" +
+	"\x0eCancelResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x96\x01\n" +
 	"\n" +
-	"start_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x125\n" +
-	"\bend_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\aendTime\x124\n" +
-	"\ametrics\x18\a \x01(\v2\x1a.gamenode.ContainerMetricsR\ametrics\x12&\n" +
-	"\x04logs\x18\b \x03(\v2\x12.gamenode.LogEntryR\x04logs\x12\x1b\n" +
-	"\texit_code\x18\t \x01(\x05R\bexitCode\x12!\n" +
-	"\fexit_message\x18\n" +
-	" \x01(\tR\vexitMessage\"i\n" +
-	"\x15PipelineCancelRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12!\n" +
-	"\fexecution_id\x18\x02 \x01(\tR\vexecutionId\x12\x14\n" +
-	"\x05force\x18\x03 \x01(\bR\x05force\"L\n" +
-	"\x16PipelineCancelResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x86\x01\n" +
-	"\x15StartContainerRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12!\n" +
-	"\fcontainer_id\x18\x02 \x01(\tR\vcontainerId\x121\n" +
-	"\x06config\x18\x03 \x01(\v2\x19.gamenode.ContainerConfigR\x06config\"o\n" +
-	"\x16StartContainerResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12!\n" +
-	"\fcontainer_id\x18\x02 \x01(\tR\vcontainerId\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"l\n" +
-	"\x14StopContainerRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12!\n" +
-	"\fcontainer_id\x18\x02 \x01(\tR\vcontainerId\x12\x18\n" +
-	"\atimeout\x18\x03 \x01(\x05R\atimeout\"K\n" +
-	"\x15StopContainerResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"o\n" +
-	"\x17RestartContainerRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12!\n" +
-	"\fcontainer_id\x18\x02 \x01(\tR\vcontainerId\x12\x18\n" +
-	"\atimeout\x18\x03 \x01(\x05R\atimeout\"N\n" +
-	"\x18RestartContainerResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"-\n" +
-	"\x12NodeMetricsRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\"\xa8\x01\n" +
-	"\x13NodeMetricsResponse\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12/\n" +
-	"\ametrics\x18\x02 \x01(\v2\x15.gamenode.NodeMetricsR\ametrics\x12G\n" +
-	"\x11container_metrics\x18\x03 \x03(\v2\x1a.gamenode.ContainerMetricsR\x10containerMetrics\"a\n" +
-	"\x0fNodeLogsRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1d\n" +
+	"LogRequest\x12\x1f\n" +
+	"\vpipeline_id\x18\x01 \x01(\tR\n" +
+	"pipelineId\x12\x17\n" +
+	"\astep_id\x18\x02 \x01(\tR\x06stepId\x12\x14\n" +
+	"\x05level\x18\x03 \x01(\tR\x05level\x12\x1d\n" +
 	"\n" +
-	"tail_lines\x18\x02 \x01(\x05R\ttailLines\x12\x16\n" +
-	"\x06follow\x18\x03 \x01(\bR\x06follow\"\x89\x01\n" +
-	"\x14ContainerLogsRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12!\n" +
-	"\fcontainer_id\x18\x02 \x01(\tR\vcontainerId\x12\x1d\n" +
-	"\n" +
-	"tail_lines\x18\x03 \x01(\x05R\ttailLines\x12\x16\n" +
-	"\x06follow\x18\x04 \x01(\bR\x06follow\"v\n" +
-	"\bLogEntry\x12\x16\n" +
-	"\x06source\x18\x01 \x01(\tR\x06source\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\x128\n" +
-	"\ttimestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"T\n" +
-	"\x18EventSubscriptionRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1f\n" +
-	"\vevent_types\x18\x02 \x03(\tR\n" +
-	"eventTypes\"\xa5\x02\n" +
+	"start_time\x18\x04 \x01(\x03R\tstartTime\x12\x19\n" +
+	"\bend_time\x18\x05 \x01(\x03R\aendTime\"\xae\x01\n" +
+	"\bLogEntry\x12\x1f\n" +
+	"\vpipeline_id\x18\x01 \x01(\tR\n" +
+	"pipelineId\x12\x17\n" +
+	"\astep_id\x18\x02 \x01(\tR\x06stepId\x12\x14\n" +
+	"\x05level\x18\x03 \x01(\tR\x05level\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\x128\n" +
+	"\ttimestamp\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"B\n" +
+	"\x0eUpdateResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"B\n" +
+	"\x0eReportResponse\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x9c\x02\n" +
 	"\x05Event\x12\x12\n" +
-	"\x04type\x18\x01 \x01(\tR\x04type\x12\x17\n" +
-	"\anode_id\x18\x02 \x01(\tR\x06nodeId\x12\x1b\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12\x1b\n" +
 	"\tentity_id\x18\x03 \x01(\tR\bentityId\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12\x18\n" +
-	"\amessage\x18\x05 \x01(\tR\amessage\x12-\n" +
-	"\x04data\x18\x06 \x03(\v2\x19.gamenode.Event.DataEntryR\x04data\x128\n" +
-	"\ttimestamp\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x1a7\n" +
+	"\amessage\x18\x05 \x01(\tR\amessage\x128\n" +
+	"\ttimestamp\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12-\n" +
+	"\x04data\x18\a \x03(\v2\x19.gamenode.Event.DataEntryR\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x99\x02\n" +
-	"\bNodeInfo\x12\x1a\n" +
-	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
-	"\x02ip\x18\x02 \x01(\tR\x02ip\x12\x0e\n" +
-	"\x02os\x18\x03 \x01(\tR\x02os\x12\x12\n" +
-	"\x04arch\x18\x04 \x01(\tR\x04arch\x12\x16\n" +
-	"\x06kernel\x18\x05 \x01(\tR\x06kernel\x122\n" +
-	"\bhardware\x18\x06 \x01(\v2\x16.gamenode.HardwareInfoR\bhardware\x126\n" +
-	"\x06labels\x18\a \x03(\v2\x1e.gamenode.NodeInfo.LabelsEntryR\x06labels\x1a9\n" +
-	"\vLabelsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe1\x01\n" +
-	"\fHardwareInfo\x12#\n" +
-	"\x03cpu\x18\x01 \x01(\v2\x11.gamenode.CpuInfoR\x03cpu\x12,\n" +
-	"\x06memory\x18\x02 \x01(\v2\x14.gamenode.MemoryInfoR\x06memory\x12&\n" +
-	"\x04disk\x18\x03 \x01(\v2\x12.gamenode.DiskInfoR\x04disk\x12%\n" +
-	"\x04gpus\x18\x04 \x03(\v2\x11.gamenode.GpuInfoR\x04gpus\x12/\n" +
-	"\anetwork\x18\x05 \x01(\v2\x15.gamenode.NetworkInfoR\anetwork\"V\n" +
-	"\aCpuInfo\x12\x14\n" +
-	"\x05cores\x18\x01 \x01(\x05R\x05cores\x12\x14\n" +
-	"\x05model\x18\x02 \x01(\tR\x05model\x12\x1f\n" +
-	"\vclock_speed\x18\x03 \x01(\x02R\n" +
-	"clockSpeed\"6\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01*P\n" +
 	"\n" +
-	"MemoryInfo\x12\x14\n" +
-	"\x05total\x18\x01 \x01(\x03R\x05total\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\"4\n" +
-	"\bDiskInfo\x12\x14\n" +
-	"\x05total\x18\x01 \x01(\x03R\x05total\x12\x12\n" +
-	"\x04type\x18\x02 \x01(\tR\x04type\"O\n" +
-	"\aGpuInfo\x12\x14\n" +
-	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
-	"\x06memory\x18\x02 \x01(\x03R\x06memory\x12\x16\n" +
-	"\x06driver\x18\x03 \x01(\tR\x06driver\"X\n" +
-	"\vNetworkInfo\x12+\n" +
-	"\x11primary_interface\x18\x01 \x01(\tR\x10primaryInterface\x12\x1c\n" +
-	"\tbandwidth\x18\x02 \x01(\x05R\tbandwidth\"\xce\x02\n" +
-	"\vNodeMetrics\x12\x1b\n" +
-	"\tcpu_usage\x18\x01 \x01(\x02R\bcpuUsage\x12!\n" +
-	"\fmemory_usage\x18\x02 \x01(\x02R\vmemoryUsage\x12\x1d\n" +
+	"StepStatus\x12\v\n" +
+	"\aPENDING\x10\x00\x12\v\n" +
+	"\aRUNNING\x10\x01\x12\r\n" +
+	"\tCOMPLETED\x10\x02\x12\n" +
 	"\n" +
-	"disk_usage\x18\x03 \x01(\x02R\tdiskUsage\x125\n" +
-	"\vgpu_metrics\x18\x04 \x03(\v2\x14.gamenode.GpuMetricsR\n" +
-	"gpuMetrics\x12A\n" +
-	"\x0fnetwork_metrics\x18\x05 \x01(\v2\x18.gamenode.NetworkMetricsR\x0enetworkMetrics\x12'\n" +
-	"\x0fcontainer_count\x18\x06 \x01(\x05R\x0econtainerCount\x12=\n" +
-	"\fcollected_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\vcollectedAt\"}\n" +
-	"\n" +
-	"GpuMetrics\x12\x14\n" +
-	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x14\n" +
-	"\x05usage\x18\x02 \x01(\x02R\x05usage\x12!\n" +
-	"\fmemory_usage\x18\x03 \x01(\x02R\vmemoryUsage\x12 \n" +
-	"\vtemperature\x18\x04 \x01(\x02R\vtemperature\"b\n" +
-	"\x0eNetworkMetrics\x12'\n" +
-	"\x10rx_bytes_per_sec\x18\x01 \x01(\x02R\rrxBytesPerSec\x12'\n" +
-	"\x10tx_bytes_per_sec\x18\x02 \x01(\x02R\rtxBytesPerSec\"\x89\x02\n" +
-	"\x10ContainerMetrics\x12!\n" +
-	"\fcontainer_id\x18\x01 \x01(\tR\vcontainerId\x12\x1b\n" +
-	"\tcpu_usage\x18\x02 \x01(\x02R\bcpuUsage\x12!\n" +
-	"\fmemory_usage\x18\x03 \x01(\x02R\vmemoryUsage\x12\x1f\n" +
-	"\vmemory_used\x18\x04 \x01(\x03R\n" +
-	"memoryUsed\x122\n" +
-	"\anetwork\x18\x05 \x01(\v2\x18.gamenode.NetworkMetricsR\anetwork\x12=\n" +
-	"\fcollected_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\vcollectedAt\"\xa6\x01\n" +
-	"\bPipeline\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x12\n" +
-	"\x04envs\x18\x04 \x03(\tR\x04envs\x12\x12\n" +
-	"\x04args\x18\x05 \x03(\tR\x04args\x12,\n" +
-	"\x05steps\x18\x06 \x03(\v2\x16.gamenode.PipelineStepR\x05steps\"\xf2\x02\n" +
-	"\fPipelineStep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x12\n" +
-	"\x04type\x18\x04 \x01(\tR\x04type\x127\n" +
-	"\tcontainer\x18\x05 \x01(\v2\x19.gamenode.ContainerConfigR\tcontainer\x12*\n" +
-	"\x11continue_on_error\x18\x06 \x01(\bR\x0fcontinueOnError\x12\x18\n" +
-	"\atimeout\x18\a \x01(\x05R\atimeout\x12I\n" +
-	"\venvironment\x18\b \x03(\v2'.gamenode.PipelineStep.EnvironmentEntryR\venvironment\x1a>\n" +
-	"\x10EnvironmentEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x92\v\n" +
-	"\x0fContainerConfig\x12\x14\n" +
-	"\x05image\x18\x01 \x01(\tR\x05image\x12%\n" +
-	"\x0econtainer_name\x18\x02 \x01(\tR\rcontainerName\x12\x1a\n" +
-	"\bhostname\x18\x03 \x01(\tR\bhostname\x12\x1e\n" +
-	"\n" +
-	"privileged\x18\x04 \x01(\bR\n" +
-	"privileged\x12!\n" +
-	"\fsecurity_opt\x18\x05 \x03(\tR\vsecurityOpt\x12\x17\n" +
-	"\acap_add\x18\x06 \x03(\tR\x06capAdd\x12\x14\n" +
-	"\x05tmpfs\x18\a \x03(\tR\x05tmpfs\x121\n" +
-	"\adevices\x18\b \x03(\v2\x17.gamenode.DeviceMappingR\adevices\x121\n" +
-	"\avolumes\x18\t \x03(\v2\x17.gamenode.VolumeMappingR\avolumes\x12+\n" +
-	"\x05ports\x18\n" +
-	" \x03(\v2\x15.gamenode.PortMappingR\x05ports\x12L\n" +
-	"\venvironment\x18\v \x03(\v2*.gamenode.ContainerConfig.EnvironmentEntryR\venvironment\x12\x18\n" +
-	"\acommand\x18\f \x03(\tR\acommand\x12\x1f\n" +
-	"\vworking_dir\x18\r \x01(\tR\n" +
-	"workingDir\x12!\n" +
-	"\fnetwork_mode\x18\x0e \x01(\tR\vnetworkMode\x12%\n" +
-	"\x0erestart_policy\x18\x0f \x01(\tR\rrestartPolicy\x126\n" +
-	"\x06deploy\x18\x10 \x01(\v2\x1e.gamenode.ResourceRequirementsR\x06deploy\x12'\n" +
-	"\x06mounts\x18\x11 \x03(\v2\x0f.gamenode.MountR\x06mounts\x12\x1f\n" +
-	"\vextra_hosts\x18\x12 \x03(\tR\n" +
-	"extraHosts\x12\x10\n" +
-	"\x03dns\x18\x13 \x03(\tR\x03dns\x12\x1d\n" +
-	"\n" +
-	"dns_search\x18\x14 \x03(\tR\tdnsSearch\x12\x1f\n" +
-	"\vdns_options\x18\x15 \x03(\tR\n" +
-	"dnsOptions\x12\"\n" +
-	"\fcapabilities\x18\x16 \x03(\tR\fcapabilities\x12J\n" +
-	"\vstorage_opt\x18\x17 \x03(\v2).gamenode.ContainerConfig.StorageOptEntryR\n" +
-	"storageOpt\x12@\n" +
-	"\asysctls\x18\x18 \x03(\v2&.gamenode.ContainerConfig.SysctlsEntryR\asysctls\x12\x18\n" +
-	"\aruntime\x18\x19 \x01(\tR\aruntime\x12\x12\n" +
-	"\x04init\x18\x1a \x01(\bR\x04init\x12\x1f\n" +
-	"\vauto_remove\x18\x1b \x01(\bR\n" +
-	"autoRemove\x12(\n" +
-	"\x10oom_kill_disable\x18\x1c \x01(\bR\x0eoomKillDisable\x12\"\n" +
-	"\room_score_adj\x18\x1d \x01(\x05R\voomScoreAdj\x12\x19\n" +
-	"\bpid_mode\x18\x1e \x01(\tR\apidMode\x12\x19\n" +
-	"\buts_mode\x18\x1f \x01(\tR\autsMode\x12\x1f\n" +
-	"\vuserns_mode\x18  \x01(\tR\n" +
-	"usernsMode\x12\x19\n" +
-	"\bshm_size\x18! \x01(\x03R\ashmSize\x1a>\n" +
-	"\x10EnvironmentEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +
-	"\x0fStorageOptEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a:\n" +
-	"\fSysctlsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x82\x01\n" +
-	"\rDeviceMapping\x12\x1b\n" +
-	"\thost_path\x18\x01 \x01(\tR\bhostPath\x12%\n" +
-	"\x0econtainer_path\x18\x02 \x01(\tR\rcontainerPath\x12-\n" +
-	"\x12cgroup_permissions\x18\x03 \x01(\tR\x11cgroupPermissions\"o\n" +
-	"\rVolumeMapping\x12\x1b\n" +
-	"\thost_path\x18\x01 \x01(\tR\bhostPath\x12%\n" +
-	"\x0econtainer_path\x18\x02 \x01(\tR\rcontainerPath\x12\x1a\n" +
-	"\breadonly\x18\x03 \x01(\bR\breadonly\"m\n" +
-	"\vPortMapping\x12\x1b\n" +
-	"\thost_port\x18\x01 \x01(\x05R\bhostPort\x12%\n" +
-	"\x0econtainer_port\x18\x02 \x01(\x05R\rcontainerPort\x12\x1a\n" +
-	"\bprotocol\x18\x03 \x01(\tR\bprotocol\"\x8a\x01\n" +
-	"\x05Mount\x12\x12\n" +
-	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
-	"\x06source\x18\x02 \x01(\tR\x06source\x12\x16\n" +
-	"\x06target\x18\x03 \x01(\tR\x06target\x12\x1b\n" +
-	"\tread_only\x18\x04 \x01(\bR\breadOnly\x12 \n" +
-	"\vconsistency\x18\x05 \x01(\tR\vconsistency\"I\n" +
-	"\x14ResourceRequirements\x121\n" +
-	"\tresources\x18\x01 \x01(\v2\x13.gamenode.ResourcesR\tresources\"\xf4\x02\n" +
-	"\tResources\x12\x1d\n" +
-	"\n" +
-	"cpu_period\x18\x01 \x01(\x03R\tcpuPeriod\x12\x1b\n" +
-	"\tcpu_quota\x18\x02 \x01(\x03R\bcpuQuota\x12\x1d\n" +
-	"\n" +
-	"cpu_shares\x18\x03 \x01(\x03R\tcpuShares\x12\x16\n" +
-	"\x06memory\x18\x04 \x01(\x03R\x06memory\x12\x1f\n" +
-	"\vmemory_swap\x18\x05 \x01(\x03R\n" +
-	"memorySwap\x12+\n" +
-	"\x11memory_swappiness\x18\x06 \x01(\x03R\x10memorySwappiness\x12(\n" +
-	"\x10oom_kill_disable\x18\a \x01(\bR\x0eoomKillDisable\x12\x1d\n" +
-	"\n" +
-	"pids_limit\x18\b \x01(\x03R\tpidsLimit\x12*\n" +
-	"\aulimits\x18\t \x03(\v2\x10.gamenode.UlimitR\aulimits\x121\n" +
-	"\adevices\x18\n" +
-	" \x03(\v2\x17.gamenode.DeviceMappingR\adevices\"D\n" +
-	"\x06Ulimit\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
-	"\x04soft\x18\x02 \x01(\x03R\x04soft\x12\x12\n" +
-	"\x04hard\x18\x03 \x01(\x03R\x04hard2\xd0\a\n" +
-	"\x0fGameNodeService\x12A\n" +
+	"\x06FAILED\x10\x03\x12\r\n" +
+	"\tCANCELLED\x10\x042\xa5\x05\n" +
+	"\x13GameNodeGRPCService\x12A\n" +
 	"\bRegister\x12\x19.gamenode.RegisterRequest\x1a\x1a.gamenode.RegisterResponse\x12D\n" +
-	"\tHeartbeat\x12\x1a.gamenode.HeartbeatRequest\x1a\x1b.gamenode.HeartbeatResponse\x12V\n" +
-	"\x0fExecutePipeline\x12 .gamenode.ExecutePipelineRequest\x1a!.gamenode.ExecutePipelineResponse\x12V\n" +
-	"\x11GetPipelineStatus\x12\x1f.gamenode.PipelineStatusRequest\x1a .gamenode.PipelineStatusResponse\x12S\n" +
-	"\x0eCancelPipeline\x12\x1f.gamenode.PipelineCancelRequest\x1a .gamenode.PipelineCancelResponse\x12S\n" +
-	"\x0eStartContainer\x12\x1f.gamenode.StartContainerRequest\x1a .gamenode.StartContainerResponse\x12P\n" +
-	"\rStopContainer\x12\x1e.gamenode.StopContainerRequest\x1a\x1f.gamenode.StopContainerResponse\x12Y\n" +
-	"\x10RestartContainer\x12!.gamenode.RestartContainerRequest\x1a\".gamenode.RestartContainerResponse\x12M\n" +
-	"\x0eGetNodeMetrics\x12\x1c.gamenode.NodeMetricsRequest\x1a\x1d.gamenode.NodeMetricsResponse\x12C\n" +
-	"\x0eStreamNodeLogs\x12\x19.gamenode.NodeLogsRequest\x1a\x12.gamenode.LogEntry\"\x000\x01\x12M\n" +
-	"\x13StreamContainerLogs\x12\x1e.gamenode.ContainerLogsRequest\x1a\x12.gamenode.LogEntry\"\x000\x01\x12J\n" +
-	"\x0fSubscribeEvents\x12\".gamenode.EventSubscriptionRequest\x1a\x0f.gamenode.Event\"\x000\x01B8Z6github.com/open-beagle/beagle-wind-game/internal/protob\x06proto3"
+	"\tHeartbeat\x12\x1a.gamenode.HeartbeatRequest\x1a\x1b.gamenode.HeartbeatResponse\x12B\n" +
+	"\rReportMetrics\x12\x17.gamenode.MetricsReport\x1a\x18.gamenode.ReportResponse\x12F\n" +
+	"\x12UpdateResourceInfo\x12\x16.gamenode.ResourceInfo\x1a\x18.gamenode.UpdateResponse\x12V\n" +
+	"\x0fExecutePipeline\x12 .gamenode.ExecutePipelineRequest\x1a!.gamenode.ExecutePipelineResponse\x12P\n" +
+	"\x14UpdatePipelineStatus\x12\x1e.gamenode.PipelineStatusUpdate\x1a\x18.gamenode.UpdateResponse\x12H\n" +
+	"\x10UpdateStepStatus\x12\x1a.gamenode.StepStatusUpdate\x1a\x18.gamenode.UpdateResponse\x12K\n" +
+	"\x0eCancelPipeline\x12\x1f.gamenode.PipelineCancelRequest\x1a\x18.gamenode.CancelResponse\x128\n" +
+	"\n" +
+	"StreamLogs\x12\x14.gamenode.LogRequest\x1a\x12.gamenode.LogEntry0\x01B8Z6github.com/open-beagle/beagle-wind-game/internal/protob\x06proto3"
 
 var (
 	file_internal_proto_gamenode_proto_rawDescOnce sync.Once
@@ -3611,137 +2228,89 @@ func file_internal_proto_gamenode_proto_rawDescGZIP() []byte {
 	return file_internal_proto_gamenode_proto_rawDescData
 }
 
-var file_internal_proto_gamenode_proto_msgTypes = make([]protoimpl.MessageInfo, 53)
+var file_internal_proto_gamenode_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_internal_proto_gamenode_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_internal_proto_gamenode_proto_goTypes = []any{
-	(*RegisterRequest)(nil),          // 0: gamenode.RegisterRequest
-	(*RegisterResponse)(nil),         // 1: gamenode.RegisterResponse
-	(*HeartbeatRequest)(nil),         // 2: gamenode.HeartbeatRequest
-	(*HeartbeatResponse)(nil),        // 3: gamenode.HeartbeatResponse
-	(*ExecutePipelineRequest)(nil),   // 4: gamenode.ExecutePipelineRequest
-	(*ExecutePipelineResponse)(nil),  // 5: gamenode.ExecutePipelineResponse
-	(*PipelineStatusRequest)(nil),    // 6: gamenode.PipelineStatusRequest
-	(*PipelineStatusResponse)(nil),   // 7: gamenode.PipelineStatusResponse
-	(*ContainerStatus)(nil),          // 8: gamenode.ContainerStatus
-	(*PipelineCancelRequest)(nil),    // 9: gamenode.PipelineCancelRequest
-	(*PipelineCancelResponse)(nil),   // 10: gamenode.PipelineCancelResponse
-	(*StartContainerRequest)(nil),    // 11: gamenode.StartContainerRequest
-	(*StartContainerResponse)(nil),   // 12: gamenode.StartContainerResponse
-	(*StopContainerRequest)(nil),     // 13: gamenode.StopContainerRequest
-	(*StopContainerResponse)(nil),    // 14: gamenode.StopContainerResponse
-	(*RestartContainerRequest)(nil),  // 15: gamenode.RestartContainerRequest
-	(*RestartContainerResponse)(nil), // 16: gamenode.RestartContainerResponse
-	(*NodeMetricsRequest)(nil),       // 17: gamenode.NodeMetricsRequest
-	(*NodeMetricsResponse)(nil),      // 18: gamenode.NodeMetricsResponse
-	(*NodeLogsRequest)(nil),          // 19: gamenode.NodeLogsRequest
-	(*ContainerLogsRequest)(nil),     // 20: gamenode.ContainerLogsRequest
-	(*LogEntry)(nil),                 // 21: gamenode.LogEntry
-	(*EventSubscriptionRequest)(nil), // 22: gamenode.EventSubscriptionRequest
-	(*Event)(nil),                    // 23: gamenode.Event
-	(*NodeInfo)(nil),                 // 24: gamenode.NodeInfo
-	(*HardwareInfo)(nil),             // 25: gamenode.HardwareInfo
-	(*CpuInfo)(nil),                  // 26: gamenode.CpuInfo
-	(*MemoryInfo)(nil),               // 27: gamenode.MemoryInfo
-	(*DiskInfo)(nil),                 // 28: gamenode.DiskInfo
-	(*GpuInfo)(nil),                  // 29: gamenode.GpuInfo
-	(*NetworkInfo)(nil),              // 30: gamenode.NetworkInfo
-	(*NodeMetrics)(nil),              // 31: gamenode.NodeMetrics
-	(*GpuMetrics)(nil),               // 32: gamenode.GpuMetrics
-	(*NetworkMetrics)(nil),           // 33: gamenode.NetworkMetrics
-	(*ContainerMetrics)(nil),         // 34: gamenode.ContainerMetrics
-	(*Pipeline)(nil),                 // 35: gamenode.Pipeline
-	(*PipelineStep)(nil),             // 36: gamenode.PipelineStep
-	(*ContainerConfig)(nil),          // 37: gamenode.ContainerConfig
-	(*DeviceMapping)(nil),            // 38: gamenode.DeviceMapping
-	(*VolumeMapping)(nil),            // 39: gamenode.VolumeMapping
-	(*PortMapping)(nil),              // 40: gamenode.PortMapping
-	(*Mount)(nil),                    // 41: gamenode.Mount
-	(*ResourceRequirements)(nil),     // 42: gamenode.ResourceRequirements
-	(*Resources)(nil),                // 43: gamenode.Resources
-	(*Ulimit)(nil),                   // 44: gamenode.Ulimit
-	nil,                              // 45: gamenode.ExecutePipelineRequest.EnvsEntry
-	nil,                              // 46: gamenode.ExecutePipelineRequest.ArgsEntry
-	nil,                              // 47: gamenode.Event.DataEntry
-	nil,                              // 48: gamenode.NodeInfo.LabelsEntry
-	nil,                              // 49: gamenode.PipelineStep.EnvironmentEntry
-	nil,                              // 50: gamenode.ContainerConfig.EnvironmentEntry
-	nil,                              // 51: gamenode.ContainerConfig.StorageOptEntry
-	nil,                              // 52: gamenode.ContainerConfig.SysctlsEntry
-	(*timestamppb.Timestamp)(nil),    // 53: google.protobuf.Timestamp
+	(StepStatus)(0),                 // 0: gamenode.StepStatus
+	(*RegisterRequest)(nil),         // 1: gamenode.RegisterRequest
+	(*RegisterResponse)(nil),        // 2: gamenode.RegisterResponse
+	(*HeartbeatRequest)(nil),        // 3: gamenode.HeartbeatRequest
+	(*HeartbeatResponse)(nil),       // 4: gamenode.HeartbeatResponse
+	(*MetricsReport)(nil),           // 5: gamenode.MetricsReport
+	(*Metric)(nil),                  // 6: gamenode.Metric
+	(*ResourceInfo)(nil),            // 7: gamenode.ResourceInfo
+	(*HardwareInfo)(nil),            // 8: gamenode.HardwareInfo
+	(*CPUInfo)(nil),                 // 9: gamenode.CPUInfo
+	(*MemoryInfo)(nil),              // 10: gamenode.MemoryInfo
+	(*GPUInfo)(nil),                 // 11: gamenode.GPUInfo
+	(*DiskInfo)(nil),                // 12: gamenode.DiskInfo
+	(*SoftwareInfo)(nil),            // 13: gamenode.SoftwareInfo
+	(*NetworkInfo)(nil),             // 14: gamenode.NetworkInfo
+	(*ExecutePipelineRequest)(nil),  // 15: gamenode.ExecutePipelineRequest
+	(*ExecutePipelineResponse)(nil), // 16: gamenode.ExecutePipelineResponse
+	(*PipelineStatusUpdate)(nil),    // 17: gamenode.PipelineStatusUpdate
+	(*StepStatusUpdate)(nil),        // 18: gamenode.StepStatusUpdate
+	(*PipelineCancelRequest)(nil),   // 19: gamenode.PipelineCancelRequest
+	(*CancelResponse)(nil),          // 20: gamenode.CancelResponse
+	(*LogRequest)(nil),              // 21: gamenode.LogRequest
+	(*LogEntry)(nil),                // 22: gamenode.LogEntry
+	(*UpdateResponse)(nil),          // 23: gamenode.UpdateResponse
+	(*ReportResponse)(nil),          // 24: gamenode.ReportResponse
+	(*Event)(nil),                   // 25: gamenode.Event
+	nil,                             // 26: gamenode.RegisterRequest.HardwareEntry
+	nil,                             // 27: gamenode.RegisterRequest.NetworkEntry
+	nil,                             // 28: gamenode.RegisterRequest.LabelsEntry
+	nil,                             // 29: gamenode.Metric.LabelsEntry
+	nil,                             // 30: gamenode.ExecutePipelineRequest.EnvsEntry
+	nil,                             // 31: gamenode.ExecutePipelineRequest.ArgsEntry
+	nil,                             // 32: gamenode.Event.DataEntry
+	(*timestamppb.Timestamp)(nil),   // 33: google.protobuf.Timestamp
 }
 var file_internal_proto_gamenode_proto_depIdxs = []int32{
-	24, // 0: gamenode.RegisterRequest.node_info:type_name -> gamenode.NodeInfo
-	31, // 1: gamenode.HeartbeatRequest.metrics:type_name -> gamenode.NodeMetrics
-	53, // 2: gamenode.HeartbeatResponse.server_time:type_name -> google.protobuf.Timestamp
-	45, // 3: gamenode.ExecutePipelineRequest.envs:type_name -> gamenode.ExecutePipelineRequest.EnvsEntry
-	46, // 4: gamenode.ExecutePipelineRequest.args:type_name -> gamenode.ExecutePipelineRequest.ArgsEntry
-	53, // 5: gamenode.PipelineStatusResponse.start_time:type_name -> google.protobuf.Timestamp
-	53, // 6: gamenode.PipelineStatusResponse.end_time:type_name -> google.protobuf.Timestamp
-	8,  // 7: gamenode.PipelineStatusResponse.container_statuses:type_name -> gamenode.ContainerStatus
-	53, // 8: gamenode.ContainerStatus.start_time:type_name -> google.protobuf.Timestamp
-	53, // 9: gamenode.ContainerStatus.end_time:type_name -> google.protobuf.Timestamp
-	34, // 10: gamenode.ContainerStatus.metrics:type_name -> gamenode.ContainerMetrics
-	21, // 11: gamenode.ContainerStatus.logs:type_name -> gamenode.LogEntry
-	37, // 12: gamenode.StartContainerRequest.config:type_name -> gamenode.ContainerConfig
-	31, // 13: gamenode.NodeMetricsResponse.metrics:type_name -> gamenode.NodeMetrics
-	34, // 14: gamenode.NodeMetricsResponse.container_metrics:type_name -> gamenode.ContainerMetrics
-	53, // 15: gamenode.LogEntry.timestamp:type_name -> google.protobuf.Timestamp
-	47, // 16: gamenode.Event.data:type_name -> gamenode.Event.DataEntry
-	53, // 17: gamenode.Event.timestamp:type_name -> google.protobuf.Timestamp
-	25, // 18: gamenode.NodeInfo.hardware:type_name -> gamenode.HardwareInfo
-	48, // 19: gamenode.NodeInfo.labels:type_name -> gamenode.NodeInfo.LabelsEntry
-	26, // 20: gamenode.HardwareInfo.cpu:type_name -> gamenode.CpuInfo
-	27, // 21: gamenode.HardwareInfo.memory:type_name -> gamenode.MemoryInfo
-	28, // 22: gamenode.HardwareInfo.disk:type_name -> gamenode.DiskInfo
-	29, // 23: gamenode.HardwareInfo.gpus:type_name -> gamenode.GpuInfo
-	30, // 24: gamenode.HardwareInfo.network:type_name -> gamenode.NetworkInfo
-	32, // 25: gamenode.NodeMetrics.gpu_metrics:type_name -> gamenode.GpuMetrics
-	33, // 26: gamenode.NodeMetrics.network_metrics:type_name -> gamenode.NetworkMetrics
-	53, // 27: gamenode.NodeMetrics.collected_at:type_name -> google.protobuf.Timestamp
-	33, // 28: gamenode.ContainerMetrics.network:type_name -> gamenode.NetworkMetrics
-	53, // 29: gamenode.ContainerMetrics.collected_at:type_name -> google.protobuf.Timestamp
-	36, // 30: gamenode.Pipeline.steps:type_name -> gamenode.PipelineStep
-	37, // 31: gamenode.PipelineStep.container:type_name -> gamenode.ContainerConfig
-	49, // 32: gamenode.PipelineStep.environment:type_name -> gamenode.PipelineStep.EnvironmentEntry
-	38, // 33: gamenode.ContainerConfig.devices:type_name -> gamenode.DeviceMapping
-	39, // 34: gamenode.ContainerConfig.volumes:type_name -> gamenode.VolumeMapping
-	40, // 35: gamenode.ContainerConfig.ports:type_name -> gamenode.PortMapping
-	50, // 36: gamenode.ContainerConfig.environment:type_name -> gamenode.ContainerConfig.EnvironmentEntry
-	42, // 37: gamenode.ContainerConfig.deploy:type_name -> gamenode.ResourceRequirements
-	41, // 38: gamenode.ContainerConfig.mounts:type_name -> gamenode.Mount
-	51, // 39: gamenode.ContainerConfig.storage_opt:type_name -> gamenode.ContainerConfig.StorageOptEntry
-	52, // 40: gamenode.ContainerConfig.sysctls:type_name -> gamenode.ContainerConfig.SysctlsEntry
-	43, // 41: gamenode.ResourceRequirements.resources:type_name -> gamenode.Resources
-	44, // 42: gamenode.Resources.ulimits:type_name -> gamenode.Ulimit
-	38, // 43: gamenode.Resources.devices:type_name -> gamenode.DeviceMapping
-	0,  // 44: gamenode.GameNodeService.Register:input_type -> gamenode.RegisterRequest
-	2,  // 45: gamenode.GameNodeService.Heartbeat:input_type -> gamenode.HeartbeatRequest
-	4,  // 46: gamenode.GameNodeService.ExecutePipeline:input_type -> gamenode.ExecutePipelineRequest
-	6,  // 47: gamenode.GameNodeService.GetPipelineStatus:input_type -> gamenode.PipelineStatusRequest
-	9,  // 48: gamenode.GameNodeService.CancelPipeline:input_type -> gamenode.PipelineCancelRequest
-	11, // 49: gamenode.GameNodeService.StartContainer:input_type -> gamenode.StartContainerRequest
-	13, // 50: gamenode.GameNodeService.StopContainer:input_type -> gamenode.StopContainerRequest
-	15, // 51: gamenode.GameNodeService.RestartContainer:input_type -> gamenode.RestartContainerRequest
-	17, // 52: gamenode.GameNodeService.GetNodeMetrics:input_type -> gamenode.NodeMetricsRequest
-	19, // 53: gamenode.GameNodeService.StreamNodeLogs:input_type -> gamenode.NodeLogsRequest
-	20, // 54: gamenode.GameNodeService.StreamContainerLogs:input_type -> gamenode.ContainerLogsRequest
-	22, // 55: gamenode.GameNodeService.SubscribeEvents:input_type -> gamenode.EventSubscriptionRequest
-	1,  // 56: gamenode.GameNodeService.Register:output_type -> gamenode.RegisterResponse
-	3,  // 57: gamenode.GameNodeService.Heartbeat:output_type -> gamenode.HeartbeatResponse
-	5,  // 58: gamenode.GameNodeService.ExecutePipeline:output_type -> gamenode.ExecutePipelineResponse
-	7,  // 59: gamenode.GameNodeService.GetPipelineStatus:output_type -> gamenode.PipelineStatusResponse
-	10, // 60: gamenode.GameNodeService.CancelPipeline:output_type -> gamenode.PipelineCancelResponse
-	12, // 61: gamenode.GameNodeService.StartContainer:output_type -> gamenode.StartContainerResponse
-	14, // 62: gamenode.GameNodeService.StopContainer:output_type -> gamenode.StopContainerResponse
-	16, // 63: gamenode.GameNodeService.RestartContainer:output_type -> gamenode.RestartContainerResponse
-	18, // 64: gamenode.GameNodeService.GetNodeMetrics:output_type -> gamenode.NodeMetricsResponse
-	21, // 65: gamenode.GameNodeService.StreamNodeLogs:output_type -> gamenode.LogEntry
-	21, // 66: gamenode.GameNodeService.StreamContainerLogs:output_type -> gamenode.LogEntry
-	23, // 67: gamenode.GameNodeService.SubscribeEvents:output_type -> gamenode.Event
-	56, // [56:68] is the sub-list for method output_type
-	44, // [44:56] is the sub-list for method input_type
-	44, // [44:44] is the sub-list for extension type_name
-	44, // [44:44] is the sub-list for extension extendee
-	0,  // [0:44] is the sub-list for field type_name
+	26, // 0: gamenode.RegisterRequest.hardware:type_name -> gamenode.RegisterRequest.HardwareEntry
+	27, // 1: gamenode.RegisterRequest.network:type_name -> gamenode.RegisterRequest.NetworkEntry
+	28, // 2: gamenode.RegisterRequest.labels:type_name -> gamenode.RegisterRequest.LabelsEntry
+	7,  // 3: gamenode.RegisterRequest.resource_info:type_name -> gamenode.ResourceInfo
+	7,  // 4: gamenode.HeartbeatRequest.resource_info:type_name -> gamenode.ResourceInfo
+	6,  // 5: gamenode.MetricsReport.metrics:type_name -> gamenode.Metric
+	29, // 6: gamenode.Metric.labels:type_name -> gamenode.Metric.LabelsEntry
+	8,  // 7: gamenode.ResourceInfo.hardware:type_name -> gamenode.HardwareInfo
+	13, // 8: gamenode.ResourceInfo.software:type_name -> gamenode.SoftwareInfo
+	14, // 9: gamenode.ResourceInfo.network:type_name -> gamenode.NetworkInfo
+	9,  // 10: gamenode.HardwareInfo.cpu:type_name -> gamenode.CPUInfo
+	10, // 11: gamenode.HardwareInfo.memory:type_name -> gamenode.MemoryInfo
+	11, // 12: gamenode.HardwareInfo.gpu:type_name -> gamenode.GPUInfo
+	12, // 13: gamenode.HardwareInfo.disk:type_name -> gamenode.DiskInfo
+	30, // 14: gamenode.ExecutePipelineRequest.envs:type_name -> gamenode.ExecutePipelineRequest.EnvsEntry
+	31, // 15: gamenode.ExecutePipelineRequest.args:type_name -> gamenode.ExecutePipelineRequest.ArgsEntry
+	33, // 16: gamenode.PipelineStatusUpdate.update_time:type_name -> google.protobuf.Timestamp
+	0,  // 17: gamenode.StepStatusUpdate.status:type_name -> gamenode.StepStatus
+	33, // 18: gamenode.LogEntry.timestamp:type_name -> google.protobuf.Timestamp
+	33, // 19: gamenode.Event.timestamp:type_name -> google.protobuf.Timestamp
+	32, // 20: gamenode.Event.data:type_name -> gamenode.Event.DataEntry
+	1,  // 21: gamenode.GameNodeGRPCService.Register:input_type -> gamenode.RegisterRequest
+	3,  // 22: gamenode.GameNodeGRPCService.Heartbeat:input_type -> gamenode.HeartbeatRequest
+	5,  // 23: gamenode.GameNodeGRPCService.ReportMetrics:input_type -> gamenode.MetricsReport
+	7,  // 24: gamenode.GameNodeGRPCService.UpdateResourceInfo:input_type -> gamenode.ResourceInfo
+	15, // 25: gamenode.GameNodeGRPCService.ExecutePipeline:input_type -> gamenode.ExecutePipelineRequest
+	17, // 26: gamenode.GameNodeGRPCService.UpdatePipelineStatus:input_type -> gamenode.PipelineStatusUpdate
+	18, // 27: gamenode.GameNodeGRPCService.UpdateStepStatus:input_type -> gamenode.StepStatusUpdate
+	19, // 28: gamenode.GameNodeGRPCService.CancelPipeline:input_type -> gamenode.PipelineCancelRequest
+	21, // 29: gamenode.GameNodeGRPCService.StreamLogs:input_type -> gamenode.LogRequest
+	2,  // 30: gamenode.GameNodeGRPCService.Register:output_type -> gamenode.RegisterResponse
+	4,  // 31: gamenode.GameNodeGRPCService.Heartbeat:output_type -> gamenode.HeartbeatResponse
+	24, // 32: gamenode.GameNodeGRPCService.ReportMetrics:output_type -> gamenode.ReportResponse
+	23, // 33: gamenode.GameNodeGRPCService.UpdateResourceInfo:output_type -> gamenode.UpdateResponse
+	16, // 34: gamenode.GameNodeGRPCService.ExecutePipeline:output_type -> gamenode.ExecutePipelineResponse
+	23, // 35: gamenode.GameNodeGRPCService.UpdatePipelineStatus:output_type -> gamenode.UpdateResponse
+	23, // 36: gamenode.GameNodeGRPCService.UpdateStepStatus:output_type -> gamenode.UpdateResponse
+	20, // 37: gamenode.GameNodeGRPCService.CancelPipeline:output_type -> gamenode.CancelResponse
+	22, // 38: gamenode.GameNodeGRPCService.StreamLogs:output_type -> gamenode.LogEntry
+	30, // [30:39] is the sub-list for method output_type
+	21, // [21:30] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_internal_proto_gamenode_proto_init() }
@@ -3754,13 +2323,14 @@ func file_internal_proto_gamenode_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_proto_gamenode_proto_rawDesc), len(file_internal_proto_gamenode_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   53,
+			NumEnums:      1,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_internal_proto_gamenode_proto_goTypes,
 		DependencyIndexes: file_internal_proto_gamenode_proto_depIdxs,
+		EnumInfos:         file_internal_proto_gamenode_proto_enumTypes,
 		MessageInfos:      file_internal_proto_gamenode_proto_msgTypes,
 	}.Build()
 	File_internal_proto_gamenode_proto = out.File

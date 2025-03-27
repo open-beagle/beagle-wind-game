@@ -1,725 +1,715 @@
 package gamenode
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
+	"io"
 	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/host"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/shirou/gopsutil/v3/net"
+	dockerclient "github.com/docker/docker/client"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/open-beagle/beagle-wind-game/internal/event"
+	"github.com/open-beagle/beagle-wind-game/internal/log"
+	"github.com/open-beagle/beagle-wind-game/internal/models"
 	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
 )
 
-// GameNodeAgent 代表一个游戏节点代理
+// GameNodeAgent 游戏节点代理
 type GameNodeAgent struct {
-	sync.RWMutex
-
 	// 基本信息
-	nodeID   string
-	hostname string
-	info     *pb.NodeInfo
+	id     string
+	alias  string
+	model  string
+	region string
 
-	// 连接相关
+	// 连接信息
 	serverAddr string
 	conn       *grpc.ClientConn
-	client     pb.GameNodeServiceClient
-	sessionID  string
+	client     pb.GameNodeGRPCServiceClient
 
-	// Docker 客户端
-	dockerClient *client.Client
-
-	// 运行状态
-	running   bool
-	stopCh    chan struct{}
-	pipelines map[string]*GameNodePipeline
-
-	// 监控数据
-	metrics *pb.NodeMetrics
+	// 状态管理
+	mu        sync.RWMutex
+	status    *models.GameNodeStatus
+	pipelines map[string]*models.GameNodePipeline
 
 	// 事件管理
-	eventManager *GameNodeEventManager
+	eventManager event.EventManager
 
-	// 日志收集
-	logCollector *GameNodeLogCollector
+	// 日志管理
+	logManager log.LogManager
 
-	// 其他状态
-	status        string
-	lastHeartbeat time.Time
-	lastSeen      time.Time
+	// 配置
+	config *AgentConfig
+
+	// 资源采集
+	resourceCollector *ResourceCollector
+
+	// Docker 客户端
+	dockerClient *dockerclient.Client
 }
 
-// NewGameNodeAgent 创建新的游戏节点代理实例
-func NewGameNodeAgent(nodeID string, dockerClient *client.Client) *GameNodeAgent {
+// AgentConfig 代理配置
+type AgentConfig struct {
+	HeartbeatPeriod time.Duration
+	RetryCount      int
+	RetryDelay      time.Duration
+	MetricsInterval time.Duration
+}
+
+// ResourceCollector 资源采集器
+type ResourceCollector struct {
+	mu sync.RWMutex
+	// 系统指标
+	cpuUsage    float64
+	memoryUsage float64
+	diskUsage   float64
+	networkIO   struct {
+		read  int64
+		write int64
+	}
+	// GPU指标
+	gpuUsage  float64
+	gpuMemory float64
+	gpuTemp   float64
+	gpuPower  float64
+}
+
+// NewGameNodeAgent 创建新的游戏节点代理
+func NewGameNodeAgent(
+	id string,
+	alias string,
+	model string,
+	region string,
+	serverAddr string,
+	eventManager event.EventManager,
+	logManager log.LogManager,
+	dockerClient *dockerclient.Client,
+	config *AgentConfig,
+) *GameNodeAgent {
+	if config == nil {
+		config = &AgentConfig{
+			HeartbeatPeriod: 30 * time.Second,
+			RetryCount:      3,
+			RetryDelay:      5 * time.Second,
+			MetricsInterval: 15 * time.Second,
+		}
+	}
+
 	agent := &GameNodeAgent{
-		nodeID:        nodeID,
-		dockerClient:  dockerClient,
-		eventManager:  NewGameNodeEventManager(),
-		logCollector:  NewGameNodeLogCollector(dockerClient),
-		status:        "disconnected",
-		lastHeartbeat: time.Now(),
-		pipelines:     make(map[string]*GameNodePipeline),
-		stopCh:        make(chan struct{}),
+		id:                id,
+		alias:             alias,
+		model:             model,
+		region:            region,
+		serverAddr:        serverAddr,
+		eventManager:      eventManager,
+		logManager:        logManager,
+		config:            config,
+		resourceCollector: &ResourceCollector{},
+		dockerClient:      dockerClient,
+		status: &models.GameNodeStatus{
+			State:      models.GameNodeStateOffline,
+			Online:     false,
+			LastOnline: time.Now(),
+			UpdatedAt:  time.Now(),
+		},
+		pipelines: make(map[string]*models.GameNodePipeline),
 	}
 
 	return agent
 }
 
-// Start 启动游戏节点代理
-func (a *GameNodeAgent) Start() error {
-	a.Lock()
-	defer a.Unlock()
-
-	if a.running {
-		return fmt.Errorf("agent is already running")
+// Start 启动代理
+func (a *GameNodeAgent) Start(ctx context.Context) error {
+	// 建立连接
+	if err := a.connect(ctx); err != nil {
+		return fmt.Errorf("failed to connect: %v", err)
 	}
-
-	// 初始化系统信息
-	if err := a.initSystemInfo(); err != nil {
-		return fmt.Errorf("failed to init system info: %v", err)
-	}
-
-	// 建立gRPC连接
-	conn, err := grpc.Dial(a.serverAddr, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("failed to connect to server: %v", err)
-	}
-	a.conn = conn
-	a.client = pb.NewGameNodeServiceClient(conn)
 
 	// 注册节点
-	resp, err := a.client.Register(context.Background(), &pb.RegisterRequest{
-		NodeId:   a.nodeID,
-		Hostname: a.hostname,
-		NodeInfo: a.info,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to register node: %v", err)
+	if err := a.Register(ctx); err != nil {
+		return fmt.Errorf("failed to register: %v", err)
 	}
 
-	a.sessionID = resp.SessionId
-	a.status = "connected"
-	a.running = true
+	// 启动心跳
+	go a.startHeartbeat(ctx)
 
-	// 启动后台任务
-	go a.heartbeatLoop()
-	go a.metricsCollector()
-	go a.eventLoop()
+	// 启动指标采集
+	go a.startMetricsCollection(ctx)
 
 	return nil
 }
 
-// Stop 停止游戏节点代理
-func (a *GameNodeAgent) Stop() error {
-	a.Lock()
-	defer a.Unlock()
-
-	if !a.running {
-		return fmt.Errorf("agent is not running")
+// connect 建立连接
+func (a *GameNodeAgent) connect(ctx context.Context) error {
+	conn, err := grpc.DialContext(ctx, a.serverAddr, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("failed to dial: %v", err)
 	}
 
-	// 停止所有pipeline
-	for _, pipeline := range a.pipelines {
-		pipeline.UpdateStatus(PipelineStateCanceled)
-		a.eventManager.Publish(NewGameNodePipelineEvent(a.nodeID, pipeline.GetName(), "canceled", "Pipeline canceled"))
-	}
-
-	// 关闭所有后台任务
-	close(a.stopCh)
-
-	// 关闭gRPC连接
-	if a.conn != nil {
-		a.conn.Close()
-	}
-
-	a.running = false
-	a.status = "stopped"
+	a.conn = conn
+	a.client = pb.NewGameNodeGRPCServiceClient(conn)
 	return nil
 }
 
-// initSystemInfo 初始化系统信息
-func (a *GameNodeAgent) initSystemInfo() error {
-	// 获取主机信息
-	hostInfo, err := host.Info()
-	if err != nil {
-		return fmt.Errorf("failed to get host info: %v", err)
-	}
-
-	// 获取CPU信息
-	cpuInfo, err := cpu.Info()
-	if err != nil {
-		return fmt.Errorf("failed to get cpu info: %v", err)
-	}
-
-	// 获取内存信息
-	memInfo, err := mem.VirtualMemory()
-	if err != nil {
-		return fmt.Errorf("failed to get memory info: %v", err)
-	}
-
-	// 获取磁盘信息
-	diskInfo, err := disk.Usage("/")
-	if err != nil {
-		return fmt.Errorf("failed to get disk info: %v", err)
-	}
-
-	// 获取网络信息
-	netInfo, err := net.Interfaces()
-	if err != nil {
-		return fmt.Errorf("failed to get network info: %v", err)
-	}
-
-	// 设置节点信息
-	a.hostname = hostInfo.Hostname
-	a.nodeID = fmt.Sprintf("%s-%d", hostInfo.Hostname, time.Now().UnixNano())
-	a.info = &pb.NodeInfo{
-		Hostname: hostInfo.Hostname,
-		Os:       hostInfo.OS,
-		Arch:     hostInfo.KernelArch,
-		Kernel:   hostInfo.KernelVersion,
-		Hardware: &pb.HardwareInfo{
-			Cpu: &pb.CpuInfo{
-				Cores:      int32(len(cpuInfo)),
-				Model:      cpuInfo[0].ModelName,
-				ClockSpeed: float32(cpuInfo[0].Mhz),
-			},
-			Memory: &pb.MemoryInfo{
-				Total: int64(memInfo.Total),
-				Type:  "DDR4", // 这里需要根据实际情况获取
-			},
-			Disk: &pb.DiskInfo{
-				Total: int64(diskInfo.Total),
-				Type:  "SSD", // 这里需要根据实际情况获取
-			},
-			Network: &pb.NetworkInfo{
-				PrimaryInterface: netInfo[0].Name,
-				Bandwidth:        1000, // 这里需要根据实际情况获取
-			},
-		},
-	}
-
-	return nil
-}
-
-// heartbeatLoop 心跳循环
-func (a *GameNodeAgent) heartbeatLoop() {
-	ticker := time.NewTicker(30 * time.Second)
+// startHeartbeat 启动心跳
+func (a *GameNodeAgent) startHeartbeat(ctx context.Context) {
+	ticker := time.NewTicker(a.config.HeartbeatPeriod)
 	defer ticker.Stop()
 
 	for {
-		select {
-		case <-a.stopCh:
-			return
-		case <-ticker.C:
-			if err := a.sendHeartbeat(); err != nil {
-				a.status = "disconnected"
-				a.eventManager.Publish(NewGameNodeNodeEvent(a.nodeID, "disconnected", err.Error()))
-			}
-		}
-	}
-}
-
-// sendHeartbeat 发送心跳
-func (a *GameNodeAgent) sendHeartbeat() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	_, err := a.client.Heartbeat(ctx, &pb.HeartbeatRequest{
-		NodeId:    a.nodeID,
-		SessionId: a.sessionID,
-		Metrics:   a.metrics,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to send heartbeat: %v", err)
-	}
-
-	a.lastHeartbeat = time.Now()
-	a.status = "connected"
-	return nil
-}
-
-// metricsCollector 指标收集器
-func (a *GameNodeAgent) metricsCollector() {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-a.stopCh:
-			return
-		case <-ticker.C:
-			if err := a.collectMetrics(); err != nil {
-				a.eventManager.Publish(NewGameNodeNodeEvent(a.nodeID, "error", err.Error()))
-			}
-		}
-	}
-}
-
-// collectMetrics 收集系统指标
-func (a *GameNodeAgent) collectMetrics() error {
-	// 获取CPU使用率
-	cpuPercent, err := cpu.Percent(time.Second, false)
-	if err != nil {
-		return fmt.Errorf("failed to get cpu usage: %v", err)
-	}
-
-	// 获取内存使用率
-	memInfo, err := mem.VirtualMemory()
-	if err != nil {
-		return fmt.Errorf("failed to get memory usage: %v", err)
-	}
-
-	// 获取磁盘使用率
-	diskInfo, err := disk.Usage("/")
-	if err != nil {
-		return fmt.Errorf("failed to get disk usage: %v", err)
-	}
-
-	// 获取网络指标
-	netStats, err := net.IOCounters(true)
-	if err != nil {
-		return fmt.Errorf("failed to get network stats: %v", err)
-	}
-
-	// 更新指标
-	a.metrics = &pb.NodeMetrics{
-		CpuUsage:    float32(cpuPercent[0]),
-		MemoryUsage: float32(memInfo.UsedPercent),
-		DiskUsage:   float32(diskInfo.UsedPercent),
-		NetworkMetrics: &pb.NetworkMetrics{
-			RxBytesPerSec: float32(netStats[0].BytesRecv),
-			TxBytesPerSec: float32(netStats[0].BytesSent),
-		},
-		ContainerCount: int32(len(a.pipelines)),
-		CollectedAt:    timestamppb.Now(),
-	}
-
-	return nil
-}
-
-// eventLoop 事件循环
-func (a *GameNodeAgent) eventLoop() {
-	subscriber := a.eventManager.Subscribe([]string{GameNodeEventTypeContainer, GameNodeEventTypePipeline, GameNodeEventTypeNode})
-	defer a.eventManager.Unsubscribe(subscriber)
-
-	for {
-		select {
-		case <-a.stopCh:
-			return
-		case event := <-subscriber.ch:
-			// 处理事件
-			a.handleEvent(event)
-		}
-	}
-}
-
-// handleEvent 处理事件
-func (a *GameNodeAgent) handleEvent(event *pb.Event) {
-	// 根据事件类型进行处理
-	switch event.Type {
-	case GameNodeEventTypePipeline:
-		// 处理pipeline事件
-	case GameNodeEventTypeContainer:
-		// 处理容器事件
-	case GameNodeEventTypeNode:
-		// 处理节点事件
-	}
-}
-
-// ExecutePipeline 执行Pipeline
-func (a *GameNodeAgent) ExecutePipeline(ctx context.Context, req *pb.ExecutePipelineRequest) (*pb.ExecutePipelineResponse, error) {
-	a.RLock()
-	defer a.RUnlock()
-
-	if !a.running {
-		return nil, fmt.Errorf("agent is not running")
-	}
-
-	// 创建新的pipeline
-	pipeline, err := NewGameNodePipelineFromYAML(req.PipelineData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pipeline: %v", err)
-	}
-
-	// 保存pipeline
-	a.pipelines[req.PipelineId] = pipeline
-
-	// 异步执行pipeline
-	go func() {
-		if err := a.runPipeline(ctx, pipeline); err != nil {
-			a.eventManager.Publish(NewGameNodePipelineEvent(a.nodeID, req.PipelineId, "failed", err.Error()))
-		}
-	}()
-
-	return &pb.ExecutePipelineResponse{
-		ExecutionId: req.PipelineId,
-		Accepted:    true,
-		Message:     "Pipeline execution started",
-	}, nil
-}
-
-// runPipeline 执行流水线
-func (a *GameNodeAgent) runPipeline(ctx context.Context, pipeline *GameNodePipeline) error {
-	if a.dockerClient == nil {
-		return fmt.Errorf("docker client is not initialized")
-	}
-
-	// 设置开始时间
-	pipeline.SetStartTime(time.Now().Unix())
-	pipeline.UpdateStatus(PipelineStateRunning)
-
-	// 执行每个步骤
-	for i, step := range pipeline.GetSteps() {
 		select {
 		case <-ctx.Done():
-			pipeline.UpdateStatus(PipelineStateCanceled)
-			return fmt.Errorf("pipeline canceled")
-		default:
-			// 更新当前步骤
-			pipeline.UpdateProgress(int32(i))
-			pipeline.UpdateStepStatus(int32(i), StepStateRunning)
-
-			// 创建容器配置
-			config := &container.Config{
-				Image:      step.Container.Image,
-				Hostname:   step.Container.Hostname,
-				Env:        convertMapToSlice(step.Container.Environment),
-				Cmd:        step.Container.Command,
-				WorkingDir: "/app",
+			return
+		case <-ticker.C:
+			if err := a.Heartbeat(ctx); err != nil {
+				a.eventManager.Publish(event.NewNodeEvent(a.id, "error", fmt.Sprintf("Heartbeat failed: %v", err)))
 			}
-
-			// 创建主机配置
-			hostConfig := &container.HostConfig{
-				Privileged:    step.Container.Privileged,
-				SecurityOpt:   step.Container.SecurityOpt,
-				CapAdd:        step.Container.CapAdd,
-				Tmpfs:         convertSliceToMap(step.Container.Tmpfs),
-				Binds:         step.Container.Volumes,
-				PortBindings:  nat.PortMap{},
-				RestartPolicy: container.RestartPolicy{Name: "no"},
-			}
-
-			// 创建容器
-			containerName := fmt.Sprintf("%s-%s-%d", pipeline.GetName(), step.Name, i)
-			resp, err := a.dockerClient.ContainerCreate(ctx, config, hostConfig, nil, nil, containerName)
-			if err != nil {
-				pipeline.SetStepError(int32(i), err)
-				pipeline.UpdateStepStatus(int32(i), StepStateFailed)
-				pipeline.UpdateStatus(PipelineStateFailed)
-				return fmt.Errorf("failed to create container: %v", err)
-			}
-
-			// 启动容器
-			if err := a.dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-				pipeline.SetStepError(int32(i), err)
-				pipeline.UpdateStepStatus(int32(i), StepStateFailed)
-				pipeline.UpdateStatus(PipelineStateFailed)
-				return fmt.Errorf("failed to start container: %v", err)
-			}
-
-			// 等待容器完成
-			statusCh, errCh := a.dockerClient.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-			select {
-			case err := <-errCh:
-				pipeline.SetStepError(int32(i), err)
-				pipeline.UpdateStepStatus(int32(i), StepStateFailed)
-				pipeline.UpdateStatus(PipelineStateFailed)
-				return fmt.Errorf("error waiting for container: %v", err)
-			case status := <-statusCh:
-				if status.StatusCode != 0 {
-					pipeline.SetStepError(int32(i), fmt.Errorf("container exited with status code %d", status.StatusCode))
-					pipeline.UpdateStepStatus(int32(i), StepStateFailed)
-					pipeline.UpdateStatus(PipelineStateFailed)
-					return fmt.Errorf("container exited with status code %d", status.StatusCode)
-				}
-			}
-
-			// 获取容器日志
-			logs, err := a.dockerClient.ContainerLogs(ctx, resp.ID, container.LogsOptions{
-				ShowStdout: true,
-				ShowStderr: true,
-			})
-			if err == nil {
-				defer logs.Close()
-				// 读取日志
-				scanner := bufio.NewScanner(logs)
-				var output string
-				for scanner.Scan() {
-					output += scanner.Text() + "\n"
-				}
-				pipeline.SetStepOutput(int32(i), output)
-			}
-
-			// 更新步骤状态
-			pipeline.UpdateStepStatus(int32(i), StepStateCompleted)
 		}
 	}
+}
 
-	// 设置结束时间
-	pipeline.SetEndTime(time.Now().Unix())
-	pipeline.UpdateStatus(PipelineStateCompleted)
+// startMetricsCollection 启动指标采集
+func (a *GameNodeAgent) startMetricsCollection(ctx context.Context) {
+	ticker := time.NewTicker(a.config.MetricsInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := a.ReportMetrics(ctx); err != nil {
+				a.eventManager.Publish(event.NewNodeEvent(a.id, "error", fmt.Sprintf("Metrics collection failed: %v", err)))
+			}
+		}
+	}
+}
+
+// Register 注册节点
+func (a *GameNodeAgent) Register(ctx context.Context) error {
+	// 获取资源信息
+	resourceInfo, err := a.collectResourceInfo()
+	if err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("failed to collect resource info: %v", err))
+	}
+
+	// 发送注册请求
+	req := &pb.RegisterRequest{
+		Id:       a.id,
+		Alias:    a.alias,
+		Model:    a.model,
+		Type:     "physical",
+		Location: a.region,
+		Labels:   make(map[string]string),
+		ResourceInfo: &pb.ResourceInfo{
+			Id:        a.id,
+			Timestamp: time.Now().Unix(),
+			Hardware:  resourceInfo.Hardware,
+			Software:  resourceInfo.Software,
+			Network:   resourceInfo.Network,
+		},
+	}
+
+	_, err = a.client.Register(ctx, req)
+	if err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("failed to register: %v", err))
+	}
+
+	// 更新状态
+	a.mu.Lock()
+	a.status.State = models.GameNodeStateOnline
+	a.status.Online = true
+	a.status.LastOnline = time.Now()
+	a.status.UpdatedAt = time.Now()
+	a.mu.Unlock()
+
+	// 发布注册事件
+	a.eventManager.Publish(event.NewNodeEvent(a.id, "registered", "Node registered successfully"))
+
 	return nil
 }
 
-// convertMapToSlice 将 map[string]string 转换为 []string
-func convertMapToSlice(m map[string]string) []string {
-	result := make([]string, 0, len(m))
-	for k, v := range m {
-		result = append(result, fmt.Sprintf("%s=%s", k, v))
-	}
-	return result
-}
+// collectResourceInfo 采集资源信息
+func (a *GameNodeAgent) collectResourceInfo() (*pb.ResourceInfo, error) {
+	a.resourceCollector.mu.RLock()
+	defer a.resourceCollector.mu.RUnlock()
 
-// convertSliceToMap 将 []string 转换为 map[string]string
-func convertSliceToMap(s []string) map[string]string {
-	result := make(map[string]string)
-	for _, v := range s {
-		parts := strings.Split(v, ":")
-		if len(parts) == 2 {
-			result[parts[0]] = parts[1]
-		}
-	}
-	return result
-}
-
-// GetPipelineStatus 获取Pipeline状态
-func (a *GameNodeAgent) GetPipelineStatus(ctx context.Context, req *pb.PipelineStatusRequest) (*pb.PipelineStatusResponse, error) {
-	a.RLock()
-	defer a.RUnlock()
-
-	if !a.running {
-		return nil, fmt.Errorf("agent is not running")
-	}
-
-	pipeline, ok := a.pipelines[req.ExecutionId]
-	if !ok {
-		return nil, fmt.Errorf("pipeline not found")
-	}
-
-	status := pipeline.GetStatus()
-	stepStatuses := make([]*pb.ContainerStatus, len(status.StepStatuses))
-	for i, stepStatus := range status.StepStatuses {
-		stepStatuses[i] = &pb.ContainerStatus{
-			Name:         fmt.Sprintf("step-%d", i),
-			Status:       string(stepStatus.State),
-			ErrorMessage: stepStatus.Error,
-			StartTime:    timestamppb.New(time.Unix(stepStatus.StartTime, 0)),
-			EndTime:      timestamppb.New(time.Unix(stepStatus.EndTime, 0)),
-		}
-	}
-
-	return &pb.PipelineStatusResponse{
-		ExecutionId:            req.ExecutionId,
-		Status:                 string(status.State),
-		CurrentStep:            status.CurrentStep,
-		TotalSteps:             status.TotalSteps,
-		CurrentStepDescription: fmt.Sprintf("Step %d of %d", status.CurrentStep+1, status.TotalSteps),
-		Progress:               status.Progress,
-		ErrorMessage:           status.ErrorMessage,
-		StartTime:              timestamppb.New(time.Unix(status.StartTime, 0)),
-		EndTime:                timestamppb.New(time.Unix(status.EndTime, 0)),
-		ContainerStatuses:      stepStatuses,
+	return &pb.ResourceInfo{
+		Id:        a.id,
+		Timestamp: time.Now().Unix(),
+		Hardware: &pb.HardwareInfo{
+			Cpu: &pb.CPUInfo{
+				Usage: a.resourceCollector.cpuUsage,
+			},
+			Memory: &pb.MemoryInfo{
+				Usage: a.resourceCollector.memoryUsage,
+			},
+			Gpu: &pb.GPUInfo{
+				Usage:       a.resourceCollector.gpuUsage,
+				MemoryUsage: a.resourceCollector.gpuMemory,
+				Temperature: a.resourceCollector.gpuTemp,
+				Power:       a.resourceCollector.gpuPower,
+			},
+			Disk: &pb.DiskInfo{
+				Usage: a.resourceCollector.diskUsage,
+			},
+		},
+		Network: &pb.NetworkInfo{
+			Bandwidth: float64(a.resourceCollector.networkIO.read + a.resourceCollector.networkIO.write),
+		},
 	}, nil
 }
 
-// CancelPipeline 取消Pipeline
-func (a *GameNodeAgent) CancelPipeline(ctx context.Context, req *pb.PipelineCancelRequest) (*pb.PipelineCancelResponse, error) {
-	a.RLock()
-	pipeline, exists := a.pipelines[req.ExecutionId]
-	a.RUnlock()
-
-	if !exists {
-		return nil, fmt.Errorf("pipeline not found")
+// Heartbeat 发送心跳
+func (a *GameNodeAgent) Heartbeat(ctx context.Context) error {
+	// 获取资源信息
+	resourceInfo, err := a.collectResourceInfo()
+	if err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("failed to collect resource info: %v", err))
 	}
 
-	pipeline.UpdateStatus(PipelineStateCanceled)
-	return &pb.PipelineCancelResponse{
-		Success: true,
-		Message: "Pipeline cancelled successfully",
-	}, nil
-}
-
-// SubscribeEvents 订阅事件
-func (a *GameNodeAgent) SubscribeEvents(req *pb.EventSubscriptionRequest) *GameNodeEventStream {
-	return NewGameNodeEventStream(a.eventManager, req.EventTypes)
-}
-
-// StreamNodeLogs 流式获取节点日志
-func (a *GameNodeAgent) StreamNodeLogs(ctx context.Context, req *pb.NodeLogsRequest) (<-chan *pb.LogEntry, error) {
-	return a.logCollector.CollectNodeLogs(ctx, int64(req.TailLines), req.Follow)
-}
-
-// StreamContainerLogs 流式获取容器日志
-func (a *GameNodeAgent) StreamContainerLogs(ctx context.Context, req *pb.ContainerLogsRequest) (<-chan *pb.LogEntry, error) {
-	return a.logCollector.CollectContainerLogs(ctx, req.ContainerId, int64(req.TailLines), req.Follow)
-}
-
-// StartContainer 启动容器
-func (a *GameNodeAgent) StartContainer(ctx context.Context, req *pb.StartContainerRequest) (*pb.StartContainerResponse, error) {
-	a.RLock()
-	defer a.RUnlock()
-
-	if !a.running {
-		return nil, fmt.Errorf("agent is not running")
+	// 发送心跳请求
+	req := &pb.HeartbeatRequest{
+		Id:        a.id,
+		Timestamp: time.Now().Unix(),
+		ResourceInfo: &pb.ResourceInfo{
+			Id:        a.id,
+			Timestamp: time.Now().Unix(),
+			Hardware:  resourceInfo.Hardware,
+			Software:  resourceInfo.Software,
+			Network:   resourceInfo.Network,
+		},
 	}
 
-	// 将环境变量转换为字符串切片
-	env := make([]string, 0, len(req.Config.Environment))
-	for k, v := range req.Config.Environment {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	_, err = a.client.Heartbeat(ctx, req)
+	if err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("failed to send heartbeat: %v", err))
+	}
+
+	// 更新状态
+	a.mu.Lock()
+	a.status.LastOnline = time.Now()
+	a.status.UpdatedAt = time.Now()
+	a.mu.Unlock()
+
+	return nil
+}
+
+// ReportMetrics 上报指标
+func (a *GameNodeAgent) ReportMetrics(ctx context.Context) error {
+	// 获取指标数据
+	metrics := a.collectMetrics()
+
+	// 发送指标报告
+	req := &pb.MetricsReport{
+		Id:        a.id,
+		Timestamp: time.Now().Unix(),
+		Metrics:   metrics,
+	}
+
+	_, err := a.client.ReportMetrics(ctx, req)
+	if err != nil {
+		return status.Error(codes.Internal, fmt.Sprintf("failed to report metrics: %v", err))
+	}
+
+	// 更新状态
+	a.mu.Lock()
+	a.status.Metrics = models.MetricsReport{
+		ID:        a.id,
+		Timestamp: time.Now().Unix(),
+		Metrics:   make([]models.Metric, len(metrics)),
+	}
+	for i, m := range metrics {
+		a.status.Metrics.Metrics[i] = models.Metric{
+			Name:   m.Name,
+			Type:   m.Type,
+			Value:  m.Value,
+			Labels: m.Labels,
+		}
+	}
+	a.status.UpdatedAt = time.Now()
+	a.mu.Unlock()
+
+	return nil
+}
+
+// collectMetrics 采集指标数据
+func (a *GameNodeAgent) collectMetrics() []*pb.Metric {
+	a.resourceCollector.mu.RLock()
+	defer a.resourceCollector.mu.RUnlock()
+
+	return []*pb.Metric{
+		{
+			Name:  "cpu_usage",
+			Type:  "gauge",
+			Value: a.resourceCollector.cpuUsage,
+		},
+		{
+			Name:  "memory_usage",
+			Type:  "gauge",
+			Value: a.resourceCollector.memoryUsage,
+		},
+		{
+			Name:  "disk_usage",
+			Type:  "gauge",
+			Value: a.resourceCollector.diskUsage,
+		},
+		{
+			Name:  "gpu_usage",
+			Type:  "gauge",
+			Value: a.resourceCollector.gpuUsage,
+		},
+		{
+			Name:  "gpu_memory",
+			Type:  "gauge",
+			Value: a.resourceCollector.gpuMemory,
+		},
+		{
+			Name:  "gpu_temperature",
+			Type:  "gauge",
+			Value: a.resourceCollector.gpuTemp,
+		},
+		{
+			Name:  "gpu_power",
+			Type:  "gauge",
+			Value: a.resourceCollector.gpuPower,
+		},
+		{
+			Name:  "network_read",
+			Type:  "counter",
+			Value: float64(a.resourceCollector.networkIO.read),
+		},
+		{
+			Name:  "network_write",
+			Type:  "counter",
+			Value: float64(a.resourceCollector.networkIO.write),
+		},
+	}
+}
+
+// ExecutePipeline 执行流水线
+func (a *GameNodeAgent) ExecutePipeline(ctx context.Context, req *pb.ExecutePipelineRequest) error {
+	// 创建流水线
+	pipeline, err := models.NewGameNodePipelineFromYAML(req.PipelineData)
+	if err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "error", fmt.Sprintf("failed to create pipeline: %v", err)))
+		return status.Error(codes.Internal, fmt.Sprintf("failed to create pipeline: %v", err))
+	}
+
+	// 保存流水线
+	a.mu.Lock()
+	a.pipelines[req.PipelineId] = pipeline
+	a.mu.Unlock()
+
+	// 执行流水线
+	if err := a.executePipelineSteps(ctx, pipeline); err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "error", fmt.Sprintf("failed to execute pipeline: %v", err)))
+		return status.Error(codes.Internal, fmt.Sprintf("failed to execute pipeline: %v", err))
+	}
+
+	a.eventManager.Publish(event.NewNodeEvent(a.id, "info", "Pipeline completed successfully"))
+	return nil
+}
+
+// executePipelineSteps 执行流水线步骤
+func (a *GameNodeAgent) executePipelineSteps(ctx context.Context, pipeline *models.GameNodePipeline) error {
+	for _, step := range pipeline.Steps {
+		// 更新步骤状态
+		statusUpdate := &pb.StepStatusUpdate{
+			PipelineId: pipeline.Name,
+			StepId:     step.Name,
+			Status:     pb.StepStatus_RUNNING,
+			StartTime:  time.Now().Unix(),
+		}
+
+		_, err := a.client.UpdateStepStatus(ctx, statusUpdate)
+		if err != nil {
+			return fmt.Errorf("failed to update step status: %v", err)
+		}
+
+		// 执行步骤
+		if err := a.executeStep(ctx, &step); err != nil {
+			// 更新失败状态
+			statusUpdate.Status = pb.StepStatus_FAILED
+			statusUpdate.EndTime = time.Now().Unix()
+			statusUpdate.ErrorMessage = err.Error()
+			_, _ = a.client.UpdateStepStatus(ctx, statusUpdate)
+			return err
+		}
+
+		// 更新完成状态
+		statusUpdate.Status = pb.StepStatus_COMPLETED
+		statusUpdate.EndTime = time.Now().Unix()
+		_, err = a.client.UpdateStepStatus(ctx, statusUpdate)
+		if err != nil {
+			return fmt.Errorf("failed to update step status: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// executeStep 执行单个步骤
+func (a *GameNodeAgent) executeStep(ctx context.Context, step *models.PipelineStep) error {
+	if a.dockerClient == nil {
+		return fmt.Errorf("Docker client not initialized")
 	}
 
 	// 创建容器配置
 	config := &container.Config{
-		Image:      req.Config.Image,
-		Hostname:   req.Config.Hostname,
-		Env:        env,
-		Cmd:        req.Config.Command,
-		WorkingDir: "/app",
-	}
-
-	// 将卷映射转换为字符串切片
-	volumes := make([]string, 0, len(req.Config.Volumes))
-	for _, v := range req.Config.Volumes {
-		volumes = append(volumes, fmt.Sprintf("%s:%s", v.HostPath, v.ContainerPath))
+		Image:      step.Container.Image,
+		Cmd:        step.Container.Command,
+		Env:        convertEnvMapToSlice(step.Container.Environment),
+		WorkingDir: "/",
 	}
 
 	// 创建主机配置
 	hostConfig := &container.HostConfig{
-		Privileged:    req.Config.Privileged,
-		SecurityOpt:   req.Config.SecurityOpt,
-		CapAdd:        req.Config.CapAdd,
-		Tmpfs:         convertSliceToMap(req.Config.Tmpfs),
-		Binds:         volumes,
-		PortBindings:  nat.PortMap{},
-		RestartPolicy: container.RestartPolicy{Name: "no"},
+		Binds:       step.Container.Volumes,
+		NetworkMode: container.NetworkMode("host"),
+		Resources: container.Resources{
+			Memory:     1024 * 1024 * 1024, // 1GB
+			MemorySwap: 1024 * 1024 * 1024, // 1GB
+			CPUShares:  1024,
+			CPUPeriod:  100000,
+			CPUQuota:   100000,
+		},
 	}
 
 	// 创建容器
-	resp, err := a.dockerClient.ContainerCreate(ctx, config, hostConfig, nil, nil, req.Config.ContainerName)
+	resp, err := a.dockerClient.ContainerCreate(ctx, config, hostConfig, nil, nil, fmt.Sprintf("step-%s-%s", step.Name, uuid.New().String()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create container: %v", err)
+		return fmt.Errorf("failed to create container: %v", err)
 	}
 
 	// 启动容器
-	if err := a.dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to start container: %v", err)
+	err = a.dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to start container: %v", err)
 	}
 
-	return &pb.StartContainerResponse{
-		Success:     true,
-		ContainerId: resp.ID,
-		Message:     "Container started successfully",
-	}, nil
+	// 等待容器完成
+	statusCh, errCh := a.dockerClient.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return fmt.Errorf("failed to wait container: %v", err)
+		}
+	case status := <-statusCh:
+		if status.StatusCode != 0 {
+			return fmt.Errorf("container exited with status %d", status.StatusCode)
+		}
+	}
+
+	// 获取容器日志
+	logs, err := a.dockerClient.ContainerLogs(ctx, resp.ID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get container logs: %v", err)
+	}
+
+	// 读取日志内容
+	logContent, err := io.ReadAll(logs)
+	if err != nil {
+		return fmt.Errorf("failed to read container logs: %v", err)
+	}
+
+	// 记录日志
+	logEntry := &pb.LogEntry{
+		PipelineId: step.Name,
+		StepId:     step.Name,
+		Level:      "info",
+		Message:    string(logContent),
+		Timestamp:  timestamppb.Now(),
+	}
+	a.logManager.AddLog(step.Name, logEntry)
+
+	// 删除容器
+	err = a.dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+	if err != nil {
+		return fmt.Errorf("failed to remove container: %v", err)
+	}
+
+	return nil
+}
+
+// convertEnvMapToSlice 将环境变量 map 转换为 slice
+func convertEnvMapToSlice(envMap map[string]string) []string {
+	envSlice := make([]string, 0, len(envMap))
+	for k, v := range envMap {
+		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
+	}
+	return envSlice
+}
+
+// GetPipelineStatus 获取流水线状态
+func (a *GameNodeAgent) GetPipelineStatus(ctx context.Context, pipelineID string) (*models.PipelineStatus, error) {
+	// 获取流水线状态
+	status := &models.PipelineStatus{
+		ID:          pipelineID,
+		NodeID:      a.id,
+		State:       "unknown",
+		CurrentStep: 0,
+		TotalSteps:  0,
+		Progress:    0,
+		StartTime:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	return status, nil
+}
+
+// CancelPipeline 取消流水线
+func (a *GameNodeAgent) CancelPipeline(ctx context.Context, pipelineID string) error {
+	// 发布取消事件
+	a.eventManager.Publish(event.NewNodeEvent(a.id, "info", fmt.Sprintf("Pipeline %s cancelled", pipelineID)))
+	return nil
+}
+
+// SubscribeEvents 订阅事件
+func (a *GameNodeAgent) SubscribeEvents(ctx context.Context, types []string) (<-chan *pb.Event, error) {
+	subscriber := a.eventManager.Subscribe(types)
+	eventCh := make(chan *pb.Event, 100)
+
+	go func() {
+		defer close(eventCh)
+		for {
+			select {
+			case <-ctx.Done():
+				a.eventManager.Unsubscribe(subscriber)
+				return
+			default:
+				// 事件处理逻辑
+			}
+		}
+	}()
+
+	return eventCh, nil
+}
+
+// handleEvent 处理事件
+func (a *GameNodeAgent) handleEvent(event *pb.Event) {
+	switch event.Type {
+	case "container":
+		// 处理容器事件
+		a.handleContainerEvent(event)
+	case "pipeline":
+		// 处理流水线事件
+		a.handlePipelineEvent(event)
+	case "node":
+		// 处理节点事件
+		a.handleNodeEvent(event)
+	}
+}
+
+// handleContainerEvent 处理容器事件
+func (a *GameNodeAgent) handleContainerEvent(event *pb.Event) {
+	// TODO: 实现容器事件处理逻辑
+}
+
+// handlePipelineEvent 处理流水线事件
+func (a *GameNodeAgent) handlePipelineEvent(event *pb.Event) {
+	// TODO: 实现流水线事件处理逻辑
+}
+
+// handleNodeEvent 处理节点事件
+func (a *GameNodeAgent) handleNodeEvent(event *pb.Event) {
+	// TODO: 实现节点事件处理逻辑
+}
+
+// StreamLogs 流式获取日志
+func (a *GameNodeAgent) StreamLogs(ctx context.Context, pipelineID string) (<-chan *pb.LogEntry, error) {
+	return a.logManager.StreamLogs(ctx, pipelineID, time.Now().Add(-24*time.Hour)), nil
+}
+
+// StartContainer 启动容器
+func (a *GameNodeAgent) StartContainer(ctx context.Context, containerID string) error {
+	// 发布容器启动事件
+	a.eventManager.Publish(event.NewContainerEvent(a.id, containerID, "started", "Container started"))
+	return nil
 }
 
 // StopContainer 停止容器
-func (a *GameNodeAgent) StopContainer(ctx context.Context, req *pb.StopContainerRequest) (*pb.StopContainerResponse, error) {
-	a.RLock()
-	defer a.RUnlock()
-
-	if !a.running {
-		return nil, fmt.Errorf("agent is not running")
-	}
-
-	timeout := int(req.Timeout)
-	if err := a.dockerClient.ContainerStop(ctx, req.ContainerId, container.StopOptions{Timeout: &timeout}); err != nil {
-		return nil, fmt.Errorf("failed to stop container: %v", err)
-	}
-
-	return &pb.StopContainerResponse{
-		Success: true,
-		Message: "Container stopped successfully",
-	}, nil
+func (a *GameNodeAgent) StopContainer(ctx context.Context, containerID string) error {
+	// 发布容器停止事件
+	a.eventManager.Publish(event.NewContainerEvent(a.id, containerID, "stopped", "Container stopped"))
+	return nil
 }
 
-// RestartContainer 重启容器
-func (a *GameNodeAgent) RestartContainer(ctx context.Context, req *pb.RestartContainerRequest) (*pb.RestartContainerResponse, error) {
-	a.RLock()
-	defer a.RUnlock()
+// StreamNodeLogs 流式获取节点日志
+func (a *GameNodeAgent) StreamNodeLogs(ctx context.Context) (<-chan *pb.LogEntry, error) {
+	return a.logManager.StreamLogs(ctx, a.id, time.Now().Add(-24*time.Hour)), nil
+}
 
-	if !a.running {
-		return nil, fmt.Errorf("agent is not running")
-	}
-
-	timeout := int(req.Timeout)
-	if err := a.dockerClient.ContainerRestart(ctx, req.ContainerId, container.StopOptions{Timeout: &timeout}); err != nil {
-		return nil, fmt.Errorf("failed to restart container: %v", err)
-	}
-
-	return &pb.RestartContainerResponse{
-		Success: true,
-		Message: "Container restarted successfully",
-	}, nil
+// StreamContainerLogs 流式获取容器日志
+func (a *GameNodeAgent) StreamContainerLogs(ctx context.Context, containerID string) (<-chan *pb.LogEntry, error) {
+	return a.logManager.StreamLogs(ctx, containerID, time.Now().Add(-24*time.Hour)), nil
 }
 
 // GetNodeMetrics 获取节点指标
-func (a *GameNodeAgent) GetNodeMetrics(ctx context.Context, req *pb.NodeMetricsRequest) (*pb.NodeMetricsResponse, error) {
-	a.RLock()
-	defer a.RUnlock()
+func (a *GameNodeAgent) GetNodeMetrics(ctx context.Context) (*pb.MetricsReport, error) {
+	a.resourceCollector.mu.RLock()
+	defer a.resourceCollector.mu.RUnlock()
 
-	if !a.running {
-		return nil, fmt.Errorf("agent is not running")
-	}
-
-	// 获取容器指标
-	containers, err := a.dockerClient.ContainerList(ctx, container.ListOptions{All: true})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list containers: %v", err)
-	}
-
-	containerMetrics := make([]*pb.ContainerMetrics, 0, len(containers))
-	for _, c := range containers {
-		stats, err := a.dockerClient.ContainerStats(ctx, c.ID, false)
-		if err != nil {
-			continue
-		}
-		defer stats.Body.Close()
-
-		var statsJSON struct {
-			CPUStats struct {
-				CPUUsage struct {
-					TotalUsage uint64 `json:"total_usage"`
-				} `json:"cpu_usage"`
-			} `json:"cpu_stats"`
-			MemoryStats struct {
-				Usage uint64 `json:"usage"`
-			} `json:"memory_stats"`
-		}
-		if err := json.NewDecoder(stats.Body).Decode(&statsJSON); err != nil {
-			continue
-		}
-
-		containerMetrics = append(containerMetrics, &pb.ContainerMetrics{
-			ContainerId: c.ID,
-			CpuUsage:    float32(statsJSON.CPUStats.CPUUsage.TotalUsage),
-			MemoryUsage: float32(statsJSON.MemoryStats.Usage),
-		})
-	}
-
-	return &pb.NodeMetricsResponse{
-		NodeId:           a.nodeID,
-		Metrics:          a.metrics,
-		ContainerMetrics: containerMetrics,
+	return &pb.MetricsReport{
+		Id:        a.id,
+		Timestamp: time.Now().Unix(),
+		Metrics: []*pb.Metric{
+			{
+				Name:  "cpu_usage",
+				Type:  "gauge",
+				Value: a.resourceCollector.cpuUsage,
+			},
+			{
+				Name:  "memory_usage",
+				Type:  "gauge",
+				Value: a.resourceCollector.memoryUsage,
+			},
+			{
+				Name:  "gpu_usage",
+				Type:  "gauge",
+				Value: a.resourceCollector.gpuUsage,
+			},
+			{
+				Name:  "gpu_memory",
+				Type:  "gauge",
+				Value: a.resourceCollector.gpuMemory,
+			},
+		},
 	}, nil
 }
 
-// UpdateMetrics 更新节点指标
-func (a *GameNodeAgent) UpdateMetrics(metrics *pb.NodeMetrics) {
-	a.Lock()
-	defer a.Unlock()
-	a.metrics = metrics
-	a.lastSeen = time.Now()
+// UpdateMetrics 更新指标
+func (a *GameNodeAgent) UpdateMetrics(metrics *pb.MetricsReport) {
+	a.resourceCollector.mu.Lock()
+	defer a.resourceCollector.mu.Unlock()
+
+	for _, metric := range metrics.Metrics {
+		switch metric.Name {
+		case "cpu_usage":
+			a.resourceCollector.cpuUsage = metric.Value
+		case "memory_usage":
+			a.resourceCollector.memoryUsage = metric.Value
+		case "gpu_usage":
+			a.resourceCollector.gpuUsage = metric.Value
+		case "gpu_memory":
+			a.resourceCollector.gpuMemory = metric.Value
+		}
+	}
+}
+
+// Stop 停止代理
+func (a *GameNodeAgent) Stop() {
+	if a.conn != nil {
+		a.conn.Close()
+	}
 }

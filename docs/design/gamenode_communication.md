@@ -75,31 +75,11 @@ GameNodeServer 负责创建 Pipeline 模版，然后发布 Pipeline 任务，Gam
 
 ### 2.2 Pipeline 执行
 
-Pipeline 系统提供以下管理接口：
+Pipeline 系统提供以下管理接口，详细设计请参考 [GameNodeServer 设计文档](gamenode_server.md) 中的 gRPC 服务接口部分：
 
 1. **执行 Pipeline**
-
-   ```protobuf
-   rpc ExecutePipeline(ExecutePipelineRequest) returns (ExecutePipelineResponse)
-   ```
-
-Server 会发布 Pipeline 任务，Agent 领取任务并执行，这个叫执行 Pipeline；
-
 2. **报告进度**
-
-   ```protobuf
-   rpc GetPipelineStatus(PipelineStatusRequest) returns (PipelineStatusResponse)
-   ```
-
-Server 需要关注 Pipeline 的执行进度，并最终通过前端渲染提供可视化界面，让管理员能够清晰的看到 Pipeline 的执行进度，以及各个 Steps 的运行日志。
-
 3. **取消执行**
-
-   ```protobuf
-   rpc CancelPipeline(PipelineCancelRequest) returns (PipelineCancelResponse)
-   ```
-
-Pipeline 是个长时间运行的任务，管理员可以发布取消执行指令，此时 Agent 将停止 Steps 的执行，并回收资源。
 
 ## 3. 双向通信机制
 

@@ -1,4 +1,4 @@
-package gamenode
+package log
 
 import (
 	"context"
@@ -8,23 +8,35 @@ import (
 	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
 )
 
-// GameNodeLogManager 游戏节点日志管理器
-type GameNodeLogManager struct {
+// LogManager 日志管理器接口
+type LogManager interface {
+	// AddLog 添加日志
+	AddLog(nodeID string, entry *pb.LogEntry)
+	// GetLogs 获取日志
+	GetLogs(nodeID string, since time.Time) []*pb.LogEntry
+	// ClearLogs 清除日志
+	ClearLogs(nodeID string)
+	// StreamLogs 流式获取日志
+	StreamLogs(ctx context.Context, nodeID string, since time.Time) <-chan *pb.LogEntry
+}
+
+// DefaultLogManager 默认日志管理器实现
+type DefaultLogManager struct {
 	mu     sync.RWMutex
 	logs   map[string][]*pb.LogEntry
 	maxLog int
 }
 
-// NewGameNodeLogManager 创建新的日志管理器
-func NewGameNodeLogManager() *GameNodeLogManager {
-	return &GameNodeLogManager{
+// NewDefaultLogManager 创建新的日志管理器
+func NewDefaultLogManager() *DefaultLogManager {
+	return &DefaultLogManager{
 		logs:   make(map[string][]*pb.LogEntry),
 		maxLog: 1000, // 每个节点最多保存1000条日志
 	}
 }
 
 // AddLog 添加日志
-func (m *GameNodeLogManager) AddLog(nodeID string, entry *pb.LogEntry) {
+func (m *DefaultLogManager) AddLog(nodeID string, entry *pb.LogEntry) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -40,7 +52,7 @@ func (m *GameNodeLogManager) AddLog(nodeID string, entry *pb.LogEntry) {
 }
 
 // GetLogs 获取日志
-func (m *GameNodeLogManager) GetLogs(nodeID string, since time.Time) []*pb.LogEntry {
+func (m *DefaultLogManager) GetLogs(nodeID string, since time.Time) []*pb.LogEntry {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -61,7 +73,7 @@ func (m *GameNodeLogManager) GetLogs(nodeID string, since time.Time) []*pb.LogEn
 }
 
 // ClearLogs 清除日志
-func (m *GameNodeLogManager) ClearLogs(nodeID string) {
+func (m *DefaultLogManager) ClearLogs(nodeID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -69,7 +81,7 @@ func (m *GameNodeLogManager) ClearLogs(nodeID string) {
 }
 
 // StreamLogs 流式获取日志
-func (m *GameNodeLogManager) StreamLogs(ctx context.Context, nodeID string, since time.Time) <-chan *pb.LogEntry {
+func (m *DefaultLogManager) StreamLogs(ctx context.Context, nodeID string, since time.Time) <-chan *pb.LogEntry {
 	ch := make(chan *pb.LogEntry, 100)
 
 	go func() {

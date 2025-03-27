@@ -1,5 +1,5 @@
 - id: "node-241"
-  name: "游戏机-241"
+  alias: "游戏机-241"
   model: "Beagle-Wind-2024"
   # 静态数据
   hardware:
@@ -51,7 +51,7 @@
         tx_packets: 1000
 
 - id: "node-243"
-  name: "游戏机-243"
+  alias: "游戏机-243"
   model: "Beagle-Wind-2024"
   # 静态数据
   hardware:
@@ -103,7 +103,7 @@
         tx_packets: 1000
 
 - id: "node-246"
-  name: "游戏机-246"
+  alias: "游戏机-246"
   model: "Beagle-Wind-2024"
   # 静态数据
   hardware:

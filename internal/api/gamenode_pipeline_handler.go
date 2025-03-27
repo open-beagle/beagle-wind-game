@@ -122,14 +122,9 @@ func (h *GameNodePipelineHandler) ListPipelines(c *gin.Context) {
 
 	// 构建查询参数
 	params := types.PipelineListParams{
-		Page:      page,
-		PageSize:  size,
-		Status:    c.Query("status"),
-		NodeID:    c.Query("node_id"),
-		StartTime: startTime,
-		EndTime:   endTime,
-		SortBy:    c.Query("sort_by"),
-		SortOrder: c.Query("sort_order"),
+		Page:     page,
+		PageSize: size,
+		Status:   c.Query("status"),
 	}
 
 	// 调用服务层获取数据
@@ -205,7 +200,6 @@ func (h *GameNodePipelineHandler) GetPipeline(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "流水线ID"
-// @Param reason query string false "取消原因"
 // @Success 200 {object} map[string]interface{} "操作结果"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 404 {object} map[string]interface{} "流水线不存在"
@@ -222,10 +216,8 @@ func (h *GameNodePipelineHandler) CancelPipeline(c *gin.Context) {
 		return
 	}
 
-	reason := c.Query("reason")
-
 	// 调用服务层取消流水线
-	err := h.svc.CancelPipeline(pipelineID, reason)
+	err := h.svc.CancelPipeline(c.Request.Context(), pipelineID)
 	if err != nil {
 		switch err.Error() {
 		case "流水线不存在":

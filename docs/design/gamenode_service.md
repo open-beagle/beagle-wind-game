@@ -32,98 +32,29 @@ GameNodeService 是 GameNode 系统的核心服务组件，负责管理游戏节
 
 ### 2.1 Pipeline 数据传输
 
-Pipeline 作为二进制实体在 Server 和 Agent 之间传输：
-
-```protobuf
-message ExecutePipelineRequest {
-  string node_id = 1;
-  string pipeline_id = 2;
-  bytes pipeline_data = 3;  // Pipeline 的二进制数据
-  map<string, string> envs = 4;
-  map<string, string> args = 5;
-}
-```
+Pipeline 作为二进制实体在 Server 和 Agent 之间传输。详细设计请参考 [GameNodeServer 设计文档](gamenode_server.md) 中的 gRPC 服务接口部分。
 
 ### 2.2 状态更新
 
-Agent 通过状态更新接口通知 Server：
-
-```protobuf
-message PipelineStatusUpdate {
-  string node_id = 1;
-  string pipeline_id = 2;
-  string status = 3;  // pending, running, completed, failed, canceled
-  int32 current_step = 4;
-  float progress = 5;
-  string error_message = 6;
-  google.protobuf.Timestamp update_time = 7;
-}
-```
+Agent 通过状态更新接口通知 Server。详细设计请参考 [GameNodeServer 设计文档](gamenode_server.md) 中的 gRPC 服务接口部分。
 
 ### 2.3 事件通知
 
-Agent 通过事件流通知 Server：
-
-```protobuf
-message PipelineEvent {
-  string node_id = 1;
-  string pipeline_id = 2;
-  string event_type = 3;  // step_started, step_completed, step_failed, pipeline_completed
-  string step_name = 4;
-  string message = 5;
-  google.protobuf.Timestamp timestamp = 6;
-}
-```
+Agent 通过事件流通知 Server。详细设计请参考 [GameNodeServer 设计文档](gamenode_server.md) 中的 gRPC 服务接口部分。
 
 ### 2.4 日志收集
 
-Agent 通过日志流发送日志：
-
-```protobuf
-message PipelineLog {
-  string node_id = 1;
-  string pipeline_id = 2;
-  string step_name = 3;
-  string level = 4;  // info, warning, error
-  string message = 5;
-  google.protobuf.Timestamp timestamp = 6;
-}
-```
+Agent 通过日志流发送日志。详细设计请参考 [GameNodeServer 设计文档](gamenode_server.md) 中的 gRPC 服务接口部分。
 
 ## 3. 接口设计
 
 ### 3.1 Pipeline 管理接口
 
-```protobuf
-service GameNodeService {
-  // Pipeline 执行
-  rpc ExecutePipeline(ExecutePipelineRequest) returns (ExecutePipelineResponse);
-
-  // Pipeline 状态更新
-  rpc UpdatePipelineStatus(PipelineStatusUpdate) returns (UpdateResponse);
-
-  // Pipeline 事件流
-  rpc StreamPipelineEvents(PipelineEventRequest) returns (stream PipelineEvent);
-
-  // Pipeline 日志流
-  rpc StreamPipelineLogs(PipelineLogRequest) returns (stream PipelineLog);
-}
-```
+详细设计请参考 [GameNodeServer 设计文档](gamenode_server.md) 中的 gRPC 服务接口部分。
 
 ### 3.2 状态管理接口
 
-```protobuf
-service GameNodeService {
-  // 节点状态更新
-  rpc UpdateNodeStatus(NodeStatusUpdate) returns (UpdateResponse);
-
-  // 节点指标收集
-  rpc StreamNodeMetrics(NodeMetricsRequest) returns (stream NodeMetrics);
-
-  // 节点事件订阅
-  rpc SubscribeNodeEvents(NodeEventRequest) returns (stream NodeEvent);
-}
-```
+详细设计请参考 [GameNodeServer 设计文档](gamenode_server.md) 中的 gRPC 服务接口部分。
 
 ## 4. 业务流程
 

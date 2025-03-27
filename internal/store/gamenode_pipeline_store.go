@@ -1,108 +1,54 @@
 package store
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
-	"github.com/open-beagle/beagle-wind-game/internal/gamenode"
+	"github.com/open-beagle/beagle-wind-game/internal/models"
 	"github.com/open-beagle/beagle-wind-game/internal/types"
-	"gopkg.in/yaml.v3"
 )
 
-// GameNodePipelineStore Pipeline 存储接口
+// GameNodePipelineStore 游戏节点流水线存储接口
 type GameNodePipelineStore interface {
-	Load() error
+	// Get 获取指定ID的流水线
+	Get(ctx context.Context, id string) (*models.GameNodePipeline, error)
+	// List 获取所有流水线
+	List(ctx context.Context) ([]*models.GameNodePipeline, error)
+	// Add 添加新的流水线
+	Add(ctx context.Context, pipeline *models.GameNodePipeline) error
+	// Update 更新流水线
+	Update(ctx context.Context, pipeline *models.GameNodePipeline) error
+	// Delete 删除流水线
+	Delete(ctx context.Context, id string) error
+	// Save 保存所有流水线到文件
 	Save() error
-	List(params types.PipelineListParams) (*types.PipelineListResult, error)
-	Get(id string) (*gamenode.GameNodePipeline, error)
-	Add(pipeline *gamenode.GameNodePipeline) error
-	Update(pipeline *gamenode.GameNodePipeline) error
-	Delete(id string, force bool) error
-	UpdateStatus(id string, status string) error
+	// Load 从文件加载所有流水线
+	Load() error
+	// Cleanup 清理资源
 	Cleanup() error
 }
 
-// YAMLGameNodePipelineStore YAML文件存储实现
+// YAMLGameNodePipelineStore 基于YAML文件的流水线存储实现
 type YAMLGameNodePipelineStore struct {
-	dataFile  string
-	pipelines map[string]*gamenode.GameNodePipeline
+	filepath  string
+	pipelines map[string]*models.GameNodePipeline
 	mu        sync.RWMutex
 }
 
-// NewGameNodePipelineStore 创建新的 Pipeline 存储实例
-func NewGameNodePipelineStore(dataFile string) (GameNodePipelineStore, error) {
-	store := &YAMLGameNodePipelineStore{
-		dataFile:  dataFile,
-		pipelines: make(map[string]*gamenode.GameNodePipeline),
+// NewYAMLGameNodePipelineStore 创建新的YAML流水线存储
+func NewYAMLGameNodePipelineStore(filepath string) *YAMLGameNodePipelineStore {
+	return &YAMLGameNodePipelineStore{
+		filepath:  filepath,
+		pipelines: make(map[string]*models.GameNodePipeline),
 	}
-
-	// 初始化加载数据
-	err := store.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	return store, nil
 }
 
-// Load 从文件加载 Pipeline 数据
-func (s *YAMLGameNodePipelineStore) Load() error {
-	// 读取文件内容
-	data, err := os.ReadFile(s.dataFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to read pipeline data file: %v", err)
-	}
-
-	// 解析 YAML 数据
-	var pipelines map[string]*gamenode.GameNodePipeline
-	if err := yaml.Unmarshal(data, &pipelines); err != nil {
-		return fmt.Errorf("failed to unmarshal pipeline data: %v", err)
-	}
-
-	s.pipelines = pipelines
-	return nil
-}
-
-// Save 保存 Pipeline 数据到文件
-func (s *YAMLGameNodePipelineStore) Save() error {
-	// 序列化数据
-	data, err := yaml.Marshal(s.pipelines)
-	if err != nil {
-		return fmt.Errorf("failed to marshal pipeline data: %v", err)
-	}
-
-	// 写入文件
-	if err := os.WriteFile(s.dataFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write pipeline data file: %v", err)
-	}
-
-	return nil
-}
-
-// List 获取流水线列表
-func (s *YAMLGameNodePipelineStore) List(params types.PipelineListParams) (*types.PipelineListResult, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	// TODO: 实现过滤和排序
-	result := &types.PipelineListResult{
-		Total: int64(len(s.pipelines)),
-		Items: make([]*gamenode.GameNodePipeline, 0, len(s.pipelines)),
-	}
-
-	for _, pipeline := range s.pipelines {
-		result.Items = append(result.Items, pipeline)
-	}
-
-	return result, nil
-}
-
-// Get 获取流水线详情
-func (s *YAMLGameNodePipelineStore) Get(id string) (*gamenode.GameNodePipeline, error) {
+// Get 获取指定ID的流水线
+func (s *YAMLGameNodePipelineStore) Get(id string) (*models.GameNodePipeline, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -114,29 +60,53 @@ func (s *YAMLGameNodePipelineStore) Get(id string) (*gamenode.GameNodePipeline, 
 	return pipeline, nil
 }
 
+// List 获取所有流水线
+func (s *YAMLGameNodePipelineStore) List(params types.PipelineListParams) (*types.PipelineListResult, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	pipelines := make([]*models.GameNodePipeline, 0, len(s.pipelines))
+	for _, pipeline := range s.pipelines {
+		pipelines = append(pipelines, pipeline)
+	}
+
+	return &types.PipelineListResult{
+		Total: int64(len(pipelines)),
+		Items: pipelines,
+	}, nil
+}
+
 // Add 添加新的流水线
-func (s *YAMLGameNodePipelineStore) Add(pipeline *gamenode.GameNodePipeline) error {
+func (s *YAMLGameNodePipelineStore) Add(pipeline *models.GameNodePipeline) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, exists := s.pipelines[pipeline.GetName()]; exists {
-		return fmt.Errorf("pipeline already exists: %s", pipeline.GetName())
+	if pipeline.Status == nil {
+		return fmt.Errorf("pipeline status is nil")
 	}
 
-	s.pipelines[pipeline.GetName()] = pipeline
+	if _, exists := s.pipelines[pipeline.Status.ID]; exists {
+		return fmt.Errorf("pipeline already exists: %s", pipeline.Status.ID)
+	}
+
+	s.pipelines[pipeline.Status.ID] = pipeline
 	return s.Save()
 }
 
 // Update 更新流水线
-func (s *YAMLGameNodePipelineStore) Update(pipeline *gamenode.GameNodePipeline) error {
+func (s *YAMLGameNodePipelineStore) Update(pipeline *models.GameNodePipeline) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, exists := s.pipelines[pipeline.GetName()]; !exists {
-		return fmt.Errorf("pipeline not found: %s", pipeline.GetName())
+	if pipeline.Status == nil {
+		return fmt.Errorf("pipeline status is nil")
 	}
 
-	s.pipelines[pipeline.GetName()] = pipeline
+	if _, exists := s.pipelines[pipeline.Status.ID]; !exists {
+		return fmt.Errorf("pipeline not found: %s", pipeline.Status.ID)
+	}
+
+	s.pipelines[pipeline.Status.ID] = pipeline
 	return s.Save()
 }
 
@@ -150,8 +120,7 @@ func (s *YAMLGameNodePipelineStore) UpdateStatus(id string, status string) error
 		return fmt.Errorf("pipeline not found: %s", id)
 	}
 
-	// 更新状态
-	pipeline.UpdateStatus(gamenode.PipelineState(status))
+	pipeline.Status.State = models.PipelineState(status)
 	return s.Save()
 }
 
@@ -160,21 +129,63 @@ func (s *YAMLGameNodePipelineStore) Delete(id string, force bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	pipeline, exists := s.pipelines[id]
-	if !exists {
+	if _, exists := s.pipelines[id]; !exists {
 		return fmt.Errorf("pipeline not found: %s", id)
-	}
-
-	// 检查是否可以删除
-	if !force && pipeline.GetStatus().State != gamenode.PipelineStateCompleted {
-		return fmt.Errorf("cannot delete pipeline in state: %s", pipeline.GetStatus().State)
 	}
 
 	delete(s.pipelines, id)
 	return s.Save()
 }
 
-// Cleanup 清理过期的流水线数据
+// Save 保存所有流水线到文件
+func (s *YAMLGameNodePipelineStore) Save() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// 确保目录存在
+	if err := os.MkdirAll(filepath.Dir(s.filepath), 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// 将流水线转换为JSON
+	data, err := json.MarshalIndent(s.pipelines, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal pipelines: %w", err)
+	}
+
+	// 写入文件
+	if err := os.WriteFile(s.filepath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return nil
+}
+
+// Load 从文件加载所有流水线
+func (s *YAMLGameNodePipelineStore) Load() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// 检查文件是否存在
+	if _, err := os.Stat(s.filepath); os.IsNotExist(err) {
+		return nil
+	}
+
+	// 读取文件
+	data, err := os.ReadFile(s.filepath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	// 解析JSON
+	if err := json.Unmarshal(data, &s.pipelines); err != nil {
+		return fmt.Errorf("failed to unmarshal pipelines: %w", err)
+	}
+
+	return nil
+}
+
+// Cleanup 清理资源
 func (s *YAMLGameNodePipelineStore) Cleanup() error {
-	return os.Remove(s.dataFile)
+	return nil
 }

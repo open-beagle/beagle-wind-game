@@ -1,4 +1,4 @@
-package gamenode
+package models
 
 import (
 	"time"
@@ -30,11 +30,16 @@ const (
 
 // StepStatus 步骤状态信息
 type StepStatus struct {
-	State     StepState
-	StartTime int64
-	EndTime   int64
-	Error     string
-	Output    string
+	ID        string    `json:"id" yaml:"id"`                 // 步骤ID
+	Name      string    `json:"name" yaml:"name"`             // 步骤名称
+	State     StepState `json:"status" yaml:"status"`         // 步骤状态
+	StartTime time.Time `json:"start_time" yaml:"start_time"` // 开始时间
+	EndTime   time.Time `json:"end_time" yaml:"end_time"`     // 结束时间
+	Error     string    `json:"error" yaml:"error"`           // 错误信息
+	Output    string    `json:"-" yaml:"-"`                   // 执行输出
+	Logs      []byte    `json:"logs" yaml:"logs"`             // 执行日志
+	Progress  float64   `json:"progress" yaml:"progress"`     // 执行进度
+	UpdatedAt time.Time `json:"updated_at" yaml:"updated_at"` // 更新时间
 }
 
 // ContainerConfig 容器配置
@@ -83,14 +88,17 @@ type PipelineStep struct {
 
 // PipelineStatus 流水线状态信息
 type PipelineStatus struct {
-	State        PipelineState
-	CurrentStep  int32
-	TotalSteps   int32
-	Progress     float32
-	StartTime    int64
-	EndTime      int64
-	StepStatuses []*StepStatus
-	ErrorMessage string
+	ID           string        `json:"id" yaml:"id"`                     // 流水线ID
+	NodeID       string        `json:"id" yaml:"id"`                     // 节点ID
+	State        PipelineState `json:"status" yaml:"status"`             // 流水线状态
+	CurrentStep  int32         `json:"current_step" yaml:"current_step"` // 当前步骤
+	TotalSteps   int32         `json:"total_steps" yaml:"total_steps"`   // 总步骤数
+	Progress     float64       `json:"progress" yaml:"progress"`         // 执行进度
+	StartTime    time.Time     `json:"start_time" yaml:"start_time"`     // 开始时间
+	EndTime      time.Time     `json:"end_time" yaml:"end_time"`         // 结束时间
+	Steps        []StepStatus  `json:"steps" yaml:"steps"`               // 步骤状态列表
+	ErrorMessage string        `json:"error" yaml:"error"`               // 错误信息
+	UpdatedAt    time.Time     `json:"updated_at" yaml:"updated_at"`     // 更新时间
 }
 
 // GameNodePipeline 表示一个游戏节点流水线模板
@@ -101,9 +109,10 @@ type GameNodePipeline struct {
 	Envs        []string       `yaml:"envs"`
 	Args        []string       `yaml:"args"`
 	Steps       []PipelineStep `yaml:"steps"`
+	ID          string         `yaml:"id"` // 节点ID
 
 	// 动态信息（执行状态）
-	status *PipelineStatus
+	Status *PipelineStatus `yaml:"status"`
 }
 
 // NewGameNodePipelineFromYAML 从YAML创建新的游戏节点流水线模板
@@ -115,15 +124,15 @@ func NewGameNodePipelineFromYAML(data []byte) (*GameNodePipeline, error) {
 
 	// 初始化状态
 	totalSteps := int32(len(pipeline.Steps))
-	pipeline.status = &PipelineStatus{
-		State:        PipelineStatePending,
-		TotalSteps:   totalSteps,
-		StepStatuses: make([]*StepStatus, totalSteps),
+	pipeline.Status = &PipelineStatus{
+		State:      PipelineStatePending,
+		TotalSteps: totalSteps,
+		Steps:      make([]StepStatus, totalSteps),
 	}
 
 	// 初始化每个步骤的状态
-	for i := range pipeline.status.StepStatuses {
-		pipeline.status.StepStatuses[i] = &StepStatus{
+	for i := range pipeline.Status.Steps {
+		pipeline.Status.Steps[i] = StepStatus{
 			State: StepStatePending,
 		}
 	}
@@ -134,101 +143,4 @@ func NewGameNodePipelineFromYAML(data []byte) (*GameNodePipeline, error) {
 // ToYAML 将流水线转换为YAML
 func (p *GameNodePipeline) ToYAML() ([]byte, error) {
 	return yaml.Marshal(p)
-}
-
-// GetStatus 获取流水线状态
-func (p *GameNodePipeline) GetStatus() *PipelineStatus {
-	return p.status
-}
-
-// UpdateStatus 更新流水线状态
-func (p *GameNodePipeline) UpdateStatus(state PipelineState) {
-	p.status.State = state
-}
-
-// UpdateProgress 更新流水线进度
-func (p *GameNodePipeline) UpdateProgress(currentStep int32) {
-	p.status.CurrentStep = currentStep
-	p.status.Progress = float32(currentStep+1) / float32(p.status.TotalSteps)
-}
-
-// SetStartTime 设置开始时间
-func (p *GameNodePipeline) SetStartTime(startTime int64) {
-	p.status.StartTime = startTime
-}
-
-// SetEndTime 设置结束时间
-func (p *GameNodePipeline) SetEndTime(endTime int64) {
-	p.status.EndTime = endTime
-}
-
-// UpdateStepStatus 更新步骤状态
-func (p *GameNodePipeline) UpdateStepStatus(stepIndex int32, state StepState) {
-	if stepIndex < 0 || stepIndex >= int32(len(p.status.StepStatuses)) {
-		return
-	}
-
-	step := p.status.StepStatuses[stepIndex]
-	step.State = state
-
-	switch state {
-	case StepStateRunning:
-		step.StartTime = time.Now().Unix()
-	case StepStateCompleted, StepStateFailed, StepStateSkipped:
-		step.EndTime = time.Now().Unix()
-	}
-}
-
-// SetStepError 设置步骤错误信息
-func (p *GameNodePipeline) SetStepError(stepIndex int32, err error) {
-	if stepIndex < 0 || stepIndex >= int32(len(p.status.StepStatuses)) {
-		return
-	}
-
-	step := p.status.StepStatuses[stepIndex]
-	step.Error = err.Error()
-}
-
-// SetStepOutput 设置步骤输出信息
-func (p *GameNodePipeline) SetStepOutput(stepIndex int32, output string) {
-	if stepIndex < 0 || stepIndex >= int32(len(p.status.StepStatuses)) {
-		return
-	}
-
-	step := p.status.StepStatuses[stepIndex]
-	step.Output = output
-}
-
-// GetStepStatus 获取步骤状态
-func (p *GameNodePipeline) GetStepStatus(stepIndex int32) *StepStatus {
-	if stepIndex < 0 || stepIndex >= int32(len(p.status.StepStatuses)) {
-		return nil
-	}
-
-	return p.status.StepStatuses[stepIndex]
-}
-
-// GetSteps 获取步骤列表
-func (p *GameNodePipeline) GetSteps() []PipelineStep {
-	return p.Steps
-}
-
-// GetEnvs 获取环境变量列表
-func (p *GameNodePipeline) GetEnvs() []string {
-	return p.Envs
-}
-
-// GetArgs 获取参数列表
-func (p *GameNodePipeline) GetArgs() []string {
-	return p.Args
-}
-
-// GetName 获取流水线名称
-func (p *GameNodePipeline) GetName() string {
-	return p.Name
-}
-
-// GetDescription 获取流水线描述
-func (p *GameNodePipeline) GetDescription() string {
-	return p.Description
 }
