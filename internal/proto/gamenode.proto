@@ -276,9 +276,9 @@ message Pipeline {
   string id = 1;
   string name = 2;
   string description = 3;
-  repeated PipelineStep steps = 4;
-  map<string, string> environment = 5;
-  ResourceRequirements resources = 6;
+  repeated string envs = 4;  // 环境变量列表
+  repeated string args = 5;  // 运行时参数列表
+  repeated PipelineStep steps = 6;
 }
 
 message PipelineStep {
@@ -295,19 +295,38 @@ message PipelineStep {
 // 容器配置
 message ContainerConfig {
   string image = 1;
-  string name = 2;
-  string container_name = 3;
-  string hostname = 4;
-  bool privileged = 5;
-  ResourceRequirements resources = 6;
-  repeated string security_opt = 7;
-  repeated string cap_add = 8;
-  repeated string tmpfs = 9;
-  repeated DeviceMapping devices = 10;
-  repeated VolumeMapping volumes = 11;
-  repeated PortMapping ports = 12;
-  map<string, string> environment = 13;
-  repeated string command = 14;
+  string container_name = 2;
+  string hostname = 3;
+  bool privileged = 4;
+  repeated string security_opt = 5;
+  repeated string cap_add = 6;
+  repeated string tmpfs = 7;
+  repeated DeviceMapping devices = 8;
+  repeated VolumeMapping volumes = 9;
+  repeated PortMapping ports = 10;
+  map<string, string> environment = 11;
+  repeated string command = 12;
+  string working_dir = 13;
+  string network_mode = 14;
+  string restart_policy = 15;
+  ResourceRequirements deploy = 16;
+  repeated Mount mounts = 17;
+  repeated string extra_hosts = 18;
+  repeated string dns = 19;
+  repeated string dns_search = 20;
+  repeated string dns_options = 21;
+  repeated string capabilities = 22;
+  map<string, string> storage_opt = 23;
+  map<string, string> sysctls = 24;
+  string runtime = 25;
+  bool init = 26;
+  bool auto_remove = 27;
+  bool oom_kill_disable = 28;
+  int32 oom_score_adj = 29;
+  string pid_mode = 30;
+  string uts_mode = 31;
+  string userns_mode = 32;
+  int64 shm_size = 33;
 }
 
 message DeviceMapping {
@@ -328,9 +347,33 @@ message PortMapping {
   string protocol = 3;  // "tcp", "udp"
 }
 
+message Mount {
+  string type = 1;
+  string source = 2;
+  string target = 3;
+  bool read_only = 4;
+  string consistency = 5;
+}
+
 message ResourceRequirements {
-  float cpu = 1;  // CPU核心数
-  int64 memory = 2;  // 内存，单位: 字节
-  float gpu = 3;  // GPU数量
-  int64 disk = 4;  // 磁盘空间，单位: 字节
+  Resources resources = 1;
+}
+
+message Resources {
+  int64 cpu_period = 1;
+  int64 cpu_quota = 2;
+  int64 cpu_shares = 3;
+  int64 memory = 4;
+  int64 memory_swap = 5;
+  int64 memory_swappiness = 6;
+  bool oom_kill_disable = 7;
+  int64 pids_limit = 8;
+  repeated Ulimit ulimits = 9;
+  repeated DeviceMapping devices = 10;
+}
+
+message Ulimit {
+  string name = 1;
+  int64 soft = 2;
+  int64 hard = 3;
 } 

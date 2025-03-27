@@ -114,13 +114,12 @@ func (em *GameNodeEventManager) run(ctx context.Context) {
 func NewGameNodeEvent(eventType, nodeID, entityID, status, message string) *pb.Event {
 	return &pb.Event{
 		Type:      eventType,
-		Source:    nodeID,
+		NodeId:    nodeID,
+		EntityId:  entityID,
+		Status:    status,
+		Message:   message,
 		Timestamp: timestamppb.Now(),
-		Data: map[string]string{
-			"entity_id": entityID,
-			"status":    status,
-			"message":   message,
-		},
+		Data:      make(map[string]string),
 	}
 }
 

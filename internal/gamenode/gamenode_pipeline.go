@@ -1,215 +1,255 @@
 package gamenode
 
 import (
-	"bufio"
-	"context"
-	"fmt"
-	"io"
-	"sync"
+	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	"github.com/docker/docker/client"
-	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
+	"gopkg.in/yaml.v3"
 )
 
-// DockerClientInterface 定义 Docker 客户端接口
-type DockerClientInterface interface {
-	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error)
-	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
-	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
-	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
-	ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error)
-	ContainerLogs(ctx context.Context, containerID string, options container.LogsOptions) (io.ReadCloser, error)
+// PipelineState 表示流水线状态
+type PipelineState string
+
+const (
+	PipelineStatePending   PipelineState = "pending"
+	PipelineStateRunning   PipelineState = "running"
+	PipelineStateCompleted PipelineState = "completed"
+	PipelineStateFailed    PipelineState = "failed"
+	PipelineStateCanceled  PipelineState = "canceled"
+)
+
+// StepState 表示步骤状态
+type StepState string
+
+const (
+	StepStatePending   StepState = "pending"
+	StepStateRunning   StepState = "running"
+	StepStateCompleted StepState = "completed"
+	StepStateFailed    StepState = "failed"
+	StepStateSkipped   StepState = "skipped"
+)
+
+// StepStatus 步骤状态信息
+type StepStatus struct {
+	State     StepState
+	StartTime int64
+	EndTime   int64
+	Error     string
+	Output    string
 }
 
-// GamePipeline 代表一个正在执行的流水线
-type GamePipeline struct {
-	sync.RWMutex
-
-	id          string
-	name        string
-	description string
-	steps       []*pb.GamePipelineStep
-	envs        map[string]string
-	args        map[string]string
-
-	currentStep int
-	status      string
-	startTime   *timestamppb.Timestamp
-	endTime     *timestamppb.Timestamp
-	error       string
-
-	containerStatuses map[string]*pb.ContainerStatus
-	eventManager      *EventManager
-	nodeID            string
-	dockerClient      *client.Client
+// ContainerConfig 容器配置
+type ContainerConfig struct {
+	Image         string            `yaml:"image"`
+	ContainerName string            `yaml:"container_name"`
+	Hostname      string            `yaml:"hostname"`
+	Privileged    bool              `yaml:"privileged"`
+	Deploy        DeployConfig      `yaml:"deploy"`
+	SecurityOpt   []string          `yaml:"security_opt"`
+	CapAdd        []string          `yaml:"cap_add"`
+	Tmpfs         []string          `yaml:"tmpfs"`
+	Devices       []string          `yaml:"devices"`
+	Volumes       []string          `yaml:"volumes"`
+	Ports         []string          `yaml:"ports"`
+	Environment   map[string]string `yaml:"environment"`
+	Command       []string          `yaml:"command"`
 }
 
-// NewGamePipeline 创建一个新的 GamePipeline 实例
-func NewGamePipeline(req *pb.ExecuteGamePipelineRequest, dockerClient *client.Client) *GamePipeline {
-	if dockerClient == nil {
+// DeployConfig 部署配置
+type DeployConfig struct {
+	Resources ResourcesConfig `yaml:"resources"`
+}
+
+// ResourcesConfig 资源配置
+type ResourcesConfig struct {
+	Reservations ReservationsConfig `yaml:"reservations"`
+}
+
+// ReservationsConfig 资源预留配置
+type ReservationsConfig struct {
+	Devices []DeviceConfig `yaml:"devices"`
+}
+
+// DeviceConfig 设备配置
+type DeviceConfig struct {
+	Capabilities []string `yaml:"capabilities"`
+}
+
+// PipelineStep 流水线步骤
+type PipelineStep struct {
+	Name      string          `yaml:"name"`
+	Type      string          `yaml:"type"`
+	Container ContainerConfig `yaml:"container"`
+}
+
+// PipelineStatus 流水线状态信息
+type PipelineStatus struct {
+	State       PipelineState
+	CurrentStep int32
+	TotalSteps  int32
+	Progress    float32
+	StartTime   int64
+	EndTime     int64
+
+	// 步骤状态
+	StepStatuses []*StepStatus
+}
+
+// GameNodePipeline 表示一个游戏节点流水线模板
+type GameNodePipeline struct {
+	// 静态信息（模板定义）
+	Name        string         `yaml:"name"`
+	Description string         `yaml:"description"`
+	Envs        []string       `yaml:"envs"`
+	Args        []string       `yaml:"args"`
+	Steps       []PipelineStep `yaml:"steps"`
+
+	// 动态信息（执行状态）
+	status *PipelineStatus
+}
+
+// NewGameNodePipelineFromYAML 从YAML创建新的游戏节点流水线模板
+func NewGameNodePipelineFromYAML(data []byte) (*GameNodePipeline, error) {
+	var pipeline GameNodePipeline
+	if err := yaml.Unmarshal(data, &pipeline); err != nil {
+		return nil, err
+	}
+
+	// 初始化状态
+	totalSteps := int32(len(pipeline.Steps))
+	pipeline.status = &PipelineStatus{
+		State:        PipelineStatePending,
+		TotalSteps:   totalSteps,
+		StepStatuses: make([]*StepStatus, totalSteps),
+	}
+
+	// 初始化每个步骤的状态
+	for i := range pipeline.status.StepStatuses {
+		pipeline.status.StepStatuses[i] = &StepStatus{
+			State: StepStatePending,
+		}
+	}
+
+	return &pipeline, nil
+}
+
+// ToYAML 将流水线转换为YAML
+func (p *GameNodePipeline) ToYAML() ([]byte, error) {
+	return yaml.Marshal(p)
+}
+
+// GetStatus 获取流水线状态
+func (p *GameNodePipeline) GetStatus() map[string]interface{} {
+	// 构建步骤状态列表
+	stepStatuses := make([]map[string]interface{}, len(p.status.StepStatuses))
+	for i, step := range p.status.StepStatuses {
+		stepStatuses[i] = map[string]interface{}{
+			"state":      step.State,
+			"start_time": step.StartTime,
+			"end_time":   step.EndTime,
+			"error":      step.Error,
+			"output":     step.Output,
+		}
+	}
+
+	return map[string]interface{}{
+		"state":         p.status.State,
+		"current_step":  p.status.CurrentStep,
+		"total_steps":   p.status.TotalSteps,
+		"progress":      p.status.Progress,
+		"start_time":    p.status.StartTime,
+		"end_time":      p.status.EndTime,
+		"step_statuses": stepStatuses,
+	}
+}
+
+// UpdateStatus 更新流水线状态
+func (p *GameNodePipeline) UpdateStatus(state PipelineState) {
+	p.status.State = state
+}
+
+// UpdateProgress 更新流水线进度
+func (p *GameNodePipeline) UpdateProgress(currentStep int32) {
+	p.status.CurrentStep = currentStep
+	p.status.Progress = float32(currentStep+1) / float32(p.status.TotalSteps)
+}
+
+// SetStartTime 设置开始时间
+func (p *GameNodePipeline) SetStartTime(startTime int64) {
+	p.status.StartTime = startTime
+}
+
+// SetEndTime 设置结束时间
+func (p *GameNodePipeline) SetEndTime(endTime int64) {
+	p.status.EndTime = endTime
+}
+
+// UpdateStepStatus 更新步骤状态
+func (p *GameNodePipeline) UpdateStepStatus(stepIndex int32, state StepState) {
+	if stepIndex < 0 || stepIndex >= int32(len(p.status.StepStatuses)) {
+		return
+	}
+
+	step := p.status.StepStatuses[stepIndex]
+	step.State = state
+
+	switch state {
+	case StepStateRunning:
+		step.StartTime = time.Now().Unix()
+	case StepStateCompleted, StepStateFailed, StepStateSkipped:
+		step.EndTime = time.Now().Unix()
+	}
+}
+
+// SetStepError 设置步骤错误信息
+func (p *GameNodePipeline) SetStepError(stepIndex int32, err error) {
+	if stepIndex < 0 || stepIndex >= int32(len(p.status.StepStatuses)) {
+		return
+	}
+
+	step := p.status.StepStatuses[stepIndex]
+	step.Error = err.Error()
+}
+
+// SetStepOutput 设置步骤输出信息
+func (p *GameNodePipeline) SetStepOutput(stepIndex int32, output string) {
+	if stepIndex < 0 || stepIndex >= int32(len(p.status.StepStatuses)) {
+		return
+	}
+
+	step := p.status.StepStatuses[stepIndex]
+	step.Output = output
+}
+
+// GetStepStatus 获取步骤状态
+func (p *GameNodePipeline) GetStepStatus(stepIndex int32) *StepStatus {
+	if stepIndex < 0 || stepIndex >= int32(len(p.status.StepStatuses)) {
 		return nil
 	}
 
-	now := timestamppb.Now()
-	return &GamePipeline{
-		id:                req.GamePipelineId,
-		name:              req.GamePipeline.Name,
-		description:       req.GamePipeline.Description,
-		steps:             req.GamePipeline.Steps,
-		envs:              req.Envs,
-		args:              req.Args,
-		status:            "pending",
-		startTime:         now,
-		containerStatuses: make(map[string]*pb.ContainerStatus),
-		dockerClient:      dockerClient,
-		eventManager:      NewEventManager(),
-		nodeID:            req.NodeId,
-	}
+	return p.status.StepStatuses[stepIndex]
 }
 
-// Execute 执行 GamePipeline
-func (p *GamePipeline) Execute(ctx context.Context) error {
-	p.Lock()
-	if p.status == "running" {
-		p.Unlock()
-		return fmt.Errorf("GamePipeline 已在运行中")
-	}
-	p.status = "running"
-	p.Unlock()
-
-	defer func() {
-		p.Lock()
-		if p.status == "running" {
-			p.status = "completed"
-		}
-		p.Unlock()
-	}()
-
-	// 创建执行上下文
-	execCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	// 执行每个步骤
-	for i, step := range p.steps {
-		// 检查上下文是否已取消
-		select {
-		case <-execCtx.Done():
-			return execCtx.Err()
-		default:
-		}
-
-		// 更新当前步骤
-		p.Lock()
-		p.currentStep = i
-		p.Unlock()
-
-		// 执行步骤
-		err := Retry(execCtx, func() error {
-			return p.executeStep(execCtx, step)
-		}, DefaultRetryConfig)
-
-		if err != nil {
-			p.Lock()
-			p.status = "failed"
-			p.error = err.Error()
-			p.endTime = timestamppb.Now()
-			p.Unlock()
-			return fmt.Errorf("步骤 %d 执行失败: %v", i+1, err)
-		}
-	}
-
-	p.Lock()
-	p.endTime = timestamppb.Now()
-	p.Unlock()
-
-	return nil
+// GetSteps 获取步骤列表
+func (p *GameNodePipeline) GetSteps() []PipelineStep {
+	return p.Steps
 }
 
-// executeStep 执行单个步骤
-func (p *GamePipeline) executeStep(ctx context.Context, step *pb.GamePipelineStep) error {
-	// 检查步骤类型
-	if step.Type == "docker" && step.Container != nil {
-		return fmt.Errorf("Docker 步骤需要 Docker 客户端支持")
-	}
-
-	// 更新容器状态为完成
-	p.updateContainerStatus("", "completed", nil)
-
-	return nil
+// GetEnvs 获取环境变量列表
+func (p *GameNodePipeline) GetEnvs() []string {
+	return p.Envs
 }
 
-// updateContainerStatus 更新容器状态
-func (p *GamePipeline) updateContainerStatus(containerID string, status string, err error) {
-	containerStatus := &pb.ContainerStatus{
-		ContainerId: containerID,
-		Status:      status,
-	}
-	if err != nil {
-		containerStatus.ExitMessage = err.Error()
-		p.eventManager.Publish(NewEvent(EventTypeContainer, p.nodeID, containerID, status, err.Error()))
-	} else {
-		p.eventManager.Publish(NewEvent(EventTypeContainer, p.nodeID, containerID, status, ""))
-	}
+// GetArgs 获取参数列表
+func (p *GameNodePipeline) GetArgs() []string {
+	return p.Args
 }
 
-// processLogs 处理容器日志
-func (p *GamePipeline) processLogs(logs io.ReadCloser) error {
-	scanner := bufio.NewScanner(logs)
-	for scanner.Scan() {
-		line := scanner.Text()
-		// 发送日志事件
-		p.eventManager.Publish(NewEvent(EventTypeContainer, p.nodeID, p.id, "log", line))
-	}
-	return scanner.Err()
+// GetName 获取流水线名称
+func (p *GameNodePipeline) GetName() string {
+	return p.Name
 }
 
-// GetStatus 获取 GamePipeline 状态
-func (p *GamePipeline) GetStatus() *pb.GamePipelineStatusResponse {
-	return &pb.GamePipelineStatusResponse{
-		ExecutionId: p.id,
-		Status:      p.status,
-		CurrentStep: int32(p.currentStep),
-		TotalSteps:  int32(len(p.steps)),
-		Progress:    float32(p.currentStep) / float32(len(p.steps)),
-	}
-}
-
-// Cancel 取消 GamePipeline 执行
-func (p *GamePipeline) Cancel() error {
-	p.Lock()
-	defer p.Unlock()
-
-	if p.status != "running" {
-		return fmt.Errorf("GamePipeline 未在运行状态")
-	}
-
-	p.status = "canceled"
-	return nil
-}
-
-// formatEnvs 格式化环境变量
-func formatEnvs(envs map[string]string) []string {
-	result := make([]string, 0, len(envs))
-	for k, v := range envs {
-		result = append(result, fmt.Sprintf("%s=%s", k, v))
-	}
-	return result
-}
-
-// formatVolumes 格式化卷映射
-func formatVolumes(volumes []*pb.VolumeMapping) []string {
-	var result []string
-	for _, vol := range volumes {
-		if vol.Readonly {
-			result = append(result, fmt.Sprintf("%s:%s:ro", vol.HostPath, vol.ContainerPath))
-		} else {
-			result = append(result, fmt.Sprintf("%s:%s", vol.HostPath, vol.ContainerPath))
-		}
-	}
-	return result
+// GetDescription 获取流水线描述
+func (p *GameNodePipeline) GetDescription() string {
+	return p.Description
 }

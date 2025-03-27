@@ -1,37 +1,46 @@
-# 节点 Agent 通信设计
+# 游戏节点 GRPC 通信设计
 
 ## 1. 通信架构
 
 ### 1.1 总体架构
 
-节点 Agent 通信系统是 [GameNode](../README.md#gamenode) 的核心组件之一，负责游戏节点的远程管理和控制。系统采用客户端-服务器架构，基于 gRPC 实现。系统包含以下主要组件：
+游戏节点 GRPC 通信系统是 [GameNode](../README.md#gamenode) 的核心组件之一，负责游戏节点的远程管理和控制。系统采用客户端-服务器架构，基于 gRPC 实现。系统包含以下主要组件：
 
-1. **中央服务器**：作为 gRPC 服务端，提供 API 接口供节点 Agent 调用
-2. **节点 Agent**：部署在每个游戏节点上，作为 gRPC 客户端与中央服务器通信
-3. **通信协议**：使用 Protocol Buffers 定义消息格式和服务接口
+1. **GameNodeServer - 游戏节点的 GRPC 服务**：作为 gRPC 服务端，提供 API 接口供节点 Agent 调用
+2. **GameNodeAgent - 游戏节点的 GPRC 客户端**：部署在每个游戏节点上，作为 gRPC 客户端与 gRPC 服务通信
+3. **GameNodeProto - 通信协议服务定义**：使用 Protocol Buffers 定义消息格式和服务接口
 
 ### 1.2 通信流程
 
 ```txt
-┌─────────────┐                           ┌─────────────┐
-│             │  1. 节点注册(Register)      │             │
-│             │ ─────────────────────────> │             │
-│             │                           │             │
-│             │  2. 心跳(Heartbeat)        │             │
-│  节点Agent   │ <────────────────────────> │ 中央服务器  │
-│             │                           │             │
-│             │  3. 命令执行(Execute*)      │             │
-│             │ <────────────────────────> │             │
-│             │                           │             │
-│             │  4. 事件流(Events)         │             │
-│             │ <─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │             │
-└─────────────┘                           └─────────────┘
+┌─────────────┐                ┌─────────────┐
+│             │                │             │
+│   Agent     │                │   Server    │
+│             │                │             │
+│             │  1. Register   │             │
+│             │ ─────────────> │             │
+│             │                │             │
+│             │  2. Heartbeat  │             │
+│             │ <────────────> │             │
+│             │                │             │
+│             │  3. Execute*   │             │
+│             │ <────────────> │             │
+│             │                │             │
+│             │  4. Events     │             │
+│             │ <────────────> │             │
+│             │                │             │
+└─────────────┘                └─────────────┘
+
+1. Register: 节点注册，获取 session_id
+2. Heartbeat: 定期心跳，保持连接
+3. Execute*: 命令执行（Pipeline、Container等）
+4. Events: 事件流，实时通知
 ```
 
 ### 1.3 核心功能
 
 1. **节点注册与心跳**：Agent 启动时向服务器注册，并定期发送心跳保持连接
-2. **Pipeline 执行**：服务器向 Agent 下发 Pipeline，Agent 执行并反馈状态
+2. **Pipeline 执行**：服务器向 Agent 下发 Pipeline，Agent 执行 Pipeline 并反馈状态
 3. **容器管理**：服务器可远程控制 Agent 上的容器生命周期
 4. **状态监控**：Agent 定期上报节点资源使用情况和容器状态
 5. **日志流**：Agent 实时上传节点和容器日志
@@ -39,9 +48,32 @@
 
 ## 2. Pipeline 系统
 
-Pipeline 系统是节点 Agent 的核心功能之一，负责执行容器化任务。它是 [GamePlatform](../README.md#gameplatform) 的重要组成部分，用于游戏平台的部署和运行环境准备。详细设计请参考 [Pipeline 系统设计文档](../pipeline.md)。
+GameNodePipeline 是游戏节点通讯的流程管理工具，简称 Pipeline.
+Pipeline 是节点 Agent 的核心功能之一，负责执行容器化任务。它是 [GamePlatform](../README.md#gameplatform) 的重要组成部分，用于游戏平台的部署和运行环境准备。详细设计请参考 [Pipeline 系统设计文档](./gamenode_pipeline.md)。
 
-### 2.1 Pipeline 管理接口
+### 2.1 Pipeline 创建
+
+GameNodeServer 负责创建 Pipeline 模版，然后发布 Pipeline 任务，GameNodeAgent 领取 Pipeline 任务：
+
+1. **接收 Pipeline**
+
+- GameNodeServer，对外提供接收 Pipeline 的接口；
+- 参数-模版 ID，如"start-platfrom"；
+- 参数-模版 args，模版启动参数，主要是需要传入这些参数来填充模版内的预定义参数。以启动平台为例，args 与启动的具体实例有关，故其每个参数的 key 是固定的，但是 value 是动态的，这个业务应该由谁启动 start-platform 谁传递这些动态的参数值。
+
+2. **发布 Pipeline**
+
+- 选择 pipeline 模版，GameNodeServer 会根据上游的任务要求，选择 pipeline 模版；
+- 填充 args 参数，envs 参数，pipeline 模版中存在这预定义的 args 参数和 envs 参数，Server 将会为 Pipeline 填充正确的 args 参数，同时将 envs 并不填充，而是 随 pipeline 传递给 agent；
+- 选择适合执行的 Agent ，发布 pipeline 任务，最后 Server 发布 Pipeline 任务，此流程结束
+
+3. **获取 Pipeline**
+
+- agent 通过 grpc 服务领取到自己的 pipeline 任务；
+- 此时 agent 要检查自己的 envs,然后对比服务传来的 envs 参数，并对其同名参数进行覆盖，不一致可补充进去；
+- 为 Pipeline 填充正确的 envs 参数，此时 pipeline 里面再无参数，具备执行条件；
+
+### 2.2 Pipeline 执行
 
 Pipeline 系统提供以下管理接口：
 
@@ -51,17 +83,23 @@ Pipeline 系统提供以下管理接口：
    rpc ExecutePipeline(ExecutePipelineRequest) returns (ExecutePipelineResponse)
    ```
 
-2. **获取状态**
+Server 会发布 Pipeline 任务，Agent 领取任务并执行，这个叫执行 Pipeline；
+
+2. **报告进度**
 
    ```protobuf
    rpc GetPipelineStatus(PipelineStatusRequest) returns (PipelineStatusResponse)
    ```
+
+Server 需要关注 Pipeline 的执行进度，并最终通过前端渲染提供可视化界面，让管理员能够清晰的看到 Pipeline 的执行进度，以及各个 Steps 的运行日志。
 
 3. **取消执行**
 
    ```protobuf
    rpc CancelPipeline(PipelineCancelRequest) returns (PipelineCancelResponse)
    ```
+
+Pipeline 是个长时间运行的任务，管理员可以发布取消执行指令，此时 Agent 将停止 Steps 的执行，并回收资源。
 
 ## 3. 双向通信机制
 

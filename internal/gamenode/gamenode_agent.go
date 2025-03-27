@@ -12,6 +12,7 @@ import (
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
 )
@@ -43,10 +44,10 @@ type GameNodeAgent struct {
 	metrics *pb.NodeMetrics
 
 	// 事件管理
-	eventManager *EventManager
+	eventManager *GameNodeEventManager
 
 	// 日志收集
-	logCollector *LogCollector
+	logCollector *GameNodeLogCollector
 
 	// 其他状态
 	status        string
@@ -62,7 +63,7 @@ func NewGameNodeAgent(serverAddr string, dockerClient *client.Client) *GameNodeA
 	agent := &GameNodeAgent{
 		serverAddr:    serverAddr,
 		dockerClient:  dockerClient,
-		eventManager:  NewEventManager(),
+		eventManager:  NewGameNodeEventManager(),
 		status:        "disconnected",
 		lastHeartbeat: time.Now(),
 		pipelines:     make(map[string]*GameNodePipeline),
@@ -164,19 +165,27 @@ func (a *GameNodeAgent) initSystemInfo() error {
 	a.hostname = hostInfo.Hostname
 	a.info = &pb.NodeInfo{
 		Hostname: hostInfo.Hostname,
+		Ip:       hostInfo.HostID,
 		Os:       hostInfo.OS,
-		Platform: hostInfo.Platform,
+		Arch:     hostInfo.Platform,
+		Kernel:   hostInfo.KernelVersion,
 		Hardware: &pb.HardwareInfo{
 			Cpu: &pb.CpuInfo{
-				Model:     cpuInfo[0].ModelName,
-				Cores:     int32(cpuInfo[0].Cores),
-				Frequency: float64(cpuInfo[0].Mhz),
+				Cores:      int32(cpuInfo[0].Cores),
+				Model:      cpuInfo[0].ModelName,
+				ClockSpeed: float32(cpuInfo[0].Mhz) / 1000,
 			},
 			Memory: &pb.MemoryInfo{
-				Total: memInfo.Total,
+				Total: int64(memInfo.Total),
+				Type:  "DDR4", // TODO: 获取实际内存类型
 			},
 			Disk: &pb.DiskInfo{
-				Total: diskInfo.Total,
+				Total: int64(diskInfo.Total),
+				Type:  "SSD", // TODO: 获取实际磁盘类型
+			},
+			Network: &pb.NetworkInfo{
+				PrimaryInterface: "eth0", // TODO: 获取实际网络接口
+				Bandwidth:        1000,   // TODO: 获取实际带宽
 			},
 		},
 	}
@@ -257,9 +266,10 @@ func (a *GameNodeAgent) collectMetrics() error {
 
 	a.Lock()
 	a.metrics = &pb.NodeMetrics{
-		CpuUsage:    cpuPercent[0],
-		MemoryUsage: float64(memInfo.Used) / float64(memInfo.Total),
-		DiskUsage:   float64(diskInfo.Used) / float64(diskInfo.Total),
+		CpuUsage:    float32(cpuPercent[0]),
+		MemoryUsage: float32(memInfo.UsedPercent),
+		DiskUsage:   float32(diskInfo.UsedPercent),
+		CollectedAt: timestamppb.Now(),
 	}
 	a.Unlock()
 
@@ -281,18 +291,18 @@ func (a *GameNodeAgent) eventLoop() {
 // ExecutePipeline 执行流水线
 func (a *GameNodeAgent) ExecutePipeline(ctx context.Context, req *pb.ExecutePipelineRequest) (*pb.ExecutePipelineResponse, error) {
 	// 创建流水线
-	pipeline := NewGameNodePipeline(req, a.dockerClient)
+	pipeline := NewGameNodePipeline(req.Pipeline, a.dockerClient)
 
 	// 发布流水线开始事件
-	a.eventManager.Publish(NewPipelineEvent(a.nodeID, req.PipelineId, "started", "流水线开始执行"))
+	a.eventManager.Publish(NewGameNodePipelineEvent(a.nodeID, req.PipelineId, "started", "流水线开始执行"))
 
 	// 执行流水线
 	go func() {
 		if err := pipeline.Execute(ctx); err != nil {
-			a.eventManager.Publish(NewPipelineEvent(a.nodeID, req.PipelineId, "failed", fmt.Sprintf("流水线执行失败: %v", err)))
+			a.eventManager.Publish(NewGameNodePipelineEvent(a.nodeID, req.PipelineId, "failed", fmt.Sprintf("流水线执行失败: %v", err)))
 			return
 		}
-		a.eventManager.Publish(NewPipelineEvent(a.nodeID, req.PipelineId, "completed", "流水线执行完成"))
+		a.eventManager.Publish(NewGameNodePipelineEvent(a.nodeID, req.PipelineId, "completed", "流水线执行完成"))
 	}()
 
 	// 保存流水线实例
@@ -338,7 +348,7 @@ func (a *GameNodeAgent) CancelPipeline(ctx context.Context, req *pb.PipelineCanc
 	}
 
 	// 发布流水线取消事件
-	a.eventManager.Publish(NewPipelineEvent(a.nodeID, req.ExecutionId, "canceled", "流水线已取消"))
+	a.eventManager.Publish(NewGameNodePipelineEvent(a.nodeID, req.ExecutionId, "canceled", "流水线已取消"))
 
 	return &pb.PipelineCancelResponse{
 		Success: true,
@@ -347,8 +357,8 @@ func (a *GameNodeAgent) CancelPipeline(ctx context.Context, req *pb.PipelineCanc
 }
 
 // SubscribeEvents 订阅事件
-func (a *GameNodeAgent) SubscribeEvents(req *pb.EventSubscriptionRequest) *EventStream {
-	return NewEventStream(a.eventManager, req.EventTypes)
+func (a *GameNodeAgent) SubscribeEvents(req *pb.EventSubscriptionRequest) *GameNodeEventStream {
+	return NewGameNodeEventStream(a.eventManager, req.EventTypes)
 }
 
 // StreamNodeLogs 流式获取节点日志
@@ -359,5 +369,5 @@ func (a *GameNodeAgent) StreamNodeLogs(ctx context.Context, req *pb.NodeLogsRequ
 
 // StreamContainerLogs 流式获取容器日志
 func (a *GameNodeAgent) StreamContainerLogs(ctx context.Context, req *pb.ContainerLogsRequest) (<-chan *pb.LogEntry, error) {
-	return a.logCollector.CollectContainerLogs(ctx, req.ContainerId, req.TailLines, req.Follow)
+	return a.logCollector.CollectContainerLogs(ctx, req.ContainerId, int64(req.TailLines), req.Follow)
 }

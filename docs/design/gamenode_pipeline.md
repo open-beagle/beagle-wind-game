@@ -1,8 +1,11 @@
-# Pipeline 系统设计文档
+# GameNodePipeline 系统设计文档
 
 ## 1. 系统概述
 
-Pipeline 系统是 Beagle Wind Game 平台的核心组件之一，负责 [GamePlatform](../README.md#gameplatform) 的部署和运行环境准备。作为游戏平台的重要组成部分，Pipeline 系统提供了基于容器的任务编排和执行能力，为 [GameInstance](../README.md#gameinstance) 的运行提供基础设施支持。
+GameNodePipeline 简称 Pipeline 系统是 Beagle Wind Game 平台的控制 GameNode 上运行流程的核心组件之一。
+GameNode 流程管理核心组件之一，注意 Pipeline 是流程执行的模版，其提供 Status 属性来存储流程运行的进度与状态信息；
+生命周期开始，注意 GameNodeServer 发布 Pipeline 任务时，其生命周期开始的特征点；
+生命周期结束，Pipeline 执行完毕，则其生命周期结束；注意虽然 Pipeline 最后一个执行步骤是启动一个容器，而这个容器的生命周期可能长达数小时，或数天，但是其不影响 Pipeline 进入生命周期的终点。
 
 ### 1.1 核心功能
 
@@ -14,28 +17,26 @@ Pipeline 系统是 Beagle Wind Game 平台的核心组件之一，负责 [GamePl
 
 ### 1.2 系统架构
 
-Pipeline 系统采用主从架构，包含以下核心组件：
+Pipeline 是 GameNode 流程管理核心组件之一，GameNode 流程管理包含以下核心组件：
 
-- Pipeline 服务器：负责任务调度和状态管理
-- Agent 节点：负责容器执行和资源管理
-- Pipeline 定义：使用 YAML 格式描述任务流程
+- GameNodeServer - Pipeline 服务器：负责任务调度和状态管理
+- GameNodeAgent - Pipeline 客户端：负责容器执行和资源管理
+- GameNodePipeline - Pipeline 定义模版：使用 YAML 格式描述任务流程
 
-### 1.3 与其他组件的关系
+### 1.3 主要业务
 
-1. **与 GameNode 的关系**
-   - Pipeline 系统通过 Agent 在游戏节点上执行任务
-   - 利用游戏节点的硬件资源运行容器
-   - 监控游戏节点的资源使用情况
+注意 Pipeline 本身是一个流程模版，运行的 Pipeline 是一个流程实例，是其主要业务执行的信息载体，但是不负责执行具体业务，所以不要给 Pipeline 定义或实现管理主要业务生命周期的方法。
 
-2. **与 GamePlatform 的关系**
-   - 负责游戏平台的部署和配置
-   - 管理平台运行环境
-   - 处理平台更新和升级
+1. **GamePlatform 相关任务**
 
-3. **与 GameInstance 的关系**
-   - 为游戏实例提供运行环境
-   - 管理实例的资源分配
-   - 处理实例的生命周期
+   - 启动一个 GamePlatform 供系统管理员维护
+   - 启动一个 GamePlatform 供普通用户维护：如登录 Steam
+   - 完成维护后上传本地数据，删除本地容器；
+
+2. **GameInstance 相关任务**
+
+   - 启动 GameInstance
+   - 回收 GameInstance
 
 ## 2. Pipeline 定义
 
@@ -113,17 +114,23 @@ steps:
 
 ## 3. 系统架构
 
-### 3.1 组件交互
+### 3.1 系统构成
 
-1. Pipeline 服务器接收任务请求
-2. 服务器选择合适的 Agent 节点
-3. Agent 节点执行容器任务
-4. Agent 节点向服务器报告状态
-5. 服务器更新任务状态
+1. Pipeline 类型结构
+   Pipeline 类型结构，由架构师在项目开始时设计并实现，主要包含以下内容
+
+- 基础属性，name , description
+- 参数定义，args，envs
+- 执行步骤，steps
+- 执行状态, status
+
+2. Pipeline 的模版实例
+   Pipeline 的模版实例存储在 config/pipeline 目录中，将有架构师在运行时根据业务不断的迭代。
 
 ### 3.2 状态流转
 
 Pipeline 状态包括：
+
 - `pending`: 等待执行
 - `running`: 正在执行
 - `completed`: 执行完成
@@ -227,55 +234,13 @@ steps:
 
 ```bash
 # 启动 Agent
-./agent -server localhost:50051
+./bin/agent -server localhost:50051
 
 # 启动服务器
-./server -listen :50051
+./bin/server -listen :50051
 
 # 执行 Pipeline
 curl -X POST http://localhost:8080/api/pipelines \
   -H "Content-Type: application/json" \
   -d @pipeline.yaml
 ```
-
-## 5. 注意事项
-
-1. 资源限制
-   - 确保节点有足够的资源执行容器
-   - 合理设置 CPU 和内存限制
-   - 注意 GPU 资源的分配
-
-2. 网络配置
-   - 正确配置端口映射
-   - 注意网络安全性
-   - 确保 TURN 服务器配置正确
-
-3. 存储管理
-   - 合理规划卷挂载
-   - 注意数据持久化
-   - 确保共享存储的访问权限
-
-4. 错误处理
-   - 设置合适的重试策略
-   - 配置错误通知机制
-   - 做好日志记录
-
-## 6. 未来规划
-
-1. 功能增强
-   - 支持更多步骤类型
-   - 添加条件分支
-   - 支持并行执行
-   - 增加资源预检
-
-2. 性能优化
-   - 优化资源调度
-   - 改进状态同步
-   - 提升执行效率
-   - 优化容器启动时间
-
-3. 可用性提升
-   - 完善监控指标
-   - 增强日志管理
-   - 提供更多管理工具
-   - 改进错误处理机制 
