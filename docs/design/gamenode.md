@@ -81,36 +81,48 @@ type GameNode struct {
 
 ### 2.2 GameNodeHandler
 
-HTTP API 服务实体，负责处理前端请求：
+GameNodeHandler 是系统的 HTTP API 服务实体，负责处理前端交互。详细设计请参考 [GameNodeHandler 设计文档](gamenode_handler.md)。
 
-#### 2.2.1 API 接口
+#### 2.2.1 核心职责
 
-```go
-// 节点管理
-GET    /api/v1/nodes           // 获取节点列表
-GET    /api/v1/nodes/{id}      // 获取节点详情
-POST   /api/v1/nodes           // 创建新节点
-PUT    /api/v1/nodes/{id}      // 更新节点信息
-DELETE /api/v1/nodes/{id}      // 删除节点
+1. 提供节点基础信息的查询和管理
+2. 提供 Pipeline 状态查询和取消功能
 
-// 节点状态
-PUT    /api/v1/nodes/{id}/status  // 更新节点状态
-GET    /api/v1/nodes/{id}/metrics // 获取节点指标
-GET    /api/v1/nodes/{id}/logs    // 获取节点日志
+#### 2.2.2 非职责范围
 
-// 流水线管理
-POST   /api/v1/nodes/{id}/pipelines    // 创建流水线
-GET    /api/v1/nodes/{id}/pipelines    // 获取流水线列表
-GET    /api/v1/nodes/{id}/pipelines/{pid}  // 获取流水线详情
-DELETE /api/v1/nodes/{id}/pipelines/{pid}  // 删除流水线
-```
+1. 节点注册：由 GameNodeAgent 通过 gRPC 实现
+2. 节点心跳：由 GameNodeAgent 通过 gRPC 实现
+3. Pipeline 创建和执行：由其他组件负责
+4. 容器管理：暂缓实现
+5. 日志管理：暂缓实现
+6. 事件流管理：由 Event Handler 负责，详见 [Event Handler 设计文档](event_handler.md)
 
-#### 2.2.2 请求处理
+#### 2.2.3 接口设计原则
 
-- 参数验证
-- 权限检查
-- 错误处理
-- 响应格式化
+1. RESTful 规范
+   - 使用 HTTP 方法表示操作
+   - 使用 URL 表示资源
+   - 使用状态码表示结果
+
+2. 安全性
+   - 所有接口必须认证
+   - 敏感数据加密传输
+   - 防止 CSRF 攻击
+
+3. 可用性
+   - 接口幂等性
+   - 合理的超时设置
+   - 优雅的错误处理
+
+4. 可维护性
+   - 清晰的接口命名
+   - 统一的响应格式
+   - 完整的接口文档
+
+5. 性能
+   - 合理的缓存策略
+   - 分页查询支持
+   - 流式响应支持
 
 ### 2.3 GameNodeService
 
@@ -142,37 +154,10 @@ DELETE /api/v1/nodes/{id}/pipelines/{pid}  // 删除流水线
 
 ### 2.4 GameNodeStore
 
-数据存储管理器，负责数据的持久化：
+数据存储管理器，负责数据的持久化。存储接口的设计和实现细节请参考：
 
-#### 2.4.1 存储接口
-
-```go
-type GameNodeStore interface {
-    // 节点管理
-    List() ([]*GameNode, error)
-    Get(id string) (*GameNode, error)
-    Create(node *GameNode) error
-    Update(node *GameNode) error
-    Delete(id string) error
-
-    // 状态管理
-    UpdateStatus(id string, status string) error
-    UpdateMetrics(id string, metrics map[string]interface{}) error
-
-    // 流水线管理
-    ListPipelines(nodeID string) ([]*GameNodePipeline, error)
-    GetPipeline(nodeID, pipelineID string) (*GameNodePipeline, error)
-    SavePipeline(nodeID string, pipeline *GameNodePipeline) error
-    DeletePipeline(nodeID, pipelineID string) error
-}
-```
-
-#### 2.4.2 数据模型
-
-- 节点信息
-- 状态数据
-- 指标数据
-- 流水线数据
+- [GameNodeHandler 设计文档](gamenode_handler.md) 中的 GameNodeStore 设计
+- [GameNodePipelineHandler 设计文档](gamenode_pipeline_handler.md) 中的 GameNodePipelineStore 设计
 
 ### 2.5 GameNode Communication
 
@@ -188,7 +173,7 @@ type GameNodeStore interface {
 #### 2.5.2 通信协议
 
 ```protobuf
-service GameNodeService {
+service GameNodeGRPCService {
     // 节点管理
     rpc Register(RegisterRequest) returns (RegisterResponse);
     rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);

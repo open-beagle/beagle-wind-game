@@ -7,8 +7,9 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
 )
 
 // GameNodeLogCollector 日志收集器

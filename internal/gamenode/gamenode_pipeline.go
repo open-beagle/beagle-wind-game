@@ -83,15 +83,14 @@ type PipelineStep struct {
 
 // PipelineStatus 流水线状态信息
 type PipelineStatus struct {
-	State       PipelineState
-	CurrentStep int32
-	TotalSteps  int32
-	Progress    float32
-	StartTime   int64
-	EndTime     int64
-
-	// 步骤状态
+	State        PipelineState
+	CurrentStep  int32
+	TotalSteps   int32
+	Progress     float32
+	StartTime    int64
+	EndTime      int64
 	StepStatuses []*StepStatus
+	ErrorMessage string
 }
 
 // GameNodePipeline 表示一个游戏节点流水线模板
@@ -138,28 +137,8 @@ func (p *GameNodePipeline) ToYAML() ([]byte, error) {
 }
 
 // GetStatus 获取流水线状态
-func (p *GameNodePipeline) GetStatus() map[string]interface{} {
-	// 构建步骤状态列表
-	stepStatuses := make([]map[string]interface{}, len(p.status.StepStatuses))
-	for i, step := range p.status.StepStatuses {
-		stepStatuses[i] = map[string]interface{}{
-			"state":      step.State,
-			"start_time": step.StartTime,
-			"end_time":   step.EndTime,
-			"error":      step.Error,
-			"output":     step.Output,
-		}
-	}
-
-	return map[string]interface{}{
-		"state":         p.status.State,
-		"current_step":  p.status.CurrentStep,
-		"total_steps":   p.status.TotalSteps,
-		"progress":      p.status.Progress,
-		"start_time":    p.status.StartTime,
-		"end_time":      p.status.EndTime,
-		"step_statuses": stepStatuses,
-	}
+func (p *GameNodePipeline) GetStatus() *PipelineStatus {
+	return p.status
 }
 
 // UpdateStatus 更新流水线状态

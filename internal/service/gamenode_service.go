@@ -23,10 +23,14 @@ func NewGameNodeService(store store.GameNodeStore) *GameNodeService {
 
 // GameNodeListParams 节点列表查询参数
 type GameNodeListParams struct {
-	Page     int    `form:"page" binding:"omitempty,min=1"`
-	PageSize int    `form:"size" binding:"omitempty,min=1,max=100"`
-	Keyword  string `form:"keyword" binding:"omitempty"`
-	Status   string `form:"status" binding:"omitempty,oneof=online offline maintenance"`
+	Page      int    `form:"page" binding:"omitempty,min=1"`
+	PageSize  int    `form:"size" binding:"omitempty,min=1,max=100"`
+	Keyword   string `form:"keyword" binding:"omitempty"`
+	Status    string `form:"status" binding:"omitempty,oneof=online offline maintenance"`
+	Type      string `form:"type" binding:"omitempty,oneof=physical virtual"`
+	Region    string `form:"region" binding:"omitempty"`
+	SortBy    string `form:"sort_by" binding:"omitempty,oneof=created_at updated_at status"`
+	SortOrder string `form:"sort_order" binding:"omitempty,oneof=asc desc"`
 }
 
 // GameNodeListResult 节点列表查询结果
@@ -170,7 +174,7 @@ func (s *GameNodeService) Update(id string, node models.GameNode) error {
 }
 
 // Delete 删除游戏节点
-func (s *GameNodeService) Delete(id string) error {
+func (s *GameNodeService) Delete(id string, force bool) error {
 	// 检查节点是否存在
 	node, err := s.store.Get(id)
 	if err != nil {
@@ -178,6 +182,11 @@ func (s *GameNodeService) Delete(id string) error {
 	}
 	if node.ID == "" {
 		return fmt.Errorf("节点不存在: %s", id)
+	}
+
+	// 检查节点状态
+	if !force && node.Status.State != models.GameNodeStateOffline {
+		return fmt.Errorf("节点状态不允许删除: %s", node.Status.State)
 	}
 
 	err = s.store.Delete(id)

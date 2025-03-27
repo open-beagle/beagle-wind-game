@@ -7,7 +7,8 @@ import (
 
 // SetupRouter 设置路由
 func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeService *service.GameNodeService,
-	gameCardService *service.GameCardService, gameinstanceService *service.GameInstanceService) *gin.Engine {
+	gameCardService *service.GameCardService, gameinstanceService *service.GameInstanceService,
+	gamenodePipelineService *service.GameNodePipelineService) *gin.Engine {
 	// 创建默认的gin引擎
 	r := gin.Default()
 
@@ -30,6 +31,7 @@ func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeServi
 	gamenodeHandler := NewGameNodeHandler(gamenodeService)
 	gameCardHandler := NewGameCardHandler(gameCardService)
 	gameinstanceHandler := NewGameInstanceHandler(gameinstanceService)
+	gamenodePipelineHandler := NewGameNodePipelineHandler(gamenodePipelineService)
 
 	// API v1 路由组
 	v1 := r.Group("/api/v1")
@@ -37,11 +39,10 @@ func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeServi
 		// 游戏节点管理
 		nodes := v1.Group("/nodes")
 		{
-			nodes.GET("", gamenodeHandler.List)
-			nodes.GET("/:id", gamenodeHandler.Get)
-			nodes.POST("/:id/create", gamenodeHandler.Create)
-			nodes.POST("/:id/update", gamenodeHandler.Update)
-			nodes.POST("/:id/delete", gamenodeHandler.Delete)
+			nodes.GET("", gamenodeHandler.ListNodes)
+			nodes.GET("/:id", gamenodeHandler.GetNode)
+			nodes.POST("/:id/update", gamenodeHandler.UpdateNode)
+			nodes.POST("/:id/delete", gamenodeHandler.DeleteNode)
 		}
 
 		// 游戏平台管理
@@ -49,7 +50,7 @@ func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeServi
 		{
 			platforms.GET("", gameplatformHandler.List)
 			platforms.GET("/:id", gameplatformHandler.Get)
-			platforms.POST("/:id/create", gameplatformHandler.Create)
+			platforms.POST("", gameplatformHandler.Create)
 			platforms.POST("/:id/update", gameplatformHandler.Update)
 			platforms.POST("/:id/delete", gameplatformHandler.Delete)
 		}
@@ -59,7 +60,7 @@ func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeServi
 		{
 			cards.GET("", gameCardHandler.List)
 			cards.GET("/:id", gameCardHandler.Get)
-			cards.POST("/:id/create", gameCardHandler.Create)
+			cards.POST("", gameCardHandler.Create)
 			cards.POST("/:id/update", gameCardHandler.Update)
 			cards.POST("/:id/delete", gameCardHandler.Delete)
 		}
@@ -69,12 +70,21 @@ func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeServi
 		{
 			instances.GET("", gameinstanceHandler.List)
 			instances.GET("/:id", gameinstanceHandler.Get)
-			instances.POST("/:id/create", gameinstanceHandler.Create)
+			instances.POST("", gameinstanceHandler.Create)
 			instances.POST("/:id/update", gameinstanceHandler.Update)
 			instances.POST("/:id/delete", gameinstanceHandler.Delete)
 			// 实例操作
 			instances.POST("/:id/start", gameinstanceHandler.Start)
 			instances.POST("/:id/stop", gameinstanceHandler.Stop)
+		}
+
+		// 游戏节点流水线管理
+		pipelines := v1.Group("/pipelines")
+		{
+			pipelines.GET("", gamenodePipelineHandler.ListPipelines)
+			pipelines.GET("/:id", gamenodePipelineHandler.GetPipeline)
+			pipelines.POST("/:id/cancel", gamenodePipelineHandler.CancelPipeline)
+			pipelines.POST("/:id/delete", gamenodePipelineHandler.DeletePipeline)
 		}
 	}
 

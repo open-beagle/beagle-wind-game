@@ -6,8 +6,8 @@ option go_package = "github.com/open-beagle/beagle-wind-game/internal/proto";
 
 import "google/protobuf/timestamp.proto";
 
-// GameNodeService 定义节点Agent的gRPC服务
-service GameNodeService {
+// GameNodeGRPCService 定义节点Agent的gRPC服务
+service GameNodeGRPCService {
   // 节点注册与心跳
   rpc Register(RegisterRequest) returns (RegisterResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
@@ -60,9 +60,9 @@ message HeartbeatResponse {
 message ExecutePipelineRequest {
   string node_id = 1;
   string pipeline_id = 2;
-  Pipeline pipeline = 3;
-  map<string, string> envs = 4;  // 环境变量映射
-  map<string, string> args = 5;  // 运行时参数
+  bytes pipeline_data = 3;  // Pipeline 的二进制数据
+  map<string, string> envs = 4;
+  map<string, string> args = 5;
 }
 
 message ExecutePipelineResponse {
