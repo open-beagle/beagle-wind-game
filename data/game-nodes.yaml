@@ -1,155 +1,281 @@
 - id: "node-241"
   alias: "游戏机-241"
   model: "Beagle-Wind-2024"
-  # 静态数据
-  hardware:
-    CPU: "Intel i9-13900K"
-    RAM: "128GB DDR5-7000"
-    GPU: "NVIDIA RTX 4090 24GB"
-    Storage: "2TB NVMe SSD"
-    Network: "2.5G"
-  network:
-    IP: "192.168.1.241"
-    Speed: "2.5Gbps"
+  type: "physical"
   location: "北京比格"
+  labels: {}
   created_at: "2024-01-15T00:00:00Z"
-  # 动态数据
+  updated_at: "2024-03-21T10:00:00Z"
   status:
     state: "ready"
     online: true
     last_online: "2024-03-21T10:00:00Z"
     updated_at: "2024-03-21T10:00:00Z"
-    resources:
-      CPU_Usage: "5%"
-      RAM_Usage: "12%"
-      GPU_Usage: "0%"
-      Storage: "1.5TB Free"
-    metrics:
-      cpu:
-        usage: 5.0
-        cores: 24
-        temperature: 45.0
-      memory:
-        total: 128
-        used: 15.36
-        free: 112.64
-      gpu:
-        usage: 0.0
-        temperature: 35.0
+    resource:
+      id: "node-241"
+      timestamp: 1711008000
+      hardware:
+        cpu:
+          model: "Intel i9-13900K"
+          cores: 24
+          threads: 32
+          frequency: 5.8
+          temperature: 45.0
+          usage: 5.0
+          cache: 36864
         memory:
-          total: 24
-          used: 0
-          free: 24
-      disk:
-        total: 2048
-        used: 512
-        free: 1536
+          total: 128
+          available: 112.64
+          used: 15.36
+          usage: 12.0
+          type: "DDR5"
+          frequency: 7000
+          channels: 4
+        gpu:
+          model: "NVIDIA RTX 4090"
+          memory_total: 24
+          memory_used: 0
+          memory_free: 24
+          memory_usage: 0.0
+          usage: 0.0
+          temperature: 35.0
+          power: 0.0
+          cuda_cores: 16384
+        disk:
+          model: "Samsung 990 Pro"
+          capacity: 2048
+          used: 512
+          free: 1536
+          usage: 25.0
+          type: "NVMe SSD"
+          interface: "PCIe 4.0"
+          read_speed: 7450
+          write_speed: 6900
+          iops: 1400000
+      software:
+        os_distribution: "Ubuntu"
+        os_version: "22.04 LTS"
+        os_architecture: "x86_64"
+        kernel_version: "6.5.0-25-generic"
+        gpu_driver_version: "545.23.08"
+        cuda_version: "12.2"
+        docker_version: "24.0.7"
+        containerd_version: "1.7.11"
+        runc_version: "1.1.11"
       network:
-        rx_bytes: 1024000
-        tx_bytes: 1024000
-        rx_packets: 1000
-        tx_packets: 1000
+        bandwidth: 2.5
+        latency: 1.0
+        connections: 100
+        packet_loss: 0.0
+    metrics:
+      id: "node-241"
+      timestamp: 1711008000
+      metrics:
+        - name: "cpu_usage"
+          type: "gauge"
+          value: 5.0
+          labels:
+            node_id: "node-241"
+        - name: "memory_usage"
+          type: "gauge"
+          value: 12.0
+          labels:
+            node_id: "node-241"
+        - name: "gpu_usage"
+          type: "gauge"
+          value: 0.0
+          labels:
+            node_id: "node-241"
+        - name: "disk_usage"
+          type: "gauge"
+          value: 25.0
+          labels:
+            node_id: "node-241"
 
 - id: "node-243"
   alias: "游戏机-243"
   model: "Beagle-Wind-2024"
-  # 静态数据
-  hardware:
-    CPU: "Intel i9-13900K"
-    RAM: "128GB DDR5-7000"
-    GPU: "NVIDIA RTX 4090 24GB"
-    Storage: "2TB NVMe SSD"
-    Network: "2.5G"
-  network:
-    IP: "192.168.1.243"
-    Speed: "2.5Gbps"
+  type: "physical"
   location: "北京比格"
+  labels: {}
   created_at: "2024-01-20T00:00:00Z"
-  # 动态数据
+  updated_at: "2024-03-21T10:00:00Z"
   status:
     state: "ready"
     online: true
     last_online: "2024-03-21T10:00:00Z"
     updated_at: "2024-03-21T10:00:00Z"
-    resources:
-      CPU_Usage: "3%"
-      RAM_Usage: "10%"
-      GPU_Usage: "0%"
-      Storage: "1.6TB Free"
-    metrics:
-      cpu:
-        usage: 3.0
-        cores: 24
-        temperature: 42.0
-      memory:
-        total: 128
-        used: 12.8
-        free: 115.2
-      gpu:
-        usage: 0.0
-        temperature: 33.0
+    resource:
+      id: "node-243"
+      timestamp: 1711008000
+      hardware:
+        cpu:
+          model: "Intel i9-13900K"
+          cores: 24
+          threads: 32
+          frequency: 5.8
+          temperature: 42.0
+          usage: 3.0
+          cache: 36864
         memory:
-          total: 24
-          used: 0
-          free: 24
-      disk:
-        total: 2048
-        used: 409.6
-        free: 1638.4
+          total: 128
+          available: 115.2
+          used: 12.8
+          usage: 10.0
+          type: "DDR5"
+          frequency: 7000
+          channels: 4
+        gpu:
+          model: "NVIDIA RTX 4090"
+          memory_total: 24
+          memory_used: 0
+          memory_free: 24
+          memory_usage: 0.0
+          usage: 0.0
+          temperature: 33.0
+          power: 0.0
+          cuda_cores: 16384
+        disk:
+          model: "Samsung 990 Pro"
+          capacity: 2048
+          used: 409.6
+          free: 1638.4
+          usage: 20.0
+          type: "NVMe SSD"
+          interface: "PCIe 4.0"
+          read_speed: 7450
+          write_speed: 6900
+          iops: 1400000
+      software:
+        os_distribution: "Ubuntu"
+        os_version: "22.04 LTS"
+        os_architecture: "x86_64"
+        kernel_version: "6.5.0-25-generic"
+        gpu_driver_version: "545.23.08"
+        cuda_version: "12.2"
+        docker_version: "24.0.7"
+        containerd_version: "1.7.11"
+        runc_version: "1.1.11"
       network:
-        rx_bytes: 1024000
-        tx_bytes: 1024000
-        rx_packets: 1000
-        tx_packets: 1000
+        bandwidth: 2.5
+        latency: 1.0
+        connections: 100
+        packet_loss: 0.0
+    metrics:
+      id: "node-243"
+      timestamp: 1711008000
+      metrics:
+        - name: "cpu_usage"
+          type: "gauge"
+          value: 3.0
+          labels:
+            node_id: "node-243"
+        - name: "memory_usage"
+          type: "gauge"
+          value: 10.0
+          labels:
+            node_id: "node-243"
+        - name: "gpu_usage"
+          type: "gauge"
+          value: 0.0
+          labels:
+            node_id: "node-243"
+        - name: "disk_usage"
+          type: "gauge"
+          value: 20.0
+          labels:
+            node_id: "node-243"
 
 - id: "node-246"
   alias: "游戏机-246"
   model: "Beagle-Wind-2024"
-  # 静态数据
-  hardware:
-    CPU: "Intel i9-13900K"
-    RAM: "128GB DDR5-7000"
-    GPU: "NVIDIA RTX 4090 24GB"
-    Storage: "2TB NVMe SSD"
-    Network: "2.5G"
-  network:
-    IP: "192.168.1.246"
-    Speed: "2.5Gbps"
+  type: "physical"
   location: "北京比格"
+  labels: {}
   created_at: "2024-01-25T00:00:00Z"
-  # 动态数据
+  updated_at: "2024-03-21T10:00:00Z"
   status:
     state: "ready"
     online: true
     last_online: "2024-03-21T10:00:00Z"
     updated_at: "2024-03-21T10:00:00Z"
-    resources:
-      CPU_Usage: "3%"
-      RAM_Usage: "10%"
-      GPU_Usage: "0%"
-      Storage: "1.7TB Free"
-    metrics:
-      cpu:
-        usage: 3.0
-        cores: 24
-        temperature: 41.0
-      memory:
-        total: 128
-        used: 12.8
-        free: 115.2
-      gpu:
-        usage: 0.0
-        temperature: 32.0
+    resource:
+      id: "node-246"
+      timestamp: 1711008000
+      hardware:
+        cpu:
+          model: "Intel i9-13900K"
+          cores: 24
+          threads: 32
+          frequency: 5.8
+          temperature: 41.0
+          usage: 3.0
+          cache: 36864
         memory:
-          total: 24
-          used: 0
-          free: 24
-      disk:
-        total: 2048
-        used: 307.2
-        free: 1740.8
+          total: 128
+          available: 115.2
+          used: 12.8
+          usage: 10.0
+          type: "DDR5"
+          frequency: 7000
+          channels: 4
+        gpu:
+          model: "NVIDIA RTX 4090"
+          memory_total: 24
+          memory_used: 0
+          memory_free: 24
+          memory_usage: 0.0
+          usage: 0.0
+          temperature: 32.0
+          power: 0.0
+          cuda_cores: 16384
+        disk:
+          model: "Samsung 990 Pro"
+          capacity: 2048
+          used: 307.2
+          free: 1740.8
+          usage: 15.0
+          type: "NVMe SSD"
+          interface: "PCIe 4.0"
+          read_speed: 7450
+          write_speed: 6900
+          iops: 1400000
+      software:
+        os_distribution: "Ubuntu"
+        os_version: "22.04 LTS"
+        os_architecture: "x86_64"
+        kernel_version: "6.5.0-25-generic"
+        gpu_driver_version: "545.23.08"
+        cuda_version: "12.2"
+        docker_version: "24.0.7"
+        containerd_version: "1.7.11"
+        runc_version: "1.1.11"
       network:
-        rx_bytes: 1024000
-        tx_bytes: 1024000
-        rx_packets: 1000
-        tx_packets: 1000
+        bandwidth: 2.5
+        latency: 1.0
+        connections: 100
+        packet_loss: 0.0
+    metrics:
+      id: "node-246"
+      timestamp: 1711008000
+      metrics:
+        - name: "cpu_usage"
+          type: "gauge"
+          value: 3.0
+          labels:
+            node_id: "node-246"
+        - name: "memory_usage"
+          type: "gauge"
+          value: 10.0
+          labels:
+            node_id: "node-246"
+        - name: "gpu_usage"
+          type: "gauge"
+          value: 0.0
+          labels:
+            node_id: "node-246"
+        - name: "disk_usage"
+          type: "gauge"
+          value: 15.0
+          labels:
+            node_id: "node-246"

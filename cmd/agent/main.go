@@ -4,10 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	stdlog "log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	stdlog "log"
 
 	"github.com/docker/docker/client"
 	"github.com/open-beagle/beagle-wind-game/internal/event"
@@ -20,10 +21,18 @@ var (
 	buildTime = "unknown"
 )
 
+func checkEnvironment() error {
+	// 检查 Docker 环境
+	if _, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation()); err != nil {
+		return fmt.Errorf("Docker 环境检查失败: %v", err)
+	}
+	return nil
+}
+
 func main() {
 	// 解析命令行参数
 	nodeID := flag.String("node-id", "", "节点ID")
-	nodeName := flag.String("node-name", "", "节点名称")
+	serverAddr := flag.String("server-addr", "", "服务器地址")
 	showVersion := flag.Bool("version", false, "显示版本信息")
 	flag.Parse()
 
@@ -34,46 +43,45 @@ func main() {
 		return
 	}
 
-	// 配置日志
-	stdlog.SetFlags(stdlog.Ldate | stdlog.Ltime | stdlog.Lshortfile)
-
 	// 验证必要参数
 	if *nodeID == "" {
 		stdlog.Fatal("必须指定节点ID (--node-id)")
 	}
-	if *nodeName == "" {
-		stdlog.Fatal("必须指定节点名称 (--node-name)")
+	if *serverAddr == "" {
+		stdlog.Fatal("必须指定服务器地址 (--server-addr)")
 	}
 
-	// 创建 Docker 客户端
+	// 环境检查
+	if err := checkEnvironment(); err != nil {
+		stdlog.Fatalf("环境检查失败: %v", err)
+	}
+
+	// 组件初始化
+	eventManager := event.NewDefaultEventManager()
+	logManager := log.NewDefaultLogManager()
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		stdlog.Printf("警告: 无法创建 Docker 客户端: %v", err)
 		dockerClient = nil
 	}
+	config := gamenode.NewDefaultAgentConfig()
 
-	// 创建 GameNodeAgent 实例
+	// 创建 Agent
 	agent := gamenode.NewGameNodeAgent(
 		*nodeID,
-		*nodeName,
-		"", // serverAddr
-		"", // grpcAddr
-		"", // logAddr
-		event.NewDefaultEventManager(),
-		log.NewDefaultLogManager(),
+		*serverAddr,
+		eventManager,
+		logManager,
 		dockerClient,
-		&gamenode.AgentConfig{},
+		config,
 	)
-	if agent == nil {
-		stdlog.Fatal("创建 GameNodeAgent 失败")
-	}
-
-	// 创建错误通道
-	errCh := make(chan error, 1)
 
 	// 创建上下文
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// 创建错误通道
+	errCh := make(chan error, 1)
 
 	// 启动 Agent
 	go func() {
@@ -82,23 +90,19 @@ func main() {
 		}
 	}()
 
-	// 等待中断信号
+	// 等待信号
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	// 等待信号或错误
+	// 处理信号或错误
 	select {
-	case sig := <-sigCh:
-		stdlog.Printf("收到信号: %v\n", sig)
 	case err := <-errCh:
-		stdlog.Printf("Agent 错误: %v\n", err)
+		stdlog.Printf("Agent 错误: %v", err)
+	case sig := <-sigCh:
+		stdlog.Printf("收到信号: %v", sig)
 	}
 
-	// 优雅关闭
-	stdlog.Println("正在关闭 Agent...")
-
-	// 停止 Agent
+	// 执行清理
+	cancel()
 	agent.Stop()
-
-	stdlog.Println("Agent 已关闭")
 }

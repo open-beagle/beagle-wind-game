@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -24,10 +25,7 @@ import (
 // GameNodeAgent 游戏节点代理
 type GameNodeAgent struct {
 	// 基本信息
-	id     string
-	alias  string
-	model  string
-	region string
+	id string
 
 	// 连接信息
 	serverAddr string
@@ -84,9 +82,6 @@ type ResourceCollector struct {
 // NewGameNodeAgent 创建新的游戏节点代理
 func NewGameNodeAgent(
 	id string,
-	alias string,
-	model string,
-	region string,
 	serverAddr string,
 	eventManager event.EventManager,
 	logManager log.LogManager,
@@ -94,19 +89,11 @@ func NewGameNodeAgent(
 	config *AgentConfig,
 ) *GameNodeAgent {
 	if config == nil {
-		config = &AgentConfig{
-			HeartbeatPeriod: 30 * time.Second,
-			RetryCount:      3,
-			RetryDelay:      5 * time.Second,
-			MetricsInterval: 15 * time.Second,
-		}
+		config = NewDefaultAgentConfig()
 	}
 
 	agent := &GameNodeAgent{
 		id:                id,
-		alias:             alias,
-		model:             model,
-		region:            region,
 		serverAddr:        serverAddr,
 		eventManager:      eventManager,
 		logManager:        logManager,
@@ -147,12 +134,14 @@ func (a *GameNodeAgent) Start(ctx context.Context) error {
 }
 
 // connect 建立连接
-func (a *GameNodeAgent) connect(ctx context.Context) error {
-	conn, err := grpc.DialContext(ctx, a.serverAddr, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("failed to dial: %v", err)
+func (a *GameNodeAgent) connect(_ context.Context) error {
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
-
+	conn, err := grpc.NewClient(a.serverAddr, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to create client: %v", err)
+	}
 	a.conn = conn
 	a.client = pb.NewGameNodeGRPCServiceClient(conn)
 	return nil
@@ -202,12 +191,9 @@ func (a *GameNodeAgent) Register(ctx context.Context) error {
 
 	// 发送注册请求
 	req := &pb.RegisterRequest{
-		Id:       a.id,
-		Alias:    a.alias,
-		Model:    a.model,
-		Type:     "physical",
-		Location: a.region,
-		Labels:   make(map[string]string),
+		Id:     a.id,
+		Type:   "physical",
+		Labels: make(map[string]string),
 		ResourceInfo: &pb.ResourceInfo{
 			Id:        a.id,
 			Timestamp: time.Now().Unix(),
@@ -711,5 +697,15 @@ func (a *GameNodeAgent) UpdateMetrics(metrics *pb.MetricsReport) {
 func (a *GameNodeAgent) Stop() {
 	if a.conn != nil {
 		a.conn.Close()
+	}
+}
+
+// NewDefaultAgentConfig 创建新的代理配置
+func NewDefaultAgentConfig() *AgentConfig {
+	return &AgentConfig{
+		HeartbeatPeriod: 30 * time.Second, // 30秒心跳
+		RetryCount:      3,                // 3次重试
+		RetryDelay:      5 * time.Second,  // 5秒延迟
+		MetricsInterval: 15 * time.Second, // 15秒采集
 	}
 }

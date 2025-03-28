@@ -296,3 +296,43 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 ## 许可证
 
 MIT License
+
+## 项目结构
+
+```txt
+.
+├── cmd/                    # 命令行入口
+│   ├── server/            # 服务器入口
+│   └── agent/             # 代理节点入口
+├── internal/              # 内部包
+│   ├── api/              # HTTP API 处理
+│   ├── gamenode/         # 游戏节点核心逻辑
+│   ├── models/           # 数据模型
+│   └── store/            # 数据存储
+├── pkg/                   # 公共包
+│   ├── event/            # 事件系统
+│   └── log/              # 日志系统
+├── docs/                  # 文档
+│   ├── design/           # 组件设计文档
+│   └── grpc.md           # gRPC 服务设计规范
+└── README.md             # 项目说明
+```
+
+## 文档结构说明
+
+项目文档采用分层结构：
+
+1. **根目录文档**
+
+   - `README.md`: 项目整体说明
+   - `docs/grpc.md`: 通用技术规范（如 gRPC 服务设计规范）
+
+2. **设计文档**
+   - `docs/design/`: 存放具体组件的设计文档
+   - 每个组件都有独立的设计文档，如 `gamenode_service.md`、`pipeline_service.md` 等
+
+这种结构的优势：
+
+- 通用技术规范与具体组件设计分离，便于维护和查找
+- 设计文档集中管理，便于团队协作
+- 清晰的层次结构，符合直觉的文档组织方式

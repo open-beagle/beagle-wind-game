@@ -29,9 +29,9 @@ type GameNode struct {
     Model     string            `json:"model" yaml:"model"`           // 节点型号
     Type      GameNodeType      `json:"type" yaml:"type"`             // 节点类型
     Location  string            `json:"location" yaml:"location"`     // 节点位置
-    Hardware  map[string]string `json:"hardware" yaml:"hardware"`     // 硬件配置
-    Network   map[string]string `json:"network" yaml:"network"`       // 网络配置
     Labels    map[string]string `json:"labels" yaml:"labels"`         // 标签
+    Hardware  map[string]string `json:"hardware" yaml:"hardware"`     // 硬件配置
+    System   map[string]string `json:"system" yaml:"system"`       // 网络配置
     Status    GameNodeStatus    `json:"status" yaml:"status"`         // 节点状态信息
     CreatedAt time.Time         `json:"created_at" yaml:"created_at"` // 创建时间
     UpdatedAt time.Time         `json:"updated_at" yaml:"updated_at"` // 更新时间
@@ -41,43 +41,59 @@ type GameNode struct {
 #### 2.1.1 静态属性
 
 - ID：节点唯一标识
-- Name：节点名称
-- Model：节点型号
+- Alias：节点别名（用于显示）
+- Model：节点型号（如 Beagle-Wind-2024）
 - Type：节点类型（物理机/虚拟机）
 - Location：节点地理位置
-- Hardware：硬件配置（CPU、内存、GPU 等）
-- Network：网络信息（IP、带宽等）
-- Labels：节点标签
+- Labels：节点标签（用于分类和筛选）
+- Hardware: 节点硬件配置信息，管理员来维护，（CPU、GPU、内存、硬盘）
+- System： 节点系统信息，管理员维护，(系统与版本，内核版本，IP 地址)
 - CreatedAt：创建时间
 - UpdatedAt：更新时间
 
-#### 2.1.2 状态信息（GameNodeStatus）
+#### 2.1.2 动态状态（GameNodeStatus）
 
-- State：节点状态（offline/online/ready/busy/error）
-- Online：在线状态
-- LastOnline：最后在线时间
-- UpdatedAt：状态更新时间
-- Resources：资源使用情况
-- Metrics：性能指标
+动态状态包含节点的实时运行状态和资源使用情况：
 
-#### 2.1.3 资源信息（NodeResources）
+1. 基本状态信息：
 
-- CPU：CPU 资源使用情况
-- Memory：内存资源使用情况
-- Disk：磁盘资源使用情况
+   - State：节点状态（ready/offline/online/maintenance/busy/error）
+   - Online：是否在线
+   - LastOnline：最后在线时间
+   - UpdatedAt：状态更新时间
 
-#### 2.1.4 性能指标（NodeMetrics）
+2. 资源信息（ResourceInfo）：
 
-- CPU：CPU 使用率
-- Memory：内存使用率
-- Disk：磁盘使用率
-- Network：网络指标（接收/发送速率）
+   - 硬件信息（CPU、内存、GPU、磁盘）
+   - 软件信息（操作系统、驱动等）
+   - 网络信息（带宽、延迟等）
 
-#### 2.1.5 状态管理
+3. 指标报告（MetricsReport）：
+   - 系统指标（CPU、内存、GPU、磁盘使用率）
+   - 网络指标（带宽使用、连接数等）
+   - 自定义指标
 
-- 状态转换
-- 资源监控
-- 心跳检测
+#### 2.1.3 数据采集
+
+1. 静态属性：
+
+   - 由管理员手动维护
+   - 通过配置文件或管理界面更新
+   - 变更需要记录审计日志
+
+2. 动态状态：
+
+   - 由系统自动采集
+   - 定期更新（默认间隔 5 分钟）
+   - 支持实时推送更新
+   - 历史数据保留 30 天
+
+3. 指标数据：
+
+   - 支持多种采集方式（Prometheus、自定义采集器）
+   - 支持自定义指标定义
+   - 支持告警阈值设置
+   - 支持数据聚合和统计
 
 ### 2.2 GameNodeHandler
 
@@ -100,21 +116,25 @@ GameNodeHandler 是系统的 HTTP API 服务实体，负责处理前端交互。
 #### 2.2.3 接口设计原则
 
 1. RESTful 规范
+
    - 使用 HTTP 方法表示操作
    - 使用 URL 表示资源
    - 使用状态码表示结果
 
 2. 安全性
+
    - 所有接口必须认证
    - 敏感数据加密传输
    - 防止 CSRF 攻击
 
 3. 可用性
+
    - 接口幂等性
    - 合理的超时设置
    - 优雅的错误处理
 
 4. 可维护性
+
    - 清晰的接口命名
    - 统一的响应格式
    - 完整的接口文档
