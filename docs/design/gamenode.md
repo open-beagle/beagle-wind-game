@@ -25,13 +25,13 @@ GameNode 模型是整个系统的基础，定义了游戏节点的核心属性�
 // GameNode 游戏节点
 type GameNode struct {
     ID        string            `json:"id" yaml:"id"`                 // 节点ID
-    Name      string            `json:"name" yaml:"name"`             // 节点名称
+    Alias     string            `json:"alias" yaml:"alias"`           // 节点别名
     Model     string            `json:"model" yaml:"model"`           // 节点型号
     Type      GameNodeType      `json:"type" yaml:"type"`             // 节点类型
     Location  string            `json:"location" yaml:"location"`     // 节点位置
     Labels    map[string]string `json:"labels" yaml:"labels"`         // 标签
     Hardware  map[string]string `json:"hardware" yaml:"hardware"`     // 硬件配置
-    System   map[string]string `json:"system" yaml:"system"`       // 网络配置
+    System    map[string]string `json:"system" yaml:"system"`         // 系统配置
     Status    GameNodeStatus    `json:"status" yaml:"status"`         // 节点状态信息
     CreatedAt time.Time         `json:"created_at" yaml:"created_at"` // 创建时间
     UpdatedAt time.Time         `json:"updated_at" yaml:"updated_at"` // 更新时间
@@ -46,8 +46,8 @@ type GameNode struct {
 - Type：节点类型（物理机/虚拟机）
 - Location：节点地理位置
 - Labels：节点标签（用于分类和筛选）
-- Hardware: 节点硬件配置信息，管理员来维护，（CPU、GPU、内存、硬盘）
-- System： 节点系统信息，管理员维护，(系统与版本，内核版本，IP 地址)
+- Hardware：硬件配置（CPU、内存、GPU、硬盘）
+- System：系统配置（操作系统、内核版本、IP）
 - CreatedAt：创建时间
 - UpdatedAt：更新时间
 

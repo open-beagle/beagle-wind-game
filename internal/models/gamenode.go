@@ -142,6 +142,8 @@ type GameNode struct {
 	Type      GameNodeType      `json:"type" yaml:"type"`             // 节点类型
 	Location  string            `json:"location" yaml:"location"`     // 节点位置
 	Labels    map[string]string `json:"labels" yaml:"labels"`         // 标签
+	Hardware  map[string]string `json:"hardware" yaml:"hardware"`     // 硬件配置
+	System    map[string]string `json:"system" yaml:"system"`         // 系统配置
 	Status    GameNodeStatus    `json:"status" yaml:"status"`         // 节点状态信息
 	CreatedAt time.Time         `json:"created_at" yaml:"created_at"` // 创建时间
 	UpdatedAt time.Time         `json:"updated_at" yaml:"updated_at"` // 更新时间
@@ -177,4 +179,39 @@ type NodeMetrics struct {
 	Memory  float32        `json:"memory" yaml:"memory"`   // 内存使用率
 	Disk    float32        `json:"disk" yaml:"disk"`       // 磁盘使用率
 	Network NetworkMetrics `json:"network" yaml:"network"` // 网络指标
+}
+
+// RetryConfig 重试配置
+type RetryConfig struct {
+	MaxRetries    int           `json:"max_retries" yaml:"max_retries"`       // 最大重试次数
+	InitialDelay  time.Duration `json:"initial_delay" yaml:"initial_delay"`   // 初始延迟
+	MaxDelay      time.Duration `json:"max_delay" yaml:"max_delay"`           // 最大延迟
+	BackoffFactor float64       `json:"backoff_factor" yaml:"backoff_factor"` // 退避因子
+	JitterFactor  float64       `json:"jitter_factor" yaml:"jitter_factor"`   // 抖动因子
+}
+
+// RetryableError 可重试的错误
+type RetryableError struct {
+	Message string
+	Err     error
+}
+
+func (e *RetryableError) Error() string {
+	if e.Err != nil {
+		return e.Message + ": " + e.Err.Error()
+	}
+	return e.Message
+}
+
+// RetryNowError 需要立即重试的错误
+type RetryNowError struct {
+	Message string
+	Err     error
+}
+
+func (e *RetryNowError) Error() string {
+	if e.Err != nil {
+		return e.Message + ": " + e.Err.Error()
+	}
+	return e.Message
 }
