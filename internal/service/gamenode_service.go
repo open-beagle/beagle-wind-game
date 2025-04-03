@@ -155,22 +155,20 @@ func (s *GameNodeService) Create(node models.GameNode) error {
 }
 
 // Update 更新游戏节点
-func (s *GameNodeService) Update(id string, node models.GameNode) error {
+func (s *GameNodeService) Update(node models.GameNode) error {
 	// 检查节点是否存在
-	existingNode, err := s.store.Get(id)
+	existingNode, err := s.store.Get(node.ID)
 	if err != nil {
 		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingNode.ID == "" {
-		return fmt.Errorf("节点不存在: %s", id)
+		return fmt.Errorf("节点不存在: %s", node.ID)
 	}
 
 	// 保留创建时间
 	node.CreatedAt = existingNode.CreatedAt
 	// 更新更新时间
 	node.UpdatedAt = time.Now()
-	// 确保ID一致
-	node.ID = id
 
 	err = s.store.Update(node)
 	if err != nil {

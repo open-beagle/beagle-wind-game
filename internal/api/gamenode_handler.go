@@ -251,7 +251,7 @@ func (h *GameNodeHandler) UpdateNode(c *gin.Context) {
 	}
 
 	// 调用服务层更新数据
-	err = h.svc.Update(nodeID, node)
+	err = h.svc.Update(node)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    http.StatusInternalServerError,

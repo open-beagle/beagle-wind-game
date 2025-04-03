@@ -89,7 +89,7 @@ type PipelineStep struct {
 // PipelineStatus 流水线状态信息
 type PipelineStatus struct {
 	ID           string        `json:"id" yaml:"id"`                     // 流水线ID
-	NodeID       string        `json:"id" yaml:"id"`                     // 节点ID
+	NodeID       string        `json:"node_id" yaml:"node_id"`           // 节点ID
 	State        PipelineState `json:"status" yaml:"status"`             // 流水线状态
 	CurrentStep  int32         `json:"current_step" yaml:"current_step"` // 当前步骤
 	TotalSteps   int32         `json:"total_steps" yaml:"total_steps"`   // 总步骤数

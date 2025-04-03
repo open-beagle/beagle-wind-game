@@ -2,8 +2,15 @@ package gamenode
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net"
+	"os"
+	"os/exec"
+	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -55,10 +62,18 @@ type GameNodeAgent struct {
 
 // AgentConfig 代理配置
 type AgentConfig struct {
-	HeartbeatPeriod time.Duration
-	RetryCount      int
-	RetryDelay      time.Duration
-	MetricsInterval time.Duration
+	// 基本配置
+	Alias    string            // 节点别名
+	Model    string            // 节点型号
+	Type     string            // 节点类型
+	Location string            // 节点位置
+	Labels   map[string]string // 节点标签
+
+	// 运行配置
+	HeartbeatPeriod time.Duration // 心跳周期
+	RetryCount      int           // 重试次数
+	RetryDelay      time.Duration // 重试延迟
+	MetricsInterval time.Duration // 指标采集间隔
 }
 
 // ResourceCollector 资源采集器
@@ -107,6 +122,16 @@ func NewGameNodeAgent(
 			UpdatedAt:  time.Now(),
 		},
 		pipelines: make(map[string]*models.GameNodePipeline),
+	}
+
+	// 初始化 gRPC 连接
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+	conn, err := grpc.Dial(serverAddr, opts...)
+	if err == nil {
+		agent.conn = conn
+		agent.client = pb.NewGameNodeGRPCServiceClient(conn)
 	}
 
 	return agent
@@ -183,29 +208,21 @@ func (a *GameNodeAgent) startMetricsCollection(ctx context.Context) {
 
 // Register 注册节点
 func (a *GameNodeAgent) Register(ctx context.Context) error {
-	// 获取资源信息
-	resourceInfo, err := a.collectResourceInfo()
+	// 采集节点信息
+	req, err := a.collectNodeInfo()
 	if err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("failed to collect resource info: %v", err))
+		return fmt.Errorf("采集节点信息失败: %v", err)
 	}
 
 	// 发送注册请求
-	req := &pb.RegisterRequest{
-		Id:     a.id,
-		Type:   "physical",
-		Labels: make(map[string]string),
-		ResourceInfo: &pb.ResourceInfo{
-			Id:        a.id,
-			Timestamp: time.Now().Unix(),
-			Hardware:  resourceInfo.Hardware,
-			Software:  resourceInfo.Software,
-			Network:   resourceInfo.Network,
-		},
+	resp, err := a.client.Register(ctx, req)
+	if err != nil {
+		return fmt.Errorf("发送注册请求失败: %v", err)
 	}
 
-	_, err = a.client.Register(ctx, req)
-	if err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("failed to register: %v", err))
+	// 检查响应
+	if !resp.Success {
+		return fmt.Errorf("注册失败: %s", resp.Message)
 	}
 
 	// 更新状态
@@ -700,12 +717,267 @@ func (a *GameNodeAgent) Stop() {
 	}
 }
 
-// NewDefaultAgentConfig 创建新的代理配置
+// NewDefaultAgentConfig 创建默认配置
 func NewDefaultAgentConfig() *AgentConfig {
 	return &AgentConfig{
-		HeartbeatPeriod: 30 * time.Second, // 30秒心跳
-		RetryCount:      3,                // 3次重试
-		RetryDelay:      5 * time.Second,  // 5秒延迟
-		MetricsInterval: 15 * time.Second, // 15秒采集
+		HeartbeatPeriod: 30 * time.Second,
+		RetryCount:      3,
+		RetryDelay:      5 * time.Second,
+		MetricsInterval: 60 * time.Second,
+		Labels:          make(map[string]string),
 	}
+}
+
+// collectNodeInfo 采集节点信息
+func (a *GameNodeAgent) collectNodeInfo() (*pb.RegisterRequest, error) {
+	// 1. 采集硬件信息
+	hardware, err := a.collectHardwareInfo()
+	if err != nil {
+		return nil, fmt.Errorf("采集硬件信息失败: %v", err)
+	}
+
+	// 2. 采集系统信息
+	system, err := a.collectSystemInfo()
+	if err != nil {
+		return nil, fmt.Errorf("采集系统信息失败: %v", err)
+	}
+
+	// 3. 获取节点标签
+	labels, err := a.getNodeLabels()
+	if err != nil {
+		return nil, fmt.Errorf("获取节点标签失败: %v", err)
+	}
+
+	return &pb.RegisterRequest{
+		Id:       a.id,
+		Alias:    a.config.Alias,
+		Model:    a.config.Model,
+		Type:     a.config.Type,
+		Location: a.config.Location,
+		Hardware: hardware,
+		System:   system,
+		Labels:   labels,
+	}, nil
+}
+
+// collectSystemInfo 采集系统信息
+func (a *GameNodeAgent) collectSystemInfo() (map[string]string, error) {
+	info := make(map[string]string)
+
+	// 采集操作系统信息
+	info["os"] = runtime.GOOS
+	info["arch"] = runtime.GOARCH
+
+	// 采集网络信息
+	network, err := a.collectNetworkInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	// 将网络信息序列化为 JSON
+	networkJSON, err := json.Marshal(network)
+	if err != nil {
+		return nil, fmt.Errorf("序列化网络信息失败: %v", err)
+	}
+	info["network"] = string(networkJSON)
+
+	// 采集其他系统信息
+	if hostname, err := os.Hostname(); err == nil {
+		info["hostname"] = hostname
+	}
+
+	// 采集 Docker 信息
+	if dockerVersion, err := a.getDockerVersion(); err == nil {
+		info["docker_version"] = dockerVersion
+	}
+
+	return info, nil
+}
+
+// collectNetworkInfo 采集网络信息
+func (a *GameNodeAgent) collectNetworkInfo() (map[string]string, error) {
+	info := make(map[string]string)
+
+	// 采集网络接口信息
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				info[iface.Name] = ipnet.IP.String()
+			}
+		}
+	}
+
+	return info, nil
+}
+
+// getDockerVersion 获取 Docker 版本
+func (a *GameNodeAgent) getDockerVersion() (string, error) {
+	cmd := exec.Command("docker", "version", "--format", "{{.Server.Version}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+// collectHardwareInfo 采集硬件信息
+func (a *GameNodeAgent) collectHardwareInfo() (map[string]string, error) {
+	info := make(map[string]string)
+
+	// 采集 CPU 信息
+	cpuInfo, err := a.collectCPUInfo()
+	if err != nil {
+		return nil, fmt.Errorf("采集 CPU 信息失败: %v", err)
+	}
+	info["cpu_model"] = cpuInfo.Model
+	info["cpu_cores"] = strconv.FormatInt(int64(cpuInfo.Cores), 10)
+	info["cpu_threads"] = strconv.FormatInt(int64(cpuInfo.Threads), 10)
+
+	// 采集内存信息
+	memInfo, err := a.collectMemoryInfo()
+	if err != nil {
+		return nil, fmt.Errorf("采集内存信息失败: %v", err)
+	}
+	info["memory_total"] = strconv.FormatInt(memInfo.Total, 10)
+	info["memory_available"] = strconv.FormatInt(memInfo.Available, 10)
+
+	// 采集 GPU 信息
+	gpuInfo, err := a.collectGPUInfo()
+	if err != nil {
+		return nil, fmt.Errorf("采集 GPU 信息失败: %v", err)
+	}
+	info["gpu_model"] = gpuInfo.Model
+	info["gpu_memory"] = strconv.FormatInt(gpuInfo.MemoryTotal, 10)
+
+	return info, nil
+}
+
+// collectCPUInfo 采集 CPU 信息
+func (a *GameNodeAgent) collectCPUInfo() (*models.CPUInfo, error) {
+	// 读取 /proc/cpuinfo 文件
+	data, err := os.ReadFile("/proc/cpuinfo")
+	if err != nil {
+		return nil, fmt.Errorf("读取 CPU 信息失败: %v", err)
+	}
+
+	info := &models.CPUInfo{
+		Model:   "Unknown",
+		Cores:   0,
+		Threads: 0,
+	}
+
+	// 解析 CPU 信息
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "model name") {
+			info.Model = strings.TrimSpace(strings.Split(line, ":")[1])
+		} else if strings.HasPrefix(line, "processor") {
+			info.Threads++
+		} else if strings.HasPrefix(line, "cpu cores") {
+			cores, err := strconv.Atoi(strings.TrimSpace(strings.Split(line, ":")[1]))
+			if err == nil {
+				info.Cores = int32(cores)
+			}
+		}
+	}
+
+	return info, nil
+}
+
+// collectMemoryInfo 采集内存信息
+func (a *GameNodeAgent) collectMemoryInfo() (*models.MemoryInfo, error) {
+	// 读取 /proc/meminfo 文件
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return nil, fmt.Errorf("读取内存信息失败: %v", err)
+	}
+
+	info := &models.MemoryInfo{
+		Total:     0,
+		Available: 0,
+	}
+
+	// 解析内存信息
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "MemTotal:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				total, err := strconv.ParseInt(fields[1], 10, 64)
+				if err == nil {
+					info.Total = total * 1024 // 转换为字节
+				}
+			}
+		} else if strings.HasPrefix(line, "MemAvailable:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				available, err := strconv.ParseInt(fields[1], 10, 64)
+				if err == nil {
+					info.Available = available * 1024 // 转换为字节
+				}
+			}
+		}
+	}
+
+	return info, nil
+}
+
+// collectGPUInfo 采集 GPU 信息
+func (a *GameNodeAgent) collectGPUInfo() (*models.GPUInfo, error) {
+	// 尝试使用 nvidia-smi 命令获取 GPU 信息
+	cmd := exec.Command("nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("获取 GPU 信息失败: %v", err)
+	}
+
+	info := &models.GPUInfo{
+		Model:       "Unknown",
+		MemoryTotal: 0,
+	}
+
+	// 解析 GPU 信息
+	lines := strings.Split(string(output), "\n")
+	if len(lines) > 0 {
+		fields := strings.Split(lines[0], ",")
+		if len(fields) >= 2 {
+			info.Model = strings.TrimSpace(fields[0])
+			memory, err := strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64)
+			if err == nil {
+				info.MemoryTotal = memory * 1024 * 1024 // 转换为字节
+			}
+		}
+	}
+
+	return info, nil
+}
+
+// getNodeLabels 获取节点标签
+func (a *GameNodeAgent) getNodeLabels() (map[string]string, error) {
+	labels := make(map[string]string)
+
+	// 从配置文件加载标签
+	for k, v := range a.config.Labels {
+		labels[k] = v
+	}
+
+	// 添加系统标签
+	labels["os"] = runtime.GOOS
+	labels["arch"] = runtime.GOARCH
+
+	return labels, nil
 }

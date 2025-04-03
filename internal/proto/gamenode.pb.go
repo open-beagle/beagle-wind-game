@@ -87,9 +87,8 @@ type RegisterRequest struct {
 	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
 	Location      string                 `protobuf:"bytes,5,opt,name=location,proto3" json:"location,omitempty"`
 	Hardware      map[string]string      `protobuf:"bytes,6,rep,name=hardware,proto3" json:"hardware,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	Network       map[string]string      `protobuf:"bytes,7,rep,name=network,proto3" json:"network,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	System        map[string]string      `protobuf:"bytes,7,rep,name=system,proto3" json:"system,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Labels        map[string]string      `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	ResourceInfo  *ResourceInfo          `protobuf:"bytes,9,opt,name=resource_info,json=resourceInfo,proto3" json:"resource_info,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -166,9 +165,9 @@ func (x *RegisterRequest) GetHardware() map[string]string {
 	return nil
 }
 
-func (x *RegisterRequest) GetNetwork() map[string]string {
+func (x *RegisterRequest) GetSystem() map[string]string {
 	if x != nil {
-		return x.Network
+		return x.System
 	}
 	return nil
 }
@@ -180,18 +179,10 @@ func (x *RegisterRequest) GetLabels() map[string]string {
 	return nil
 }
 
-func (x *RegisterRequest) GetResourceInfo() *ResourceInfo {
-	if x != nil {
-		return x.ResourceInfo
-	}
-	return nil
-}
-
 type RegisterResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -226,18 +217,11 @@ func (*RegisterResponse) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *RegisterResponse) GetSessionId() string {
+func (x *RegisterResponse) GetSuccess() bool {
 	if x != nil {
-		return x.SessionId
+		return x.Success
 	}
-	return ""
-}
-
-func (x *RegisterResponse) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
+	return false
 }
 
 func (x *RegisterResponse) GetMessage() string {
@@ -2002,31 +1986,28 @@ var File_internal_proto_gamenode_proto protoreflect.FileDescriptor
 
 const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\n" +
-	"\x1dinternal/proto/gamenode.proto\x12\bgamenode\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb4\x04\n" +
+	"\x1dinternal/proto/gamenode.proto\x12\bgamenode\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf3\x03\n" +
 	"\x0fRegisterRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05alias\x18\x02 \x01(\tR\x05alias\x12\x14\n" +
 	"\x05model\x18\x03 \x01(\tR\x05model\x12\x12\n" +
 	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1a\n" +
 	"\blocation\x18\x05 \x01(\tR\blocation\x12C\n" +
-	"\bhardware\x18\x06 \x03(\v2'.gamenode.RegisterRequest.HardwareEntryR\bhardware\x12@\n" +
-	"\anetwork\x18\a \x03(\v2&.gamenode.RegisterRequest.NetworkEntryR\anetwork\x12=\n" +
-	"\x06labels\x18\b \x03(\v2%.gamenode.RegisterRequest.LabelsEntryR\x06labels\x12;\n" +
-	"\rresource_info\x18\t \x01(\v2\x16.gamenode.ResourceInfoR\fresourceInfo\x1a;\n" +
+	"\bhardware\x18\x06 \x03(\v2'.gamenode.RegisterRequest.HardwareEntryR\bhardware\x12=\n" +
+	"\x06system\x18\a \x03(\v2%.gamenode.RegisterRequest.SystemEntryR\x06system\x12=\n" +
+	"\x06labels\x18\b \x03(\v2%.gamenode.RegisterRequest.LabelsEntryR\x06labels\x1a;\n" +
 	"\rHardwareEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a:\n" +
-	"\fNetworkEntry\x12\x10\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vSystemEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"c\n" +
-	"\x10RegisterResponse\x12\x1d\n" +
-	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\x12\x18\n" +
-	"\amessage\x18\x03 \x01(\tR\amessage\"\x9c\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"F\n" +
+	"\x10RegisterResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x9c\x01\n" +
 	"\x10HeartbeatRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -2258,7 +2239,7 @@ var file_internal_proto_gamenode_proto_goTypes = []any{
 	(*ReportResponse)(nil),          // 24: gamenode.ReportResponse
 	(*Event)(nil),                   // 25: gamenode.Event
 	nil,                             // 26: gamenode.RegisterRequest.HardwareEntry
-	nil,                             // 27: gamenode.RegisterRequest.NetworkEntry
+	nil,                             // 27: gamenode.RegisterRequest.SystemEntry
 	nil,                             // 28: gamenode.RegisterRequest.LabelsEntry
 	nil,                             // 29: gamenode.Metric.LabelsEntry
 	nil,                             // 30: gamenode.ExecutePipelineRequest.EnvsEntry
@@ -2268,49 +2249,48 @@ var file_internal_proto_gamenode_proto_goTypes = []any{
 }
 var file_internal_proto_gamenode_proto_depIdxs = []int32{
 	26, // 0: gamenode.RegisterRequest.hardware:type_name -> gamenode.RegisterRequest.HardwareEntry
-	27, // 1: gamenode.RegisterRequest.network:type_name -> gamenode.RegisterRequest.NetworkEntry
+	27, // 1: gamenode.RegisterRequest.system:type_name -> gamenode.RegisterRequest.SystemEntry
 	28, // 2: gamenode.RegisterRequest.labels:type_name -> gamenode.RegisterRequest.LabelsEntry
-	7,  // 3: gamenode.RegisterRequest.resource_info:type_name -> gamenode.ResourceInfo
-	7,  // 4: gamenode.HeartbeatRequest.resource_info:type_name -> gamenode.ResourceInfo
-	6,  // 5: gamenode.MetricsReport.metrics:type_name -> gamenode.Metric
-	29, // 6: gamenode.Metric.labels:type_name -> gamenode.Metric.LabelsEntry
-	8,  // 7: gamenode.ResourceInfo.hardware:type_name -> gamenode.HardwareInfo
-	13, // 8: gamenode.ResourceInfo.software:type_name -> gamenode.SoftwareInfo
-	14, // 9: gamenode.ResourceInfo.network:type_name -> gamenode.NetworkInfo
-	9,  // 10: gamenode.HardwareInfo.cpu:type_name -> gamenode.CPUInfo
-	10, // 11: gamenode.HardwareInfo.memory:type_name -> gamenode.MemoryInfo
-	11, // 12: gamenode.HardwareInfo.gpu:type_name -> gamenode.GPUInfo
-	12, // 13: gamenode.HardwareInfo.disk:type_name -> gamenode.DiskInfo
-	30, // 14: gamenode.ExecutePipelineRequest.envs:type_name -> gamenode.ExecutePipelineRequest.EnvsEntry
-	31, // 15: gamenode.ExecutePipelineRequest.args:type_name -> gamenode.ExecutePipelineRequest.ArgsEntry
-	33, // 16: gamenode.PipelineStatusUpdate.update_time:type_name -> google.protobuf.Timestamp
-	0,  // 17: gamenode.StepStatusUpdate.status:type_name -> gamenode.StepStatus
-	33, // 18: gamenode.LogEntry.timestamp:type_name -> google.protobuf.Timestamp
-	33, // 19: gamenode.Event.timestamp:type_name -> google.protobuf.Timestamp
-	32, // 20: gamenode.Event.data:type_name -> gamenode.Event.DataEntry
-	1,  // 21: gamenode.GameNodeGRPCService.Register:input_type -> gamenode.RegisterRequest
-	3,  // 22: gamenode.GameNodeGRPCService.Heartbeat:input_type -> gamenode.HeartbeatRequest
-	5,  // 23: gamenode.GameNodeGRPCService.ReportMetrics:input_type -> gamenode.MetricsReport
-	7,  // 24: gamenode.GameNodeGRPCService.UpdateResourceInfo:input_type -> gamenode.ResourceInfo
-	15, // 25: gamenode.GameNodeGRPCService.ExecutePipeline:input_type -> gamenode.ExecutePipelineRequest
-	17, // 26: gamenode.GameNodeGRPCService.UpdatePipelineStatus:input_type -> gamenode.PipelineStatusUpdate
-	18, // 27: gamenode.GameNodeGRPCService.UpdateStepStatus:input_type -> gamenode.StepStatusUpdate
-	19, // 28: gamenode.GameNodeGRPCService.CancelPipeline:input_type -> gamenode.PipelineCancelRequest
-	21, // 29: gamenode.GameNodeGRPCService.StreamLogs:input_type -> gamenode.LogRequest
-	2,  // 30: gamenode.GameNodeGRPCService.Register:output_type -> gamenode.RegisterResponse
-	4,  // 31: gamenode.GameNodeGRPCService.Heartbeat:output_type -> gamenode.HeartbeatResponse
-	24, // 32: gamenode.GameNodeGRPCService.ReportMetrics:output_type -> gamenode.ReportResponse
-	23, // 33: gamenode.GameNodeGRPCService.UpdateResourceInfo:output_type -> gamenode.UpdateResponse
-	16, // 34: gamenode.GameNodeGRPCService.ExecutePipeline:output_type -> gamenode.ExecutePipelineResponse
-	23, // 35: gamenode.GameNodeGRPCService.UpdatePipelineStatus:output_type -> gamenode.UpdateResponse
-	23, // 36: gamenode.GameNodeGRPCService.UpdateStepStatus:output_type -> gamenode.UpdateResponse
-	20, // 37: gamenode.GameNodeGRPCService.CancelPipeline:output_type -> gamenode.CancelResponse
-	22, // 38: gamenode.GameNodeGRPCService.StreamLogs:output_type -> gamenode.LogEntry
-	30, // [30:39] is the sub-list for method output_type
-	21, // [21:30] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	7,  // 3: gamenode.HeartbeatRequest.resource_info:type_name -> gamenode.ResourceInfo
+	6,  // 4: gamenode.MetricsReport.metrics:type_name -> gamenode.Metric
+	29, // 5: gamenode.Metric.labels:type_name -> gamenode.Metric.LabelsEntry
+	8,  // 6: gamenode.ResourceInfo.hardware:type_name -> gamenode.HardwareInfo
+	13, // 7: gamenode.ResourceInfo.software:type_name -> gamenode.SoftwareInfo
+	14, // 8: gamenode.ResourceInfo.network:type_name -> gamenode.NetworkInfo
+	9,  // 9: gamenode.HardwareInfo.cpu:type_name -> gamenode.CPUInfo
+	10, // 10: gamenode.HardwareInfo.memory:type_name -> gamenode.MemoryInfo
+	11, // 11: gamenode.HardwareInfo.gpu:type_name -> gamenode.GPUInfo
+	12, // 12: gamenode.HardwareInfo.disk:type_name -> gamenode.DiskInfo
+	30, // 13: gamenode.ExecutePipelineRequest.envs:type_name -> gamenode.ExecutePipelineRequest.EnvsEntry
+	31, // 14: gamenode.ExecutePipelineRequest.args:type_name -> gamenode.ExecutePipelineRequest.ArgsEntry
+	33, // 15: gamenode.PipelineStatusUpdate.update_time:type_name -> google.protobuf.Timestamp
+	0,  // 16: gamenode.StepStatusUpdate.status:type_name -> gamenode.StepStatus
+	33, // 17: gamenode.LogEntry.timestamp:type_name -> google.protobuf.Timestamp
+	33, // 18: gamenode.Event.timestamp:type_name -> google.protobuf.Timestamp
+	32, // 19: gamenode.Event.data:type_name -> gamenode.Event.DataEntry
+	1,  // 20: gamenode.GameNodeGRPCService.Register:input_type -> gamenode.RegisterRequest
+	3,  // 21: gamenode.GameNodeGRPCService.Heartbeat:input_type -> gamenode.HeartbeatRequest
+	5,  // 22: gamenode.GameNodeGRPCService.ReportMetrics:input_type -> gamenode.MetricsReport
+	7,  // 23: gamenode.GameNodeGRPCService.UpdateResourceInfo:input_type -> gamenode.ResourceInfo
+	15, // 24: gamenode.GameNodeGRPCService.ExecutePipeline:input_type -> gamenode.ExecutePipelineRequest
+	17, // 25: gamenode.GameNodeGRPCService.UpdatePipelineStatus:input_type -> gamenode.PipelineStatusUpdate
+	18, // 26: gamenode.GameNodeGRPCService.UpdateStepStatus:input_type -> gamenode.StepStatusUpdate
+	19, // 27: gamenode.GameNodeGRPCService.CancelPipeline:input_type -> gamenode.PipelineCancelRequest
+	21, // 28: gamenode.GameNodeGRPCService.StreamLogs:input_type -> gamenode.LogRequest
+	2,  // 29: gamenode.GameNodeGRPCService.Register:output_type -> gamenode.RegisterResponse
+	4,  // 30: gamenode.GameNodeGRPCService.Heartbeat:output_type -> gamenode.HeartbeatResponse
+	24, // 31: gamenode.GameNodeGRPCService.ReportMetrics:output_type -> gamenode.ReportResponse
+	23, // 32: gamenode.GameNodeGRPCService.UpdateResourceInfo:output_type -> gamenode.UpdateResponse
+	16, // 33: gamenode.GameNodeGRPCService.ExecutePipeline:output_type -> gamenode.ExecutePipelineResponse
+	23, // 34: gamenode.GameNodeGRPCService.UpdatePipelineStatus:output_type -> gamenode.UpdateResponse
+	23, // 35: gamenode.GameNodeGRPCService.UpdateStepStatus:output_type -> gamenode.UpdateResponse
+	20, // 36: gamenode.GameNodeGRPCService.CancelPipeline:output_type -> gamenode.CancelResponse
+	22, // 37: gamenode.GameNodeGRPCService.StreamLogs:output_type -> gamenode.LogEntry
+	29, // [29:38] is the sub-list for method output_type
+	20, // [20:29] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_internal_proto_gamenode_proto_init() }

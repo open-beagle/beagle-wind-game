@@ -50,6 +50,7 @@ type GameNodeServer struct {
 // NodeService 节点服务接口
 type NodeService interface {
 	Create(node models.GameNode) error
+	Update(node models.GameNode) error
 	UpdateStatusOnlineStatus(id string, online bool) error
 	UpdateStatusMetrics(id string, metrics models.MetricsReport) error
 	UpdateStatusResource(id string, resource models.ResourceInfo) error
@@ -112,45 +113,72 @@ func (s *GameNodeServer) Register(ctx context.Context, req *pb.RegisterRequest) 
 	s.connectionMutex.RLock()
 	if len(s.connections) >= s.config.MaxConnections {
 		s.connectionMutex.RUnlock()
-		return nil, status.Error(codes.ResourceExhausted, "maximum number of connections reached")
+		return &pb.RegisterResponse{
+			Success: false,
+			Message: "达到最大连接数限制",
+		}, nil
 	}
 	s.connectionMutex.RUnlock()
 
 	// 转换节点类型
 	nodeType := models.GameNodeType(req.Type)
 	if nodeType != models.GameNodeTypePhysical && nodeType != models.GameNodeTypeVirtual {
-		return nil, status.Error(codes.InvalidArgument, "invalid node type")
+		return &pb.RegisterResponse{
+			Success: false,
+			Message: "无效的节点类型",
+		}, nil
 	}
 
-	// 通过 nodeService 处理节点注册
-	err := s.nodeService.Create(models.GameNode{
-		ID:       req.Id,
-		Alias:    req.Alias,
-		Model:    req.Model,
-		Type:     nodeType,
-		Location: req.Location,
-		Labels:   req.Labels,
-		Status: models.GameNodeStatus{
-			State:      models.GameNodeStateOnline,
-			Online:     true,
-			LastOnline: time.Now(),
-			UpdatedAt:  time.Now(),
-			Resource: models.ResourceInfo{
-				ID:        req.Id,
-				Timestamp: time.Now().Unix(),
-				Hardware:  models.HardwareInfo{},
-				Software:  models.SoftwareInfo{},
-				Network:   models.NetworkInfo{},
-			},
-			Metrics: models.MetricsReport{
-				ID:        req.Id,
-				Timestamp: time.Now().Unix(),
-				Metrics:   []models.Metric{},
-			},
-		},
-	})
+	// 检查节点是否存在
+	node, err := s.nodeService.Get(req.Id)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to register node: %v", err))
+		// 节点不存在，创建新节点
+		node = models.GameNode{
+			ID:       req.Id,
+			Alias:    req.Alias,
+			Model:    req.Model,
+			Type:     nodeType,
+			Location: req.Location,
+			Hardware: req.Hardware,
+			System:   req.System,
+			Labels:   req.Labels,
+			Status: models.GameNodeStatus{
+				State:      models.GameNodeStateOnline,
+				Online:     true,
+				LastOnline: time.Now(),
+				UpdatedAt:  time.Now(),
+			},
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := s.nodeService.Create(node); err != nil {
+			return &pb.RegisterResponse{
+				Success: false,
+				Message: fmt.Sprintf("创建节点失败: %v", err),
+			}, nil
+		}
+	} else {
+		// 节点存在，更新状态
+		node.Status.State = models.GameNodeStateOnline
+		node.Status.Online = true
+		node.Status.LastOnline = time.Now()
+		node.UpdatedAt = time.Now()
+
+		// 更新节点信息
+		node.Alias = req.Alias
+		node.Model = req.Model
+		node.Type = nodeType
+		node.Location = req.Location
+		node.Hardware = req.Hardware
+		node.System = req.System
+		node.Labels = req.Labels
+
+		if err := s.nodeService.Update(node); err != nil {
+			return &pb.RegisterResponse{
+				Success: false,
+				Message: fmt.Sprintf("更新节点失败: %v", err),
+			}, nil
+		}
 	}
 
 	// 创建连接
@@ -165,9 +193,8 @@ func (s *GameNodeServer) Register(ctx context.Context, req *pb.RegisterRequest) 
 	s.eventManager.Publish(event.NewNodeEvent(req.Id, "registered", "Node registered successfully"))
 
 	return &pb.RegisterResponse{
-		SessionId: fmt.Sprintf("session-%d", time.Now().UnixNano()),
-		Status:    "success",
-		Message:   "Node registered successfully",
+		Success: true,
+		Message: "节点注册成功",
 	}, nil
 }
 

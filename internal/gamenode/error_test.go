@@ -84,7 +84,13 @@ func TestRetry(t *testing.T) {
 					return nil
 				}()
 			},
-			config:    DefaultRetryConfig,
+			config: RetryConfig{
+				MaxRetries:    5,
+				InitialDelay:  10,
+				MaxDelay:      100,
+				BackoffFactor: 2,
+				JitterFactor:  0.2,
+			},
 			wantErr:   false,
 			wantCount: 3,
 		},
@@ -110,7 +116,7 @@ func TestRetry(t *testing.T) {
 				JitterFactor:  0.2,
 			},
 			wantErr:   true,
-			wantCount: 4, // 初始尝试 + 3次重试
+			wantCount: 3, // 初始尝试 + 2次重试
 		},
 	}
 

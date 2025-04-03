@@ -63,8 +63,6 @@ func NewRetryNowError(err error) *RetryableError {
 // Retry 重试函数
 func Retry(ctx context.Context, fn func() error, config RetryConfig) error {
 	var lastErr error
-	delay := config.InitialDelay
-
 	for i := 0; i <= config.MaxRetries; i++ {
 		// 执行函数
 		err := fn()
@@ -72,39 +70,23 @@ func Retry(ctx context.Context, fn func() error, config RetryConfig) error {
 			return nil
 		}
 
-		// 检查是否是可重试错误
-		retryErr, ok := err.(*RetryableError)
-		if !ok {
+		// 检查是否可重试
+		if !IsRetryableError(err) {
 			return err
 		}
 
-		// 如果不需要重试，返回原始错误
-		if !retryErr.Retry {
-			return retryErr.Err
-		}
-
 		// 保存最后一个错误
-		lastErr = retryErr.Err
+		lastErr = err
 
-		// 如果是最后一次重试，返回错误
+		// 如果是最后一次尝试，直接返回错误
 		if i == config.MaxRetries {
 			return fmt.Errorf("达到最大重试次数: %v", lastErr)
 		}
 
-		// 计算下一次重试的延迟时间
-		if !retryErr.RetryNow {
-			// 应用指数退避
-			delay = time.Duration(float64(delay) * config.BackoffFactor)
-			if delay > config.MaxDelay {
-				delay = config.MaxDelay
-			}
+		// 计算延迟时间
+		delay := calculateDelay(i, config)
 
-			// 添加随机抖动
-			jitter := time.Duration(float64(delay) * config.JitterFactor)
-			delay += time.Duration(math.Floor(float64(jitter) * (math.Floor(rand.Float64()*2) - 1)))
-		}
-
-		// 等待一段时间后重试
+		// 等待一段时间
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -142,4 +124,18 @@ func WrapRetryNowError(err error) error {
 		return nil
 	}
 	return NewRetryNowError(err)
+}
+
+func calculateDelay(attempt int, config RetryConfig) time.Duration {
+	delay := config.InitialDelay
+	for i := 0; i < attempt; i++ {
+		delay = time.Duration(float64(delay) * config.BackoffFactor)
+		if delay > config.MaxDelay {
+			delay = config.MaxDelay
+		}
+
+		jitter := time.Duration(float64(delay) * config.JitterFactor)
+		delay += time.Duration(math.Floor(float64(jitter) * (math.Floor(rand.Float64()*2) - 1)))
+	}
+	return delay
 }

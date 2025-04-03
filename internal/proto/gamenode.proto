@@ -32,15 +32,13 @@ message RegisterRequest {
   string type = 4;
   string location = 5;
   map<string, string> hardware = 6;
-  map<string, string> network = 7;
+  map<string, string> system = 7;
   map<string, string> labels = 8;
-  ResourceInfo resource_info = 9;
 }
 
 message RegisterResponse {
-  string session_id = 1;
-  string status = 2;
-  string message = 3;
+  bool success = 1;
+  string message = 2;
 }
 
 // 心跳

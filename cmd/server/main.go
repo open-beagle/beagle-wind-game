@@ -23,6 +23,38 @@ var (
 	buildTime = "unknown"
 )
 
+// initStores 初始化所有存储
+func initStores() (store.GameNodeStore, *store.YAMLGameNodePipelineStore, store.GamePlatformStore, store.GameCardStore, store.GameInstanceStore, error) {
+	// 初始化游戏节点存储
+	gamenodeStore, err := store.NewGameNodeStore("data/game-nodes.yaml")
+	if err != nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("创建节点存储失败: %v", err)
+	}
+
+	// 初始化游戏节点流水线存储
+	gamenodePipelineStore := store.NewYAMLGameNodePipelineStore("data/game-pipelines.yaml")
+
+	// 初始化游戏平台存储
+	gamePlatformStore, err := store.NewGamePlatformStore("config/platforms.yaml")
+	if err != nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("创建平台存储失败: %v", err)
+	}
+
+	// 初始化游戏卡牌存储
+	gameCardStore, err := store.NewGameCardStore("data/game-cards.yaml")
+	if err != nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("创建卡牌存储失败: %v", err)
+	}
+
+	// 初始化游戏实例存储
+	gameInstanceStore, err := store.NewGameInstanceStore("data/game-instances.yaml")
+	if err != nil {
+		return nil, nil, nil, nil, nil, fmt.Errorf("创建实例存储失败: %v", err)
+	}
+
+	return gamenodeStore, gamenodePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, nil
+}
+
 func main() {
 	// 解析命令行参数
 	httpAddr := flag.String("http", ":8080", "HTTP服务器监听地址")
@@ -40,20 +72,25 @@ func main() {
 	// 创建错误通道
 	errCh := make(chan error, 1)
 
-	// 创建存储实例
-	gamenodeStore, err := store.NewGameNodeStore("data/nodes.yaml")
+	// 初始化存储
+	gamenodeStore, gamenodePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, err := initStores()
 	if err != nil {
-		fmt.Printf("创建节点存储失败: %v\n", err)
+		fmt.Printf("初始化存储失败: %v\n", err)
 		os.Exit(1)
 	}
 	defer gamenodeStore.Cleanup()
-
-	gamenodePipelineStore := store.NewYAMLGameNodePipelineStore("data/pipelines.yaml")
 	defer gamenodePipelineStore.Cleanup()
+	defer gamePlatformStore.Cleanup()
+	defer gameCardStore.Cleanup()
+	defer gameInstanceStore.Cleanup()
 
 	// 创建服务实例
 	nodeService := service.NewGameNodeService(gamenodeStore)
 	pipelineService := service.NewGameNodePipelineService(gamenodePipelineStore)
+	// TODO: 这些服务将在后续功能中使用
+	// platformService := service.NewGamePlatformService(gamePlatformStore)
+	// cardService := service.NewGameCardService(gameCardStore)
+	// instanceService := service.NewGameInstanceService(gameInstanceStore)
 
 	// 创建事件管理器
 	eventManager := event.NewDefaultEventManager()
