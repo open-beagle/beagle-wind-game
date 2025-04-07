@@ -21,14 +21,6 @@ var (
 	buildTime = "unknown"
 )
 
-func checkEnvironment() error {
-	// 检查 Docker 环境
-	if _, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation()); err != nil {
-		return fmt.Errorf("Docker 环境检查失败: %v", err)
-	}
-	return nil
-}
-
 func main() {
 	// 解析命令行参数
 	nodeID := flag.String("node-id", "", "节点ID")
@@ -51,11 +43,6 @@ func main() {
 		stdlog.Fatal("必须指定服务器地址 (--server-addr)")
 	}
 
-	// 环境检查
-	if err := checkEnvironment(); err != nil {
-		stdlog.Fatalf("环境检查失败: %v", err)
-	}
-
 	// 组件初始化
 	eventManager := event.NewDefaultEventManager()
 	logManager := log.NewDefaultLogManager()
@@ -64,6 +51,8 @@ func main() {
 		stdlog.Printf("警告: 无法创建 Docker 客户端: %v", err)
 		dockerClient = nil
 	}
+
+	// 创建 Agent 配置
 	config := gamenode.NewDefaultAgentConfig()
 
 	// 创建 Agent
@@ -103,6 +92,7 @@ func main() {
 	}
 
 	// 执行清理
+	stdlog.Println("正在停止 Agent...")
 	cancel()
 	agent.Stop()
 }

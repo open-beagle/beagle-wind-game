@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -166,11 +165,7 @@ func (h *GameNodeHandler) GetNode(c *gin.Context) {
 
 	// 如果不包含指标，则清空指标数据
 	if !includeMetrics {
-		node.Status.Metrics = models.MetricsReport{
-			ID:        node.ID,
-			Timestamp: time.Now().Unix(),
-			Metrics:   []models.Metric{},
-		}
+		node.Status.Metrics = models.MetricsInfo{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{

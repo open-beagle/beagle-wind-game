@@ -73,6 +73,14 @@ export class DataService {
       }
     }
 
+    // 处理不同的响应数据结构
+    if (response.data && response.data.items && Array.isArray(response.data.items)) {
+      return {
+        list: response.data.items,
+        total: response.data.total || response.data.items.length
+      }
+    }
+
     if (Array.isArray(response)) {
       return {
         list: response,

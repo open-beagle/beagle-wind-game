@@ -39,49 +39,126 @@ export interface NodeMonitor {
   };
 }
 
-export type GameNodeType = "physical" | "virtual" | "container";
-export type GameNodeStatus = "online" | "offline" | "maintenance" | "ready";
-
-export interface GameNodeSystem {
-  os_type?: string;
-  os_version?: number;
-  gpu_driver?: string;
-  cuda_version?: number;
+export enum GameNodeType {
+  Physical = 'physical',
+  Virtual = 'virtual',
+  Container = 'container'
 }
 
-export interface GameNodeHardware {
-  CPU?: string;
-  RAM?: string;
-  GPU?: string;
-  Storage?: string;
-  Network?: string;
+export enum GameNodeState {
+  Offline = 'offline',
+  Online = 'online',
+  Maintenance = 'maintenance',
+  Ready = 'ready',
+  Busy = 'busy',
+  Error = 'error'
 }
 
-export interface GameNodeResources {
-  cpu?: number;
-  memory?: number;
-  storage?: number;
-  network?: number;
-  CPU_Usage?: string;
-  RAM_Usage?: string;
-  GPU_Usage?: string;
-  Storage?: string;
-  gpu?: {
-    model: string;
-    memory: number;
-  };
+export interface CPUHardware {
+  model: string;
+  cores: number;
+  threads: number;
+  frequency: number;
+  cache: number;
 }
 
-export interface GameNodeMetrics {
-  cpuUsage?: number;
-  memoryUsage?: number;
-  storageUsage?: number;
-  networkUsage?: number;
-  gpuUsage?: number;
-  uptime?: number;
-  fps?: number;
-  instanceCount?: number;
-  playerCount?: number;
+export interface MemoryHardware {
+  total: number;
+  type: string;
+  frequency: number;
+  channels: number;
+}
+
+export interface GPUHardware {
+  model: string;
+  memoryTotal: number;
+  cudaCores: number;
+}
+
+export interface StorageDevice {
+  type: string;
+  capacity: number;
+}
+
+export interface StorageHardware {
+  devices: StorageDevice[];
+}
+
+export interface CPUMetrics {
+  usage: number;
+  temperature: number;
+}
+
+export interface MemoryMetrics {
+  available: number;
+  used: number;
+  usage: number;
+}
+
+export interface GPUMetrics {
+  usage: number;
+  memoryUsed: number;
+  memoryFree: number;
+  memoryUsage: number;
+  temperature: number;
+  power: number;
+}
+
+export interface StorageMetrics {
+  used: number;
+  free: number;
+  usage: number;
+}
+
+export interface NetworkMetrics {
+  bandwidth: number;
+  latency: number;
+  connections: number;
+  packetLoss: number;
+}
+
+export interface HardwareInfo {
+  cpu: CPUHardware;
+  memory: MemoryHardware;
+  gpu: GPUHardware;
+  storage: StorageHardware;
+}
+
+export interface MetricsInfo {
+  cpu: CPUMetrics;
+  memory: MemoryMetrics;
+  gpu: GPUMetrics;
+  storage: StorageMetrics;
+  network: NetworkMetrics;
+}
+
+export interface ResourceInfo {
+  id: string;
+  timestamp: number;
+  hardware: HardwareInfo;
+  metrics: MetricsInfo;
+}
+
+export interface Metric {
+  name: string;
+  type: string;
+  value: number;
+  labels: Record<string, string>;
+}
+
+export interface MetricsReport {
+  id: string;
+  timestamp: number;
+  metrics: Metric[];
+}
+
+export interface GameNodeStatus {
+  state: GameNodeState;
+  online: boolean;
+  lastOnline: string;
+  updatedAt: string;
+  resource: ResourceInfo;
+  metrics: MetricsReport;
 }
 
 export interface GameNode {
@@ -89,16 +166,15 @@ export interface GameNode {
   alias: string;
   model: string;
   type: GameNodeType;
-  location?: string;
-  labels?: Record<string, string>;
-  hardware?: GameNodeHardware;
-  system?: GameNodeSystem;
-  status?: GameNodeStatus;
-  created_at?: string;
-  updated_at?: string;
+  location: string;
+  labels: Record<string, string>;
+  hardware: Record<string, string>;
+  system: Record<string, string>;
+  status: GameNodeStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// 前端类型: 查询参数类型
 export interface GameNodeQuery {
   page: number;
   pageSize: number;
@@ -106,5 +182,19 @@ export interface GameNodeQuery {
   status?: string;
 }
 
-// 前端类型: 表单类型使用 Partial<GameNode>，使所有字段变为可选
 export type GameNodeForm = Partial<GameNode>;
+
+export interface GameNodeListParams {
+  page?: number;
+  size?: number;
+  keyword?: string;
+  status?: GameNodeState;
+  type?: GameNodeType;
+  sortBy?: 'created_at' | 'updated_at' | 'status';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface GameNodeListResult {
+  total: number;
+  items: GameNode[];
+}

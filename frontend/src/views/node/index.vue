@@ -36,8 +36,8 @@
           <template #default="{ row }">
             <div class="status-info">
               <div class="status-tag">
-                <el-tag :type="getStatusType(row.status)">
-                  {{ getStatusText(row.status) }}
+                <el-tag :type="getStatusType(row.status.state)">
+                  {{ getStatusText(row.status.state) }}
                 </el-tag>
               </div>
               <div class="ip-info">
@@ -347,7 +347,7 @@ const handleViewDetail = (row: GameNode) => {
 // 删除节点
 const handleDelete = (row: GameNode) => {
   ElMessageBox.confirm(
-    `确定要删除节点 "${row.name}" 吗？此操作不可恢复`,
+    `确定要删除节点 "${row.alias}" 吗？此操作不可恢复`,
     "删除确认",
     {
       confirmButtonText: "确定",

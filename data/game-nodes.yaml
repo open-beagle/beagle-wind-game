@@ -1,311 +1,428 @@
-- id: "node-241"
-  alias: "游戏机-241"
-  model: "Beagle-Wind-2024"
-  type: "physical"
-  location: "北京比格"
+- id: node-241
+  alias: 游戏机-241
+  model: Beagle-Wind-2024
+  type: physical
+  location: 北京比格
   labels: {}
   hardware:
-    cpu_model: "Intel i9-13900K"
-    memory_type: "DDR5"
-    gpu_model: "NVIDIA RTX 4090"
-    disk_model: "Samsung 990 Pro"
+    CPU: 0,Intel i9-13900K 24Core 5.8GHz 125W
+    GPU: 0,NVIDIA RTX 4090 24GB 450W
+    RAM: 128 GB
+    Storage: /,Samsung 990 Pro 2TB
   system:
-    os_type: "Ubuntu"
-    os_version: "22.04 LTS"
-    gpu_driver: "545.23.08"
     cuda_version: "12.2"
-  created_at: "2024-01-15T00:00:00Z"
-  updated_at: "2024-03-21T10:00:00Z"
+    gpu_driver: NVIDIA Driver 545.23.08
+    os_type: Ubuntu
+    os_version: 22.04 LTS
   status:
-    state: "ready"
+    state: ready
     online: true
-    last_online: "2024-03-21T10:00:00Z"
-    updated_at: "2024-03-21T10:00:00Z"
-    resource:
-      id: "node-241"
-      timestamp: 1711008000
-      hardware:
-        cpu:
-          model: "Intel i9-13900K"
-          cores: 24
-          threads: 32
-          frequency: 5.8
-          temperature: 45.0
-          usage: 5.0
-          cache: 36864
-        memory:
-          total: 128
-          available: 112.64
-          used: 15.36
-          usage: 12.0
-          type: "DDR5"
-          frequency: 7000
-          channels: 4
-        gpu:
-          model: "NVIDIA RTX 4090"
-          memory_total: 24
-          memory_used: 0
-          memory_free: 24
-          memory_usage: 0.0
-          usage: 0.0
-          temperature: 35.0
-          power: 0.0
-          cuda_cores: 16384
-        disk:
-          model: "Samsung 990 Pro"
-          capacity: 2048
-          used: 512
-          free: 1536
-          usage: 25.0
-          type: "NVMe SSD"
-          interface: "PCIe 4.0"
-          read_speed: 7450
-          write_speed: 6900
-          iops: 1400000
-      software:
-        os_distribution: "Ubuntu"
-        os_version: "22.04 LTS"
-        os_architecture: "x86_64"
-        kernel_version: "6.5.0-25-generic"
-        gpu_driver_version: "545.23.08"
-        cuda_version: "12.2"
-        docker_version: "24.0.7"
-        containerd_version: "1.7.11"
-        runc_version: "1.1.11"
+    last_online: 2024-03-21T10:00:00Z
+    updated_at: 2024-03-21T10:00:00Z
+    hardware:
+      cpu:
+        devices:
+          - model: Intel i9-13900K
+            cores: 24
+            threads: 32
+            frequency: 5.8
+            cache: 36864
+            socket: "0"
+            manufacturer: ""
+            architecture: ""
+      memory:
+        devices:
+          - size: 137438953472
+            type: DDR5
+            frequency: 7000
+            manufacturer: ""
+            serial: ""
+            slot: ""
+            part_number: ""
+            form_factor: ""
+      gpu:
+        devices:
+          - model: NVIDIA GeForce RTX 4090
+            memory_total: 24576
+            cuda_cores: 16384
+            manufacturer: NVIDIA
+            bus: ""
+            pci_slot: ""
+            serial: ""
+            architecture: ""
+            tdp: 450
+      storage:
+        devices:
+          - type: SSD
+            model: Samsung 990 Pro
+            capacity: 2000000000000
+            path: ""
+            serial: ""
+            interface: ""
+            manufacturer: ""
+            form_factor: ""
+            firmware: ""
       network:
-        bandwidth: 2.5
-        latency: 1.0
-        connections: 100
-        packet_loss: 0.0
+        devices: []
+    system:
+      os_distribution: Ubuntu
+      os_version: 22.04 LTS
+      os_architecture: x86_64
+      kernel_version: ""
+      gpu_driver_version: NVIDIA Driver 545.23.08
+      cuda_version: "12.2"
+      docker_version: ""
+      containerd_version: ""
+      runc_version: ""
     metrics:
-      id: "node-241"
-      timestamp: 1711008000
-      metrics:
-        - name: "cpu_usage"
-          type: "gauge"
-          value: 5.0
-          labels:
-            node_id: "node-241"
-        - name: "memory_usage"
-          type: "gauge"
-          value: 12.0
-          labels:
-            node_id: "node-241"
-        - name: "gpu_usage"
-          type: "gauge"
-          value: 0.0
-          labels:
-            node_id: "node-241"
-        - name: "disk_usage"
-          type: "gauge"
-          value: 25.0
-          labels:
-            node_id: "node-241"
-
-- id: "node-243"
-  alias: "游戏机-243"
-  model: "Beagle-Wind-2024"
-  type: "physical"
-  location: "北京比格"
+      cpu:
+        devices:
+          - model: Intel i9-13900K
+            cores: 24
+            threads: 32
+            usage: 5
+            temperature: 45
+      memory:
+        total: 0
+        available: 120259084288
+        used: 17179869184
+        usage: 12.5
+      gpu:
+        devices:
+          - model: NVIDIA GeForce RTX 4090
+            memory_total: 24576
+            usage: 0
+            memory_used: 0
+            memory_free: 24576
+            memory_usage: 0
+            temperature: 38
+            power: 30
+      storage:
+        devices:
+          - path: /
+            type: SSD
+            model: Samsung 990 Pro
+            capacity: 2000000000000
+            used: 500000000000
+            free: 1500000000000
+            usage: 25
+            read_speed: 0
+            write_speed: 0
+      network:
+        inbound_traffic: 10.5
+        outbound_traffic: 2.3
+        connections: 120
+  created_at: 2024-01-15T00:00:00Z
+  updated_at: 2024-03-21T10:00:00Z
+- id: node-243
+  alias: 游戏机-243
+  model: Beagle-Wind-2024
+  type: physical
+  location: 北京比格
   labels: {}
   hardware:
-    cpu_model: "Intel i9-13900K"
-    memory_type: "DDR5"
-    gpu_model: "NVIDIA RTX 4090"
-    disk_model: "Samsung 990 Pro"
+    CPU: 0,Intel i9-13900K 24Core 5.8GHz 125W
+    GPU: 0,NVIDIA RTX 4090 24GB 450W
+    RAM: 128 GB
+    Storage: /,Samsung 990 Pro 2TB
   system:
-    os_type: "Ubuntu"
-    os_version: "22.04 LTS"
-    gpu_driver: "545.23.08"
     cuda_version: "12.2"
-  created_at: "2024-01-20T00:00:00Z"
-  updated_at: "2024-03-21T10:00:00Z"
+    gpu_driver: NVIDIA Driver 545.23.08
+    os_type: Ubuntu
+    os_version: 22.04 LTS
   status:
-    state: "ready"
+    state: ready
     online: true
-    last_online: "2024-03-21T10:00:00Z"
-    updated_at: "2024-03-21T10:00:00Z"
-    resource:
-      id: "node-243"
-      timestamp: 1711008000
-      hardware:
-        cpu:
-          model: "Intel i9-13900K"
-          cores: 24
-          threads: 32
-          frequency: 5.8
-          temperature: 42.0
-          usage: 3.0
-          cache: 36864
-        memory:
-          total: 128
-          available: 115.2
-          used: 12.8
-          usage: 10.0
-          type: "DDR5"
-          frequency: 7000
-          channels: 4
-        gpu:
-          model: "NVIDIA RTX 4090"
-          memory_total: 24
-          memory_used: 0
-          memory_free: 24
-          memory_usage: 0.0
-          usage: 0.0
-          temperature: 33.0
-          power: 0.0
-          cuda_cores: 16384
-        disk:
-          model: "Samsung 990 Pro"
-          capacity: 2048
-          used: 409.6
-          free: 1638.4
-          usage: 20.0
-          type: "NVMe SSD"
-          interface: "PCIe 4.0"
-          read_speed: 7450
-          write_speed: 6900
-          iops: 1400000
-      software:
-        os_distribution: "Ubuntu"
-        os_version: "22.04 LTS"
-        os_architecture: "x86_64"
-        kernel_version: "6.5.0-25-generic"
-        gpu_driver_version: "545.23.08"
-        cuda_version: "12.2"
-        docker_version: "24.0.7"
-        containerd_version: "1.7.11"
-        runc_version: "1.1.11"
+    last_online: 2024-03-21T10:00:00Z
+    updated_at: 2024-03-21T10:00:00Z
+    hardware:
+      cpu:
+        devices:
+          - model: Intel i9-13900K
+            cores: 24
+            threads: 32
+            frequency: 5.8
+            cache: 36864
+            socket: "0"
+            manufacturer: ""
+            architecture: ""
+      memory:
+        devices:
+          - size: 137438953472
+            type: DDR5
+            frequency: 7000
+            manufacturer: ""
+            serial: ""
+            slot: ""
+            part_number: ""
+            form_factor: ""
+      gpu:
+        devices:
+          - model: NVIDIA GeForce RTX 4090
+            memory_total: 24576
+            cuda_cores: 16384
+            manufacturer: NVIDIA
+            bus: ""
+            pci_slot: ""
+            serial: ""
+            architecture: ""
+            tdp: 450
+      storage:
+        devices:
+          - type: SSD
+            model: Samsung 990 Pro
+            capacity: 2000000000000
+            path: ""
+            serial: ""
+            interface: ""
+            manufacturer: ""
+            form_factor: ""
+            firmware: ""
       network:
-        bandwidth: 2.5
-        latency: 1.0
-        connections: 100
-        packet_loss: 0.0
+        devices: []
+    system:
+      os_distribution: Ubuntu
+      os_version: 22.04 LTS
+      os_architecture: x86_64
+      kernel_version: ""
+      gpu_driver_version: NVIDIA Driver 545.23.08
+      cuda_version: "12.2"
+      docker_version: ""
+      containerd_version: ""
+      runc_version: ""
     metrics:
-      id: "node-243"
-      timestamp: 1711008000
-      metrics:
-        - name: "cpu_usage"
-          type: "gauge"
-          value: 3.0
-          labels:
-            node_id: "node-243"
-        - name: "memory_usage"
-          type: "gauge"
-          value: 10.0
-          labels:
-            node_id: "node-243"
-        - name: "gpu_usage"
-          type: "gauge"
-          value: 0.0
-          labels:
-            node_id: "node-243"
-        - name: "disk_usage"
-          type: "gauge"
-          value: 20.0
-          labels:
-            node_id: "node-243"
-
-- id: "node-246"
-  alias: "游戏机-246"
-  model: "Beagle-Wind-2024"
-  type: "physical"
-  location: "北京比格"
+      cpu:
+        devices:
+          - model: Intel i9-13900K
+            cores: 24
+            threads: 32
+            usage: 3
+            temperature: 42
+      memory:
+        total: 0
+        available: 123731517440
+        used: 13743895347
+        usage: 10
+      gpu:
+        devices:
+          - model: NVIDIA GeForce RTX 4090
+            memory_total: 24576
+            usage: 0
+            memory_used: 0
+            memory_free: 24576
+            memory_usage: 0
+            temperature: 37
+            power: 28
+      storage:
+        devices:
+          - path: /
+            type: SSD
+            model: Samsung 990 Pro
+            capacity: 2000000000000
+            used: 400000000000
+            free: 1600000000000
+            usage: 20
+            read_speed: 0
+            write_speed: 0
+      network:
+        inbound_traffic: 8.2
+        outbound_traffic: 1.9
+        connections: 95
+  created_at: 2024-01-20T00:00:00Z
+  updated_at: 2024-03-21T10:00:00Z
+- id: node-246
+  alias: 游戏机-246
+  model: Beagle-Wind-2024
+  type: physical
+  location: 北京比格
   labels: {}
   hardware:
-    cpu_model: "Intel i9-13900K"
-    memory_type: "DDR5"
-    gpu_model: "NVIDIA RTX 4090"
-    disk_model: "Samsung 990 Pro"
+    CPU: 0,Intel i9-13900K 24Core 5.8GHz 125W
+    GPU: 0,NVIDIA RTX 4090 24GB 450W
+    RAM: 128 GB
+    Storage: /,Samsung 990 Pro 2TB
   system:
-    os_type: "Ubuntu"
-    os_version: "22.04 LTS"
-    gpu_driver: "545.23.08"
     cuda_version: "12.2"
-  created_at: "2024-01-25T00:00:00Z"
-  updated_at: "2024-03-21T10:00:00Z"
+    gpu_driver: NVIDIA Driver 545.23.08
+    os_type: Ubuntu
+    os_version: 22.04 LTS
   status:
-    state: "ready"
+    state: ready
     online: true
-    last_online: "2024-03-21T10:00:00Z"
-    updated_at: "2024-03-21T10:00:00Z"
-    resource:
-      id: "node-246"
-      timestamp: 1711008000
-      hardware:
-        cpu:
-          model: "Intel i9-13900K"
-          cores: 24
-          threads: 32
-          frequency: 5.8
-          temperature: 41.0
-          usage: 3.0
-          cache: 36864
-        memory:
-          total: 128
-          available: 115.2
-          used: 12.8
-          usage: 10.0
-          type: "DDR5"
-          frequency: 7000
-          channels: 4
-        gpu:
-          model: "NVIDIA RTX 4090"
-          memory_total: 24
-          memory_used: 0
-          memory_free: 24
-          memory_usage: 0.0
-          usage: 0.0
-          temperature: 32.0
-          power: 0.0
-          cuda_cores: 16384
-        disk:
-          model: "Samsung 990 Pro"
-          capacity: 2048
-          used: 307.2
-          free: 1740.8
-          usage: 15.0
-          type: "NVMe SSD"
-          interface: "PCIe 4.0"
-          read_speed: 7450
-          write_speed: 6900
-          iops: 1400000
-      software:
-        os_distribution: "Ubuntu"
-        os_version: "22.04 LTS"
-        os_architecture: "x86_64"
-        kernel_version: "6.5.0-25-generic"
-        gpu_driver_version: "545.23.08"
-        cuda_version: "12.2"
-        docker_version: "24.0.7"
-        containerd_version: "1.7.11"
-        runc_version: "1.1.11"
+    last_online: 2024-03-21T10:00:00Z
+    updated_at: 2024-03-21T10:00:00Z
+    hardware:
+      cpu:
+        devices:
+          - model: Intel i9-13900K
+            cores: 24
+            threads: 32
+            frequency: 5.8
+            cache: 36864
+            socket: "0"
+            manufacturer: ""
+            architecture: ""
+      memory:
+        devices:
+          - size: 137438953472
+            type: DDR5
+            frequency: 7000
+            manufacturer: ""
+            serial: ""
+            slot: ""
+            part_number: ""
+            form_factor: ""
+      gpu:
+        devices:
+          - model: NVIDIA GeForce RTX 4090
+            memory_total: 24576
+            cuda_cores: 16384
+            manufacturer: NVIDIA
+            bus: ""
+            pci_slot: ""
+            serial: ""
+            architecture: ""
+            tdp: 450
+      storage:
+        devices:
+          - type: SSD
+            model: Samsung 990 Pro
+            capacity: 2000000000000
+            path: ""
+            serial: ""
+            interface: ""
+            manufacturer: ""
+            form_factor: ""
+            firmware: ""
       network:
-        bandwidth: 2.5
-        latency: 1.0
-        connections: 100
-        packet_loss: 0.0
+        devices: []
+    system:
+      os_distribution: Ubuntu
+      os_version: 22.04 LTS
+      os_architecture: x86_64
+      kernel_version: ""
+      gpu_driver_version: NVIDIA Driver 545.23.08
+      cuda_version: "12.2"
+      docker_version: ""
+      containerd_version: ""
+      runc_version: ""
     metrics:
-      id: "node-246"
-      timestamp: 1711008000
-      metrics:
-        - name: "cpu_usage"
-          type: "gauge"
-          value: 3.0
-          labels:
-            node_id: "node-246"
-        - name: "memory_usage"
-          type: "gauge"
-          value: 10.0
-          labels:
-            node_id: "node-246"
-        - name: "gpu_usage"
-          type: "gauge"
-          value: 0.0
-          labels:
-            node_id: "node-246"
-        - name: "disk_usage"
-          type: "gauge"
-          value: 15.0
-          labels:
-            node_id: "node-246"
+      cpu:
+        devices:
+          - model: Intel i9-13900K
+            cores: 24
+            threads: 32
+            usage: 3
+            temperature: 40
+      memory:
+        total: 0
+        available: 123731517440
+        used: 13743895347
+        usage: 10
+      gpu:
+        devices:
+          - model: NVIDIA GeForce RTX 4090
+            memory_total: 24576
+            usage: 0
+            memory_used: 0
+            memory_free: 24576
+            memory_usage: 0
+            temperature: 36
+            power: 27
+      storage:
+        devices:
+          - path: /
+            type: SSD
+            model: Samsung 990 Pro
+            capacity: 2000000000000
+            used: 300000000000
+            free: 1700000000000
+            usage: 15
+            read_speed: 0
+            write_speed: 0
+      network:
+        inbound_traffic: 7.5
+        outbound_traffic: 1.8
+        connections: 80
+  created_at: 2024-01-25T00:00:00Z
+  updated_at: 2024-03-21T10:00:00Z
+- id: node-BG-SHUCHENG-ROG
+  alias: ""
+  model: ""
+  type: virtual
+  location: ""
+  labels: {}
+  hardware:
+    CPU: 0,Intel i9-13900H 2Core 3.0GHz 95W
+    RAM: 16 GB
+    Storage: /,HDD 1007G
+  system:
+    ip_address: 172.28.74.239
+    os_type: Debian GNU/Linux
+    os_version: "12"
+  status:
+    state: offline
+    online: false
+    last_online: 2025-04-07T18:44:07.739332845+08:00
+    updated_at: 2025-04-07T18:49:36.208169115+08:00
+    hardware:
+      cpu:
+        devices: []
+      memory:
+        devices: []
+      gpu:
+        devices: []
+      storage:
+        devices: []
+      network:
+        devices: []
+    system:
+      os_distribution: ""
+      os_version: ""
+      os_architecture: ""
+      kernel_version: ""
+      gpu_driver_version: ""
+      cuda_version: ""
+      docker_version: ""
+      containerd_version: ""
+      runc_version: ""
+    metrics:
+      cpu:
+        devices:
+          - model: ""
+            cores: 0
+            threads: 0
+            usage: 0
+            temperature: 45
+      memory:
+        total: 0
+        available: 8589934592
+        used: 8589934592
+        usage: 0
+      gpu:
+        devices:
+          - model: ""
+            memory_total: 0
+            usage: 0
+            memory_used: 2048
+            memory_free: 6144
+            memory_usage: 0
+            temperature: 0
+            power: 0
+      storage:
+        devices:
+          - path: /
+            type: ""
+            model: ""
+            capacity: 0
+            used: 107374182400
+            free: 966367641600
+            usage: 0
+            read_speed: 0
+            write_speed: 0
+      network:
+        inbound_traffic: 0
+        outbound_traffic: 0
+        connections: 100
+  created_at: 2025-04-07T18:42:07.735470634+08:00
+  updated_at: 2025-04-07T18:49:36.208169173+08:00

@@ -52,8 +52,8 @@ type NodeService interface {
 	Create(node models.GameNode) error
 	Update(node models.GameNode) error
 	UpdateStatusOnlineStatus(id string, online bool) error
-	UpdateStatusMetrics(id string, metrics models.MetricsReport) error
-	UpdateStatusResource(id string, resource models.ResourceInfo) error
+	UpdateStatusMetrics(id string, metrics models.MetricsInfo) error
+	UpdateHardwareAndSystem(id string, hardware models.HardwareInfo, system models.SystemInfo) error
 	Get(id string) (models.GameNode, error)
 }
 
@@ -217,25 +217,92 @@ func (s *GameNodeServer) Heartbeat(ctx context.Context, req *pb.HeartbeatRequest
 
 // ReportMetrics 上报节点指标
 func (s *GameNodeServer) ReportMetrics(ctx context.Context, req *pb.MetricsReport) (*pb.ReportResponse, error) {
-	// 转换指标数据
-	metrics := models.MetricsReport{
-		ID:        req.Id,
-		Timestamp: req.Timestamp,
-		Metrics:   make([]models.Metric, len(req.Metrics)),
+	// 创建MetricsInfo结构
+	metricsInfo := models.MetricsInfo{}
+
+	// 初始化CPU信息
+	cpuDevice := struct {
+		Model       string  `json:"model" yaml:"model"`
+		Cores       int32   `json:"cores" yaml:"cores"`
+		Threads     int32   `json:"threads" yaml:"threads"`
+		Usage       float64 `json:"usage" yaml:"usage"`
+		Temperature float64 `json:"temperature" yaml:"temperature"`
+	}{}
+
+	// 初始化GPU信息
+	gpuDevice := struct {
+		Model       string  `json:"model" yaml:"model"`
+		MemoryTotal int64   `json:"memory_total" yaml:"memory_total"`
+		Usage       float64 `json:"usage" yaml:"usage"`
+		MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`
+		MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`
+		MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"`
+		Temperature float64 `json:"temperature" yaml:"temperature"`
+		Power       float64 `json:"power" yaml:"power"`
+	}{}
+
+	// 初始化存储信息
+	storageDevice := struct {
+		Path       string  `json:"path" yaml:"path"`
+		Type       string  `json:"type" yaml:"type"`
+		Model      string  `json:"model" yaml:"model"`
+		Capacity   int64   `json:"capacity" yaml:"capacity"`
+		Used       int64   `json:"used" yaml:"used"`
+		Free       int64   `json:"free" yaml:"free"`
+		Usage      float64 `json:"usage" yaml:"usage"`
+		ReadSpeed  float64 `json:"read_speed" yaml:"read_speed"`
+		WriteSpeed float64 `json:"write_speed" yaml:"write_speed"`
+	}{
+		Path: "/",
 	}
 
-	// 转换指标
-	for i, m := range req.Metrics {
-		metrics.Metrics[i] = models.Metric{
-			Name:   m.Name,
-			Type:   m.Type,
-			Value:  m.Value,
-			Labels: m.Labels,
+	// 处理指标数据
+	for _, m := range req.Metrics {
+		switch m.Name {
+		case "cpu_usage":
+			cpuDevice.Usage = m.Value
+		case "cpu_temperature":
+			cpuDevice.Temperature = m.Value
+		case "memory_usage":
+			metricsInfo.Memory.Usage = m.Value
+		case "memory_used":
+			metricsInfo.Memory.Used = int64(m.Value)
+		case "memory_available":
+			metricsInfo.Memory.Available = int64(m.Value)
+		case "disk_usage":
+			storageDevice.Usage = m.Value
+		case "disk_used":
+			storageDevice.Used = int64(m.Value)
+		case "disk_free":
+			storageDevice.Free = int64(m.Value)
+		case "gpu_usage":
+			gpuDevice.Usage = m.Value
+		case "gpu_memory_used":
+			gpuDevice.MemoryUsed = int64(m.Value)
+		case "gpu_memory_free":
+			gpuDevice.MemoryFree = int64(m.Value)
+		case "gpu_memory_usage":
+			gpuDevice.MemoryUsage = m.Value
+		case "gpu_temperature":
+			gpuDevice.Temperature = m.Value
+		case "gpu_power":
+			gpuDevice.Power = m.Value
+		case "network_inbound":
+			metricsInfo.Network.InboundTraffic = m.Value
+		case "network_outbound":
+			metricsInfo.Network.OutboundTraffic = m.Value
+		case "network_connections":
+			metricsInfo.Network.Connections = int32(m.Value)
 		}
 	}
 
+	// 将指标加入到结构体中
+	metricsInfo.CPU.Devices = append(metricsInfo.CPU.Devices, cpuDevice)
+	metricsInfo.GPU.Devices = append(metricsInfo.GPU.Devices, gpuDevice)
+	metricsInfo.Storage.Devices = append(metricsInfo.Storage.Devices, storageDevice)
+
 	// 更新节点指标
-	err := s.nodeService.UpdateStatusMetrics(req.Id, metrics)
+	err := s.nodeService.UpdateStatusMetrics(req.Id, metricsInfo)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update metrics: %v", err))
 	}
@@ -251,84 +318,105 @@ func (s *GameNodeServer) ReportMetrics(ctx context.Context, req *pb.MetricsRepor
 
 // UpdateResourceInfo 更新资源信息
 func (s *GameNodeServer) UpdateResourceInfo(ctx context.Context, req *pb.ResourceInfo) (*pb.UpdateResponse, error) {
-	// 转换资源信息
-	resource := models.ResourceInfo{
-		ID:        req.Id,
-		Timestamp: req.Timestamp,
-		Hardware: models.HardwareInfo{
-			CPU: models.CPUInfo{
-				Model:       req.Hardware.Cpu.Model,
-				Cores:       req.Hardware.Cpu.Cores,
-				Threads:     req.Hardware.Cpu.Threads,
-				Frequency:   req.Hardware.Cpu.Frequency,
-				Temperature: req.Hardware.Cpu.Temperature,
-				Usage:       req.Hardware.Cpu.Usage,
-				Cache:       req.Hardware.Cpu.Cache,
-			},
-			Memory: models.MemoryInfo{
-				Total:     req.Hardware.Memory.Total,
-				Available: req.Hardware.Memory.Available,
-				Used:      req.Hardware.Memory.Used,
-				Usage:     req.Hardware.Memory.Usage,
-				Type:      req.Hardware.Memory.Type,
-				Frequency: req.Hardware.Memory.Frequency,
-				Channels:  req.Hardware.Memory.Channels,
-			},
-			GPU: models.GPUInfo{
-				Model:       req.Hardware.Gpu.Model,
-				MemoryTotal: req.Hardware.Gpu.MemoryTotal,
-				MemoryUsed:  req.Hardware.Gpu.MemoryUsed,
-				MemoryFree:  req.Hardware.Gpu.MemoryFree,
-				MemoryUsage: req.Hardware.Gpu.MemoryUsage,
-				Usage:       req.Hardware.Gpu.Usage,
-				Temperature: req.Hardware.Gpu.Temperature,
-				Power:       req.Hardware.Gpu.Power,
-				CUDACores:   req.Hardware.Gpu.CudaCores,
-			},
-			Disk: models.DiskInfo{
-				Model:      req.Hardware.Disk.Model,
-				Capacity:   req.Hardware.Disk.Capacity,
-				Used:       req.Hardware.Disk.Used,
-				Free:       req.Hardware.Disk.Free,
-				Usage:      req.Hardware.Disk.Usage,
-				Type:       req.Hardware.Disk.Type,
-				Interface:  req.Hardware.Disk.Interface,
-				ReadSpeed:  req.Hardware.Disk.ReadSpeed,
-				WriteSpeed: req.Hardware.Disk.WriteSpeed,
-				IOPS:       req.Hardware.Disk.Iops,
-			},
-		},
-		Software: models.SoftwareInfo{
-			OSDistribution:    req.Software.OsDistribution,
-			OSVersion:         req.Software.OsVersion,
-			OSArchitecture:    req.Software.OsArchitecture,
-			KernelVersion:     req.Software.KernelVersion,
-			GPUDriverVersion:  req.Software.GpuDriverVersion,
-			CUDAVersion:       req.Software.CudaVersion,
-			DockerVersion:     req.Software.DockerVersion,
-			ContainerdVersion: req.Software.ContainerdVersion,
-			RuncVersion:       req.Software.RuncVersion,
-		},
-		Network: models.NetworkInfo{
-			Bandwidth:   req.Network.Bandwidth,
-			Latency:     req.Network.Latency,
-			Connections: req.Network.Connections,
-			PacketLoss:  req.Network.PacketLoss,
-		},
+	// 转换为硬件信息
+	hardwareInfo := models.HardwareInfo{}
+
+	// CPU信息
+	if req.Hardware.Cpu != nil {
+		cpuDevice := struct {
+			Model        string  `json:"model" yaml:"model"`
+			Cores        int32   `json:"cores" yaml:"cores"`
+			Threads      int32   `json:"threads" yaml:"threads"`
+			Frequency    float64 `json:"frequency" yaml:"frequency"`
+			Cache        int64   `json:"cache" yaml:"cache"`
+			Socket       string  `json:"socket" yaml:"socket"`
+			Manufacturer string  `json:"manufacturer" yaml:"manufacturer"`
+			Architecture string  `json:"architecture" yaml:"architecture"`
+		}{
+			Model:     req.Hardware.Cpu.Model,
+			Cores:     req.Hardware.Cpu.Cores,
+			Threads:   req.Hardware.Cpu.Threads,
+			Frequency: req.Hardware.Cpu.Frequency,
+			Cache:     req.Hardware.Cpu.Cache,
+		}
+		hardwareInfo.CPU.Devices = append(hardwareInfo.CPU.Devices, cpuDevice)
 	}
 
-	// 更新节点资源信息
-	err := s.nodeService.UpdateStatusResource(req.Id, resource)
+	// 内存信息
+	if req.Hardware.Memory != nil {
+		memoryDevice := struct {
+			Size         int64   `json:"size" yaml:"size"`
+			Type         string  `json:"type" yaml:"type"`
+			Frequency    float64 `json:"frequency" yaml:"frequency"`
+			Manufacturer string  `json:"manufacturer" yaml:"manufacturer"`
+			Serial       string  `json:"serial" yaml:"serial"`
+			Slot         string  `json:"slot" yaml:"slot"`
+			PartNumber   string  `json:"part_number" yaml:"part_number"`
+			FormFactor   string  `json:"form_factor" yaml:"form_factor"`
+		}{
+			Size:      req.Hardware.Memory.Total,
+			Type:      req.Hardware.Memory.Type,
+			Frequency: req.Hardware.Memory.Frequency,
+		}
+		hardwareInfo.Memory.Devices = append(hardwareInfo.Memory.Devices, memoryDevice)
+	}
+
+	// GPU信息
+	if req.Hardware.Gpu != nil {
+		gpuDevice := struct {
+			Model        string `json:"model" yaml:"model"`
+			MemoryTotal  int64  `json:"memory_total" yaml:"memory_total"`
+			CudaCores    int32  `json:"cuda_cores" yaml:"cuda_cores"`
+			Manufacturer string `json:"manufacturer" yaml:"manufacturer"`
+			Bus          string `json:"bus" yaml:"bus"`
+			PciSlot      string `json:"pci_slot" yaml:"pci_slot"`
+			Serial       string `json:"serial" yaml:"serial"`
+			Architecture string `json:"architecture" yaml:"architecture"`
+			TDP          int32  `json:"tdp" yaml:"tdp"` // 功耗指标(W)
+		}{
+			Model:       req.Hardware.Gpu.Model,
+			MemoryTotal: req.Hardware.Gpu.MemoryTotal,
+			CudaCores:   req.Hardware.Gpu.CudaCores,
+		}
+		hardwareInfo.GPU.Devices = append(hardwareInfo.GPU.Devices, gpuDevice)
+	}
+
+	// 存储设备信息
+	if req.Hardware.Storage != nil && len(req.Hardware.Storage.Devices) > 0 {
+		for _, device := range req.Hardware.Storage.Devices {
+			storageDevice := struct {
+				Type         string `json:"type" yaml:"type"`
+				Model        string `json:"model" yaml:"model"`
+				Capacity     int64  `json:"capacity" yaml:"capacity"`
+				Path         string `json:"path" yaml:"path"`
+				Serial       string `json:"serial" yaml:"serial"`
+				Interface    string `json:"interface" yaml:"interface"`
+				Manufacturer string `json:"manufacturer" yaml:"manufacturer"`
+				FormFactor   string `json:"form_factor" yaml:"form_factor"`
+				Firmware     string `json:"firmware" yaml:"firmware"`
+			}{
+				Type:     device.Type,
+				Capacity: device.Capacity,
+			}
+			hardwareInfo.Storage.Devices = append(hardwareInfo.Storage.Devices, storageDevice)
+		}
+	}
+
+	// 创建系统信息（暂时为空，可以从其他字段中获取）
+	systemInfo := models.SystemInfo{}
+
+	// 更新节点硬件和系统信息
+	err := s.nodeService.UpdateHardwareAndSystem(req.Id, hardwareInfo, systemInfo)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update resource info: %v", err))
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update hardware and system info: %v", err))
 	}
 
 	// 发布资源更新事件
-	s.eventManager.Publish(event.NewNodeEvent(req.Id, "resource_updated", "Node resource info updated"))
+	s.eventManager.Publish(event.NewNodeEvent(req.Id, "resource_updated", "Node hardware and system info updated"))
 
 	return &pb.UpdateResponse{
 		Status:  "success",
-		Message: "Resource info updated successfully",
+		Message: "Hardware and system info updated successfully",
 	}, nil
 }
 

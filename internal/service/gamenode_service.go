@@ -137,14 +137,9 @@ func (s *GameNodeService) Create(node models.GameNode) error {
 		Online:     false,
 		LastOnline: now,
 		UpdatedAt:  now,
-		Resource: models.ResourceInfo{
-			ID:        node.ID,
-			Timestamp: now.Unix(),
-		},
-		Metrics: models.MetricsReport{
-			ID:        node.ID,
-			Timestamp: now.Unix(),
-		},
+		Hardware:   models.HardwareInfo{},
+		System:     models.SystemInfo{},
+		Metrics:    models.MetricsInfo{},
 	}
 
 	err = s.store.Add(node)
@@ -222,7 +217,7 @@ func (s *GameNodeService) UpdateStatusState(id string, state string) error {
 }
 
 // UpdateStatusMetrics 更新节点指标
-func (s *GameNodeService) UpdateStatusMetrics(id string, metrics models.MetricsReport) error {
+func (s *GameNodeService) UpdateStatusMetrics(id string, metrics models.MetricsInfo) error {
 	node, err := s.store.Get(id)
 	if err != nil {
 		return fmt.Errorf("存储层错误: %w", err)
@@ -242,8 +237,8 @@ func (s *GameNodeService) UpdateStatusMetrics(id string, metrics models.MetricsR
 	return nil
 }
 
-// UpdateStatusResource 更新节点资源信息
-func (s *GameNodeService) UpdateStatusResource(id string, resource models.ResourceInfo) error {
+// UpdateHardwareAndSystem 更新节点硬件和系统信息
+func (s *GameNodeService) UpdateHardwareAndSystem(id string, hardware models.HardwareInfo, system models.SystemInfo) error {
 	node, err := s.store.Get(id)
 	if err != nil {
 		return fmt.Errorf("存储层错误: %w", err)
@@ -252,7 +247,8 @@ func (s *GameNodeService) UpdateStatusResource(id string, resource models.Resour
 		return fmt.Errorf("节点不存在: %s", id)
 	}
 
-	node.Status.Resource = resource
+	node.Status.Hardware = hardware
+	node.Status.System = system
 	node.Status.UpdatedAt = time.Now()
 	node.UpdatedAt = time.Now()
 

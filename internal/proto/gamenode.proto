@@ -73,75 +73,80 @@ message ResourceInfo {
   string id = 1;
   int64 timestamp = 2;
   HardwareInfo hardware = 3;
-  SoftwareInfo software = 4;
-  NetworkInfo network = 5;
 }
 
 message HardwareInfo {
-  CPUInfo cpu = 1;
-  MemoryInfo memory = 2;
-  GPUInfo gpu = 3;
-  DiskInfo disk = 4;
+  CPUHardware cpu = 1;
+  MemoryHardware memory = 2;
+  GPUHardware gpu = 3;
+  StorageHardware storage = 4;
 }
 
-message CPUInfo {
+message CPUHardware {
   string model = 1;
   int32 cores = 2;
   int32 threads = 3;
   double frequency = 4;
-  double temperature = 5;
-  double usage = 6;
-  int64 cache = 7;
+  int64 cache = 5;
 }
 
-message MemoryInfo {
+message MemoryHardware {
   int64 total = 1;
-  int64 available = 2;
-  int64 used = 3;
-  double usage = 4;
-  string type = 5;
-  double frequency = 6;
-  int32 channels = 7;
+  string type = 2;
+  double frequency = 3;
+  int32 channels = 4;
 }
 
-message GPUInfo {
+message GPUHardware {
   string model = 1;
   int64 memory_total = 2;
-  int64 memory_used = 3;
-  int64 memory_free = 4;
-  double memory_usage = 5;
-  double usage = 6;
-  double temperature = 7;
-  double power = 8;
-  int32 cuda_cores = 9;
+  int32 cuda_cores = 3;
 }
 
-message DiskInfo {
-  string model = 1;
+message StorageHardware {
+  repeated StorageDevice devices = 1;
+}
+
+message StorageDevice {
+  string type = 1;
   int64 capacity = 2;
-  int64 used = 3;
-  int64 free = 4;
-  double usage = 5;
-  string type = 6;
-  string interface = 7;
-  double read_speed = 8;
-  double write_speed = 9;
-  int64 iops = 10;
 }
 
-message SoftwareInfo {
-  string os_distribution = 1;
-  string os_version = 2;
-  string os_architecture = 3;
-  string kernel_version = 4;
-  string gpu_driver_version = 5;
-  string cuda_version = 6;
-  string docker_version = 7;
-  string containerd_version = 8;
-  string runc_version = 9;
+message MetricsInfo {
+  CPUMetrics cpu = 1;
+  MemoryMetrics memory = 2;
+  GPUMetrics gpu = 3;
+  StorageMetrics storage = 4;
+  NetworkMetrics network = 5;
 }
 
-message NetworkInfo {
+message CPUMetrics {
+  double usage = 1;
+  double temperature = 2;
+}
+
+message MemoryMetrics {
+  int64 available = 1;
+  int64 used = 2;
+  double usage = 3;
+}
+
+message GPUMetrics {
+  double usage = 1;
+  int64 memory_used = 2;
+  int64 memory_free = 3;
+  double memory_usage = 4;
+  double temperature = 5;
+  double power = 6;
+}
+
+message StorageMetrics {
+  int64 used = 1;
+  int64 free = 2;
+  double usage = 3;
+}
+
+message NetworkMetrics {
   double bandwidth = 1;
   double latency = 2;
   int32 connections = 3;

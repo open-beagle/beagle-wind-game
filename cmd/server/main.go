@@ -78,19 +78,13 @@ func main() {
 		fmt.Printf("初始化存储失败: %v\n", err)
 		os.Exit(1)
 	}
-	defer gamenodeStore.Cleanup()
-	defer gamenodePipelineStore.Cleanup()
-	defer gamePlatformStore.Cleanup()
-	defer gameCardStore.Cleanup()
-	defer gameInstanceStore.Cleanup()
 
 	// 创建服务实例
 	nodeService := service.NewGameNodeService(gamenodeStore)
 	pipelineService := service.NewGameNodePipelineService(gamenodePipelineStore)
-	// TODO: 这些服务将在后续功能中使用
-	// platformService := service.NewGamePlatformService(gamePlatformStore)
-	// cardService := service.NewGameCardService(gameCardStore)
-	// instanceService := service.NewGameInstanceService(gameInstanceStore)
+	platformService := service.NewGamePlatformService(gamePlatformStore)
+	cardService := service.NewGameCardService(gameCardStore)
+	instanceService := service.NewGameInstanceService(gameInstanceStore)
 
 	// 创建事件管理器
 	eventManager := event.NewDefaultEventManager()
@@ -116,8 +110,15 @@ func main() {
 
 	// 设置 HTTP 路由
 	router := gin.Default()
+
+	// 注册路由处理器
 	gamenodeHandler := api.NewGameNodeHandler(nodeService)
 	gamenodeHandler.RegisterRoutes(router)
+
+	// TODO: 其他服务的路由处理器将在实现后添加
+	_ = platformService // 避免未使用变量警告
+	_ = cardService     // 避免未使用变量警告
+	_ = instanceService // 避免未使用变量警告
 
 	// 创建上下文
 	ctx, cancel := context.WithCancel(context.Background())
