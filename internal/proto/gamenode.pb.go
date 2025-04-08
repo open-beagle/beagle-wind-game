@@ -78,17 +78,131 @@ func (StepStatus) EnumDescriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{0}
 }
 
+// 节点类型枚举
+type NodeType int32
+
+const (
+	NodeType_NODE_TYPE_UNKNOWN   NodeType = 0 // 未知类型
+	NodeType_NODE_TYPE_PHYSICAL  NodeType = 1 // 物理节点
+	NodeType_NODE_TYPE_VIRTUAL   NodeType = 2 // 虚拟节点
+	NodeType_NODE_TYPE_CONTAINER NodeType = 3 // 容器节点
+)
+
+// Enum value maps for NodeType.
+var (
+	NodeType_name = map[int32]string{
+		0: "NODE_TYPE_UNKNOWN",
+		1: "NODE_TYPE_PHYSICAL",
+		2: "NODE_TYPE_VIRTUAL",
+		3: "NODE_TYPE_CONTAINER",
+	}
+	NodeType_value = map[string]int32{
+		"NODE_TYPE_UNKNOWN":   0,
+		"NODE_TYPE_PHYSICAL":  1,
+		"NODE_TYPE_VIRTUAL":   2,
+		"NODE_TYPE_CONTAINER": 3,
+	}
+)
+
+func (x NodeType) Enum() *NodeType {
+	p := new(NodeType)
+	*p = x
+	return p
+}
+
+func (x NodeType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (NodeType) Descriptor() protoreflect.EnumDescriptor {
+	return file_internal_proto_gamenode_proto_enumTypes[1].Descriptor()
+}
+
+func (NodeType) Type() protoreflect.EnumType {
+	return &file_internal_proto_gamenode_proto_enumTypes[1]
+}
+
+func (x NodeType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use NodeType.Descriptor instead.
+func (NodeType) EnumDescriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{1}
+}
+
+// 节点状态枚举
+type GameNodeState int32
+
+const (
+	GameNodeState_NODE_STATE_OFFLINE     GameNodeState = 0 // 离线
+	GameNodeState_NODE_STATE_ONLINE      GameNodeState = 1 // 在线
+	GameNodeState_NODE_STATE_MAINTENANCE GameNodeState = 2 // 维护
+	GameNodeState_NODE_STATE_READY       GameNodeState = 3 // 就绪
+	GameNodeState_NODE_STATE_BUSY        GameNodeState = 4 // 忙碌
+	GameNodeState_NODE_STATE_ERROR       GameNodeState = 5 // 错误
+)
+
+// Enum value maps for GameNodeState.
+var (
+	GameNodeState_name = map[int32]string{
+		0: "NODE_STATE_OFFLINE",
+		1: "NODE_STATE_ONLINE",
+		2: "NODE_STATE_MAINTENANCE",
+		3: "NODE_STATE_READY",
+		4: "NODE_STATE_BUSY",
+		5: "NODE_STATE_ERROR",
+	}
+	GameNodeState_value = map[string]int32{
+		"NODE_STATE_OFFLINE":     0,
+		"NODE_STATE_ONLINE":      1,
+		"NODE_STATE_MAINTENANCE": 2,
+		"NODE_STATE_READY":       3,
+		"NODE_STATE_BUSY":        4,
+		"NODE_STATE_ERROR":       5,
+	}
+)
+
+func (x GameNodeState) Enum() *GameNodeState {
+	p := new(GameNodeState)
+	*p = x
+	return p
+}
+
+func (x GameNodeState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GameNodeState) Descriptor() protoreflect.EnumDescriptor {
+	return file_internal_proto_gamenode_proto_enumTypes[2].Descriptor()
+}
+
+func (GameNodeState) Type() protoreflect.EnumType {
+	return &file_internal_proto_gamenode_proto_enumTypes[2]
+}
+
+func (x GameNodeState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GameNodeState.Descriptor instead.
+func (GameNodeState) EnumDescriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{2}
+}
+
 // 节点注册
 type RegisterRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Alias         string                 `protobuf:"bytes,2,opt,name=alias,proto3" json:"alias,omitempty"`
 	Model         string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
-	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"` // 此处仍使用string，而不是枚举，避免兼容性问题
 	Location      string                 `protobuf:"bytes,5,opt,name=location,proto3" json:"location,omitempty"`
 	Hardware      map[string]string      `protobuf:"bytes,6,rep,name=hardware,proto3" json:"hardware,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	System        map[string]string      `protobuf:"bytes,7,rep,name=system,proto3" json:"system,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	Labels        map[string]string      `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	HardwareInfo  *HardwareInfo          `protobuf:"bytes,9,opt,name=hardware_info,json=hardwareInfo,proto3" json:"hardware_info,omitempty"` // 新增详细硬件信息
+	SystemInfo    *SystemInfo            `protobuf:"bytes,10,opt,name=system_info,json=systemInfo,proto3" json:"system_info,omitempty"`      // 新增详细系统信息
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -179,6 +293,20 @@ func (x *RegisterRequest) GetLabels() map[string]string {
 	return nil
 }
 
+func (x *RegisterRequest) GetHardwareInfo() *HardwareInfo {
+	if x != nil {
+		return x.HardwareInfo
+	}
+	return nil
+}
+
+func (x *RegisterRequest) GetSystemInfo() *SystemInfo {
+	if x != nil {
+		return x.SystemInfo
+	}
+	return nil
+}
+
 type RegisterResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
@@ -237,7 +365,7 @@ type HeartbeatRequest struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	Timestamp     int64                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	ResourceInfo  *ResourceInfo          `protobuf:"bytes,4,opt,name=resource_info,json=resourceInfo,proto3" json:"resource_info,omitempty"`
+	Status        *GameNodeStatus        `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"` // 修改resource_info为status
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -293,9 +421,9 @@ func (x *HeartbeatRequest) GetTimestamp() int64 {
 	return 0
 }
 
-func (x *HeartbeatRequest) GetResourceInfo() *ResourceInfo {
+func (x *HeartbeatRequest) GetStatus() *GameNodeStatus {
 	if x != nil {
-		return x.ResourceInfo
+		return x.Status
 	}
 	return nil
 }
@@ -484,9 +612,13 @@ func (x *Metric) GetLabels() map[string]string {
 // 资源信息更新
 type ResourceInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Hardware      *HardwareInfo          `protobuf:"bytes,3,opt,name=hardware,proto3" json:"hardware,omitempty"`
+	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
+	NodeName      string                 `protobuf:"bytes,2,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
+	NodeState     GameNodeState          `protobuf:"varint,3,opt,name=node_state,json=nodeState,proto3,enum=gamenode.GameNodeState" json:"node_state,omitempty"` // 修改node_status为node_state并使用枚举类型
+	NodeType      NodeType               `protobuf:"varint,4,opt,name=node_type,json=nodeType,proto3,enum=gamenode.NodeType" json:"node_type,omitempty"`         // 修改字段编号
+	Hardware      *HardwareInfo          `protobuf:"bytes,5,opt,name=hardware,proto3" json:"hardware,omitempty"`                                                 // 修改字段编号
+	System        *SystemInfo            `protobuf:"bytes,6,opt,name=system,proto3" json:"system,omitempty"`                                                     // 修改字段编号
+	Metrics       *MetricsInfo           `protobuf:"bytes,7,opt,name=metrics,proto3" json:"metrics,omitempty"`                                                   // 修改字段编号
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -521,18 +653,32 @@ func (*ResourceInfo) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *ResourceInfo) GetId() string {
+func (x *ResourceInfo) GetNodeId() string {
 	if x != nil {
-		return x.Id
+		return x.NodeId
 	}
 	return ""
 }
 
-func (x *ResourceInfo) GetTimestamp() int64 {
+func (x *ResourceInfo) GetNodeName() string {
 	if x != nil {
-		return x.Timestamp
+		return x.NodeName
 	}
-	return 0
+	return ""
+}
+
+func (x *ResourceInfo) GetNodeState() GameNodeState {
+	if x != nil {
+		return x.NodeState
+	}
+	return GameNodeState_NODE_STATE_OFFLINE
+}
+
+func (x *ResourceInfo) GetNodeType() NodeType {
+	if x != nil {
+		return x.NodeType
+	}
+	return NodeType_NODE_TYPE_UNKNOWN
 }
 
 func (x *ResourceInfo) GetHardware() *HardwareInfo {
@@ -542,12 +688,28 @@ func (x *ResourceInfo) GetHardware() *HardwareInfo {
 	return nil
 }
 
+func (x *ResourceInfo) GetSystem() *SystemInfo {
+	if x != nil {
+		return x.System
+	}
+	return nil
+}
+
+func (x *ResourceInfo) GetMetrics() *MetricsInfo {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+// 硬件信息 - 重构为扁平结构
 type HardwareInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Cpu           *CPUHardware           `protobuf:"bytes,1,opt,name=cpu,proto3" json:"cpu,omitempty"`
-	Memory        *MemoryHardware        `protobuf:"bytes,2,opt,name=memory,proto3" json:"memory,omitempty"`
-	Gpu           *GPUHardware           `protobuf:"bytes,3,opt,name=gpu,proto3" json:"gpu,omitempty"`
-	Storage       *StorageHardware       `protobuf:"bytes,4,opt,name=storage,proto3" json:"storage,omitempty"`
+	Cpus          []*CPUHardware         `protobuf:"bytes,1,rep,name=cpus,proto3" json:"cpus,omitempty"`
+	Memories      []*MemoryHardware      `protobuf:"bytes,2,rep,name=memories,proto3" json:"memories,omitempty"`
+	Gpus          []*GPUHardware         `protobuf:"bytes,3,rep,name=gpus,proto3" json:"gpus,omitempty"`
+	Storages      []*StorageDevice       `protobuf:"bytes,4,rep,name=storages,proto3" json:"storages,omitempty"`
+	Networks      []*NetworkDevice       `protobuf:"bytes,5,rep,name=networks,proto3" json:"networks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -582,30 +744,37 @@ func (*HardwareInfo) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *HardwareInfo) GetCpu() *CPUHardware {
+func (x *HardwareInfo) GetCpus() []*CPUHardware {
 	if x != nil {
-		return x.Cpu
+		return x.Cpus
 	}
 	return nil
 }
 
-func (x *HardwareInfo) GetMemory() *MemoryHardware {
+func (x *HardwareInfo) GetMemories() []*MemoryHardware {
 	if x != nil {
-		return x.Memory
+		return x.Memories
 	}
 	return nil
 }
 
-func (x *HardwareInfo) GetGpu() *GPUHardware {
+func (x *HardwareInfo) GetGpus() []*GPUHardware {
 	if x != nil {
-		return x.Gpu
+		return x.Gpus
 	}
 	return nil
 }
 
-func (x *HardwareInfo) GetStorage() *StorageHardware {
+func (x *HardwareInfo) GetStorages() []*StorageDevice {
 	if x != nil {
-		return x.Storage
+		return x.Storages
+	}
+	return nil
+}
+
+func (x *HardwareInfo) GetNetworks() []*NetworkDevice {
+	if x != nil {
+		return x.Networks
 	}
 	return nil
 }
@@ -617,6 +786,7 @@ type CPUHardware struct {
 	Threads       int32                  `protobuf:"varint,3,opt,name=threads,proto3" json:"threads,omitempty"`
 	Frequency     float64                `protobuf:"fixed64,4,opt,name=frequency,proto3" json:"frequency,omitempty"`
 	Cache         int64                  `protobuf:"varint,5,opt,name=cache,proto3" json:"cache,omitempty"`
+	Architecture  string                 `protobuf:"bytes,6,opt,name=architecture,proto3" json:"architecture,omitempty"` // 新增架构字段
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -686,12 +856,18 @@ func (x *CPUHardware) GetCache() int64 {
 	return 0
 }
 
+func (x *CPUHardware) GetArchitecture() string {
+	if x != nil {
+		return x.Architecture
+	}
+	return ""
+}
+
 type MemoryHardware struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Total         int64                  `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
+	Size          int64                  `protobuf:"varint,1,opt,name=size,proto3" json:"size,omitempty"` // 改名: total -> size
 	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
-	Frequency     float64                `protobuf:"fixed64,3,opt,name=frequency,proto3" json:"frequency,omitempty"`
-	Channels      int32                  `protobuf:"varint,4,opt,name=channels,proto3" json:"channels,omitempty"`
+	Frequency     float64                `protobuf:"fixed64,3,opt,name=frequency,proto3" json:"frequency,omitempty"` // 移除 channels 字段
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -726,9 +902,9 @@ func (*MemoryHardware) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *MemoryHardware) GetTotal() int64 {
+func (x *MemoryHardware) GetSize() int64 {
 	if x != nil {
-		return x.Total
+		return x.Size
 	}
 	return 0
 }
@@ -747,20 +923,16 @@ func (x *MemoryHardware) GetFrequency() float64 {
 	return 0
 }
 
-func (x *MemoryHardware) GetChannels() int32 {
-	if x != nil {
-		return x.Channels
-	}
-	return 0
-}
-
 type GPUHardware struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
-	MemoryTotal   int64                  `protobuf:"varint,2,opt,name=memory_total,json=memoryTotal,proto3" json:"memory_total,omitempty"`
-	CudaCores     int32                  `protobuf:"varint,3,opt,name=cuda_cores,json=cudaCores,proto3" json:"cuda_cores,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Model             string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
+	MemoryTotal       int64                  `protobuf:"varint,2,opt,name=memory_total,json=memoryTotal,proto3" json:"memory_total,omitempty"`
+	Architecture      string                 `protobuf:"bytes,3,opt,name=architecture,proto3" json:"architecture,omitempty"`                                    // 新增架构字段
+	DriverVersion     string                 `protobuf:"bytes,4,opt,name=driver_version,json=driverVersion,proto3" json:"driver_version,omitempty"`             // 新增驱动版本字段
+	ComputeCapability string                 `protobuf:"bytes,5,opt,name=compute_capability,json=computeCapability,proto3" json:"compute_capability,omitempty"` // 新增计算能力字段
+	Tdp               int32                  `protobuf:"varint,6,opt,name=tdp,proto3" json:"tdp,omitempty"`                                                     // 新增功耗指标字段
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GPUHardware) Reset() {
@@ -807,68 +979,47 @@ func (x *GPUHardware) GetMemoryTotal() int64 {
 	return 0
 }
 
-func (x *GPUHardware) GetCudaCores() int32 {
+func (x *GPUHardware) GetArchitecture() string {
 	if x != nil {
-		return x.CudaCores
+		return x.Architecture
+	}
+	return ""
+}
+
+func (x *GPUHardware) GetDriverVersion() string {
+	if x != nil {
+		return x.DriverVersion
+	}
+	return ""
+}
+
+func (x *GPUHardware) GetComputeCapability() string {
+	if x != nil {
+		return x.ComputeCapability
+	}
+	return ""
+}
+
+func (x *GPUHardware) GetTdp() int32 {
+	if x != nil {
+		return x.Tdp
 	}
 	return 0
-}
-
-type StorageHardware struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Devices       []*StorageDevice       `protobuf:"bytes,1,rep,name=devices,proto3" json:"devices,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StorageHardware) Reset() {
-	*x = StorageHardware{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StorageHardware) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StorageHardware) ProtoMessage() {}
-
-func (x *StorageHardware) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StorageHardware.ProtoReflect.Descriptor instead.
-func (*StorageHardware) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *StorageHardware) GetDevices() []*StorageDevice {
-	if x != nil {
-		return x.Devices
-	}
-	return nil
 }
 
 type StorageDevice struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Type          string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	Capacity      int64                  `protobuf:"varint,2,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	Model         string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"` // 新增型号字段
+	Capacity      int64                  `protobuf:"varint,3,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	Path          string                 `protobuf:"bytes,4,opt,name=path,proto3" json:"path,omitempty"` // 新增挂载路径字段
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StorageDevice) Reset() {
 	*x = StorageDevice{}
-	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -880,7 +1031,7 @@ func (x *StorageDevice) String() string {
 func (*StorageDevice) ProtoMessage() {}
 
 func (x *StorageDevice) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -893,12 +1044,19 @@ func (x *StorageDevice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageDevice.ProtoReflect.Descriptor instead.
 func (*StorageDevice) Descriptor() ([]byte, []int) {
-	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{12}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *StorageDevice) GetType() string {
 	if x != nil {
 		return x.Type
+	}
+	return ""
+}
+
+func (x *StorageDevice) GetModel() string {
+	if x != nil {
+		return x.Model
 	}
 	return ""
 }
@@ -910,12 +1068,89 @@ func (x *StorageDevice) GetCapacity() int64 {
 	return 0
 }
 
+func (x *StorageDevice) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+// 添加 NetworkDevice 消息体
+type NetworkDevice struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                               // 网卡名称
+	MacAddress    string                 `protobuf:"bytes,2,opt,name=mac_address,json=macAddress,proto3" json:"mac_address,omitempty"` // MAC地址
+	IpAddress     string                 `protobuf:"bytes,3,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`    // IP地址
+	Speed         int64                  `protobuf:"varint,4,opt,name=speed,proto3" json:"speed,omitempty"`                            // 网卡速率(Mbps)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NetworkDevice) Reset() {
+	*x = NetworkDevice{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkDevice) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkDevice) ProtoMessage() {}
+
+func (x *NetworkDevice) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkDevice.ProtoReflect.Descriptor instead.
+func (*NetworkDevice) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *NetworkDevice) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *NetworkDevice) GetMacAddress() string {
+	if x != nil {
+		return x.MacAddress
+	}
+	return ""
+}
+
+func (x *NetworkDevice) GetIpAddress() string {
+	if x != nil {
+		return x.IpAddress
+	}
+	return ""
+}
+
+func (x *NetworkDevice) GetSpeed() int64 {
+	if x != nil {
+		return x.Speed
+	}
+	return 0
+}
+
+// 添加MetricsInfo消息体 - 重构为扁平结构
 type MetricsInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Cpu           *CPUMetrics            `protobuf:"bytes,1,opt,name=cpu,proto3" json:"cpu,omitempty"`
+	Cpus          []*CPUMetrics          `protobuf:"bytes,1,rep,name=cpus,proto3" json:"cpus,omitempty"` // 改为CPU指标数组
 	Memory        *MemoryMetrics         `protobuf:"bytes,2,opt,name=memory,proto3" json:"memory,omitempty"`
-	Gpu           *GPUMetrics            `protobuf:"bytes,3,opt,name=gpu,proto3" json:"gpu,omitempty"`
-	Storage       *StorageMetrics        `protobuf:"bytes,4,opt,name=storage,proto3" json:"storage,omitempty"`
+	Gpus          []*GPUMetrics          `protobuf:"bytes,3,rep,name=gpus,proto3" json:"gpus,omitempty"` // 改为GPU指标数组
+	Storages      []*StorageMetrics      `protobuf:"bytes,4,rep,name=storages,proto3" json:"storages,omitempty"`
 	Network       *NetworkMetrics        `protobuf:"bytes,5,opt,name=network,proto3" json:"network,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -951,9 +1186,9 @@ func (*MetricsInfo) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *MetricsInfo) GetCpu() *CPUMetrics {
+func (x *MetricsInfo) GetCpus() []*CPUMetrics {
 	if x != nil {
-		return x.Cpu
+		return x.Cpus
 	}
 	return nil
 }
@@ -965,16 +1200,16 @@ func (x *MetricsInfo) GetMemory() *MemoryMetrics {
 	return nil
 }
 
-func (x *MetricsInfo) GetGpu() *GPUMetrics {
+func (x *MetricsInfo) GetGpus() []*GPUMetrics {
 	if x != nil {
-		return x.Gpu
+		return x.Gpus
 	}
 	return nil
 }
 
-func (x *MetricsInfo) GetStorage() *StorageMetrics {
+func (x *MetricsInfo) GetStorages() []*StorageMetrics {
 	if x != nil {
-		return x.Storage
+		return x.Storages
 	}
 	return nil
 }
@@ -988,8 +1223,10 @@ func (x *MetricsInfo) GetNetwork() *NetworkMetrics {
 
 type CPUMetrics struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Usage         float64                `protobuf:"fixed64,1,opt,name=usage,proto3" json:"usage,omitempty"`
-	Temperature   float64                `protobuf:"fixed64,2,opt,name=temperature,proto3" json:"temperature,omitempty"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`      // 新增型号字段
+	Cores         int32                  `protobuf:"varint,2,opt,name=cores,proto3" json:"cores,omitempty"`     // 新增核心数字段
+	Threads       int32                  `protobuf:"varint,3,opt,name=threads,proto3" json:"threads,omitempty"` // 新增线程数字段
+	Usage         float64                `protobuf:"fixed64,4,opt,name=usage,proto3" json:"usage,omitempty"`    // CPU使用率
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1024,6 +1261,27 @@ func (*CPUMetrics) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{14}
 }
 
+func (x *CPUMetrics) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *CPUMetrics) GetCores() int32 {
+	if x != nil {
+		return x.Cores
+	}
+	return 0
+}
+
+func (x *CPUMetrics) GetThreads() int32 {
+	if x != nil {
+		return x.Threads
+	}
+	return 0
+}
+
 func (x *CPUMetrics) GetUsage() float64 {
 	if x != nil {
 		return x.Usage
@@ -1031,18 +1289,12 @@ func (x *CPUMetrics) GetUsage() float64 {
 	return 0
 }
 
-func (x *CPUMetrics) GetTemperature() float64 {
-	if x != nil {
-		return x.Temperature
-	}
-	return 0
-}
-
 type MemoryMetrics struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Available     int64                  `protobuf:"varint,1,opt,name=available,proto3" json:"available,omitempty"`
-	Used          int64                  `protobuf:"varint,2,opt,name=used,proto3" json:"used,omitempty"`
-	Usage         float64                `protobuf:"fixed64,3,opt,name=usage,proto3" json:"usage,omitempty"`
+	Total         int64                  `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`         // 总内存大小
+	Available     int64                  `protobuf:"varint,2,opt,name=available,proto3" json:"available,omitempty"` // 可用内存大小
+	Used          int64                  `protobuf:"varint,3,opt,name=used,proto3" json:"used,omitempty"`           // 新增已用内存字段
+	Usage         float64                `protobuf:"fixed64,4,opt,name=usage,proto3" json:"usage,omitempty"`        // 新增使用率字段
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1077,6 +1329,13 @@ func (*MemoryMetrics) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{15}
 }
 
+func (x *MemoryMetrics) GetTotal() int64 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
 func (x *MemoryMetrics) GetAvailable() int64 {
 	if x != nil {
 		return x.Available
@@ -1100,12 +1359,12 @@ func (x *MemoryMetrics) GetUsage() float64 {
 
 type GPUMetrics struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Usage         float64                `protobuf:"fixed64,1,opt,name=usage,proto3" json:"usage,omitempty"`
-	MemoryUsed    int64                  `protobuf:"varint,2,opt,name=memory_used,json=memoryUsed,proto3" json:"memory_used,omitempty"`
-	MemoryFree    int64                  `protobuf:"varint,3,opt,name=memory_free,json=memoryFree,proto3" json:"memory_free,omitempty"`
-	MemoryUsage   float64                `protobuf:"fixed64,4,opt,name=memory_usage,json=memoryUsage,proto3" json:"memory_usage,omitempty"`
-	Temperature   float64                `protobuf:"fixed64,5,opt,name=temperature,proto3" json:"temperature,omitempty"`
-	Power         float64                `protobuf:"fixed64,6,opt,name=power,proto3" json:"power,omitempty"`
+	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`                                  // 新增GPU型号字段
+	MemoryTotal   int64                  `protobuf:"varint,2,opt,name=memory_total,json=memoryTotal,proto3" json:"memory_total,omitempty"`  // 显存总量
+	Usage         float64                `protobuf:"fixed64,3,opt,name=usage,proto3" json:"usage,omitempty"`                                // GPU使用率
+	MemoryUsed    int64                  `protobuf:"varint,4,opt,name=memory_used,json=memoryUsed,proto3" json:"memory_used,omitempty"`     // 已用显存
+	MemoryFree    int64                  `protobuf:"varint,5,opt,name=memory_free,json=memoryFree,proto3" json:"memory_free,omitempty"`     // 新增可用显存字段
+	MemoryUsage   float64                `protobuf:"fixed64,6,opt,name=memory_usage,json=memoryUsage,proto3" json:"memory_usage,omitempty"` // 新增显存使用率字段
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1140,6 +1399,20 @@ func (*GPUMetrics) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{16}
 }
 
+func (x *GPUMetrics) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *GPUMetrics) GetMemoryTotal() int64 {
+	if x != nil {
+		return x.MemoryTotal
+	}
+	return 0
+}
+
 func (x *GPUMetrics) GetUsage() float64 {
 	if x != nil {
 		return x.Usage
@@ -1168,25 +1441,15 @@ func (x *GPUMetrics) GetMemoryUsage() float64 {
 	return 0
 }
 
-func (x *GPUMetrics) GetTemperature() float64 {
-	if x != nil {
-		return x.Temperature
-	}
-	return 0
-}
-
-func (x *GPUMetrics) GetPower() float64 {
-	if x != nil {
-		return x.Power
-	}
-	return 0
-}
-
 type StorageMetrics struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Used          int64                  `protobuf:"varint,1,opt,name=used,proto3" json:"used,omitempty"`
-	Free          int64                  `protobuf:"varint,2,opt,name=free,proto3" json:"free,omitempty"`
-	Usage         float64                `protobuf:"fixed64,3,opt,name=usage,proto3" json:"usage,omitempty"`
+	Path          string                 `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`          // 新增挂载路径字段
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`          // 新增存储类型字段
+	Model         string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`        // 新增设备型号字段
+	Capacity      int64                  `protobuf:"varint,4,opt,name=capacity,proto3" json:"capacity,omitempty"` // 新增总容量字段
+	Used          int64                  `protobuf:"varint,5,opt,name=used,proto3" json:"used,omitempty"`         // 新增已用空间字段
+	Free          int64                  `protobuf:"varint,6,opt,name=free,proto3" json:"free,omitempty"`         // 新增可用空间字段
+	Usage         float64                `protobuf:"fixed64,7,opt,name=usage,proto3" json:"usage,omitempty"`      // 存储使用率
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1221,6 +1484,34 @@ func (*StorageMetrics) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{17}
 }
 
+func (x *StorageMetrics) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *StorageMetrics) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *StorageMetrics) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *StorageMetrics) GetCapacity() int64 {
+	if x != nil {
+		return x.Capacity
+	}
+	return 0
+}
+
 func (x *StorageMetrics) GetUsed() int64 {
 	if x != nil {
 		return x.Used
@@ -1243,13 +1534,12 @@ func (x *StorageMetrics) GetUsage() float64 {
 }
 
 type NetworkMetrics struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Bandwidth     float64                `protobuf:"fixed64,1,opt,name=bandwidth,proto3" json:"bandwidth,omitempty"`
-	Latency       float64                `protobuf:"fixed64,2,opt,name=latency,proto3" json:"latency,omitempty"`
-	Connections   int32                  `protobuf:"varint,3,opt,name=connections,proto3" json:"connections,omitempty"`
-	PacketLoss    float64                `protobuf:"fixed64,4,opt,name=packet_loss,json=packetLoss,proto3" json:"packet_loss,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	InboundTraffic  float64                `protobuf:"fixed64,1,opt,name=inbound_traffic,json=inboundTraffic,proto3" json:"inbound_traffic,omitempty"`    // 改名: rx_rate -> inbound_traffic
+	OutboundTraffic float64                `protobuf:"fixed64,2,opt,name=outbound_traffic,json=outboundTraffic,proto3" json:"outbound_traffic,omitempty"` // 改名: tx_rate -> outbound_traffic
+	Connections     int32                  `protobuf:"varint,3,opt,name=connections,proto3" json:"connections,omitempty"`                                 // 连接数
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *NetworkMetrics) Reset() {
@@ -1282,16 +1572,16 @@ func (*NetworkMetrics) Descriptor() ([]byte, []int) {
 	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{18}
 }
 
-func (x *NetworkMetrics) GetBandwidth() float64 {
+func (x *NetworkMetrics) GetInboundTraffic() float64 {
 	if x != nil {
-		return x.Bandwidth
+		return x.InboundTraffic
 	}
 	return 0
 }
 
-func (x *NetworkMetrics) GetLatency() float64 {
+func (x *NetworkMetrics) GetOutboundTraffic() float64 {
 	if x != nil {
-		return x.Latency
+		return x.OutboundTraffic
 	}
 	return 0
 }
@@ -1299,13 +1589,6 @@ func (x *NetworkMetrics) GetLatency() float64 {
 func (x *NetworkMetrics) GetConnections() int32 {
 	if x != nil {
 		return x.Connections
-	}
-	return 0
-}
-
-func (x *NetworkMetrics) GetPacketLoss() float64 {
-	if x != nil {
-		return x.PacketLoss
 	}
 	return 0
 }
@@ -2082,11 +2365,338 @@ func (x *Event) GetData() map[string]string {
 	return nil
 }
 
+// 添加SystemInfo消息体
+type SystemInfo struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	OsDistribution       string                 `protobuf:"bytes,1,opt,name=os_distribution,json=osDistribution,proto3" json:"os_distribution,omitempty"`                       // 操作系统发行版
+	OsVersion            string                 `protobuf:"bytes,2,opt,name=os_version,json=osVersion,proto3" json:"os_version,omitempty"`                                      // 操作系统版本
+	OsArchitecture       string                 `protobuf:"bytes,3,opt,name=os_architecture,json=osArchitecture,proto3" json:"os_architecture,omitempty"`                       // 操作系统架构
+	KernelVersion        string                 `protobuf:"bytes,4,opt,name=kernel_version,json=kernelVersion,proto3" json:"kernel_version,omitempty"`                          // 内核版本
+	GpuDriverVersion     string                 `protobuf:"bytes,5,opt,name=gpu_driver_version,json=gpuDriverVersion,proto3" json:"gpu_driver_version,omitempty"`               // GPU驱动版本
+	GpuComputeApiVersion string                 `protobuf:"bytes,6,opt,name=gpu_compute_api_version,json=gpuComputeApiVersion,proto3" json:"gpu_compute_api_version,omitempty"` // GPU计算框架版本(CUDA/ROCm/oneAPI/OpenCL)
+	DockerVersion        string                 `protobuf:"bytes,7,opt,name=docker_version,json=dockerVersion,proto3" json:"docker_version,omitempty"`                          // Docker版本
+	ContainerdVersion    string                 `protobuf:"bytes,8,opt,name=containerd_version,json=containerdVersion,proto3" json:"containerd_version,omitempty"`              // Containerd版本
+	RuncVersion          string                 `protobuf:"bytes,9,opt,name=runc_version,json=runcVersion,proto3" json:"runc_version,omitempty"`                                // Runc版本
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *SystemInfo) Reset() {
+	*x = SystemInfo{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SystemInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SystemInfo) ProtoMessage() {}
+
+func (x *SystemInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SystemInfo.ProtoReflect.Descriptor instead.
+func (*SystemInfo) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *SystemInfo) GetOsDistribution() string {
+	if x != nil {
+		return x.OsDistribution
+	}
+	return ""
+}
+
+func (x *SystemInfo) GetOsVersion() string {
+	if x != nil {
+		return x.OsVersion
+	}
+	return ""
+}
+
+func (x *SystemInfo) GetOsArchitecture() string {
+	if x != nil {
+		return x.OsArchitecture
+	}
+	return ""
+}
+
+func (x *SystemInfo) GetKernelVersion() string {
+	if x != nil {
+		return x.KernelVersion
+	}
+	return ""
+}
+
+func (x *SystemInfo) GetGpuDriverVersion() string {
+	if x != nil {
+		return x.GpuDriverVersion
+	}
+	return ""
+}
+
+func (x *SystemInfo) GetGpuComputeApiVersion() string {
+	if x != nil {
+		return x.GpuComputeApiVersion
+	}
+	return ""
+}
+
+func (x *SystemInfo) GetDockerVersion() string {
+	if x != nil {
+		return x.DockerVersion
+	}
+	return ""
+}
+
+func (x *SystemInfo) GetContainerdVersion() string {
+	if x != nil {
+		return x.ContainerdVersion
+	}
+	return ""
+}
+
+func (x *SystemInfo) GetRuncVersion() string {
+	if x != nil {
+		return x.RuncVersion
+	}
+	return ""
+}
+
+// 添加GameNodeStatus消息体
+type GameNodeStatus struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	State         GameNodeState          `protobuf:"varint,1,opt,name=state,proto3,enum=gamenode.GameNodeState" json:"state,omitempty"` // 节点状态
+	Online        bool                   `protobuf:"varint,2,opt,name=online,proto3" json:"online,omitempty"`                           // 是否在线
+	LastOnline    *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_online,json=lastOnline,proto3" json:"last_online,omitempty"`  // 最后在线时间
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`     // 状态更新时间
+	Hardware      *HardwareInfo          `protobuf:"bytes,5,opt,name=hardware,proto3" json:"hardware,omitempty"`                        // 硬件配置
+	System        *SystemInfo            `protobuf:"bytes,6,opt,name=system,proto3" json:"system,omitempty"`                            // 系统配置
+	Metrics       *MetricsInfo           `protobuf:"bytes,7,opt,name=metrics,proto3" json:"metrics,omitempty"`                          // 监控指标
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GameNodeStatus) Reset() {
+	*x = GameNodeStatus{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameNodeStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameNodeStatus) ProtoMessage() {}
+
+func (x *GameNodeStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameNodeStatus.ProtoReflect.Descriptor instead.
+func (*GameNodeStatus) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *GameNodeStatus) GetState() GameNodeState {
+	if x != nil {
+		return x.State
+	}
+	return GameNodeState_NODE_STATE_OFFLINE
+}
+
+func (x *GameNodeStatus) GetOnline() bool {
+	if x != nil {
+		return x.Online
+	}
+	return false
+}
+
+func (x *GameNodeStatus) GetLastOnline() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastOnline
+	}
+	return nil
+}
+
+func (x *GameNodeStatus) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *GameNodeStatus) GetHardware() *HardwareInfo {
+	if x != nil {
+		return x.Hardware
+	}
+	return nil
+}
+
+func (x *GameNodeStatus) GetSystem() *SystemInfo {
+	if x != nil {
+		return x.System
+	}
+	return nil
+}
+
+func (x *GameNodeStatus) GetMetrics() *MetricsInfo {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+// 添加完整的GameNode消息体
+type GameNode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                                                                       // 节点ID
+	Alias         string                 `protobuf:"bytes,2,opt,name=alias,proto3" json:"alias,omitempty"`                                                                                 // 节点别名
+	Model         string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`                                                                                 // 节点型号
+	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`                                                                                   // 节点类型
+	Location      string                 `protobuf:"bytes,5,opt,name=location,proto3" json:"location,omitempty"`                                                                           // 节点位置
+	Labels        map[string]string      `protobuf:"bytes,6,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`     // 标签
+	Hardware      map[string]string      `protobuf:"bytes,7,rep,name=hardware,proto3" json:"hardware,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // 硬件配置(简化版)
+	System        map[string]string      `protobuf:"bytes,8,rep,name=system,proto3" json:"system,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`     // 系统配置(简化版)
+	Status        *GameNodeStatus        `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`                                                                               // 节点状态信息
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`                                                       // 创建时间
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`                                                       // 更新时间
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GameNode) Reset() {
+	*x = GameNode{}
+	mi := &file_internal_proto_gamenode_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GameNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GameNode) ProtoMessage() {}
+
+func (x *GameNode) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_proto_gamenode_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GameNode.ProtoReflect.Descriptor instead.
+func (*GameNode) Descriptor() ([]byte, []int) {
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *GameNode) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GameNode) GetAlias() string {
+	if x != nil {
+		return x.Alias
+	}
+	return ""
+}
+
+func (x *GameNode) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *GameNode) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *GameNode) GetLocation() string {
+	if x != nil {
+		return x.Location
+	}
+	return ""
+}
+
+func (x *GameNode) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GameNode) GetHardware() map[string]string {
+	if x != nil {
+		return x.Hardware
+	}
+	return nil
+}
+
+func (x *GameNode) GetSystem() map[string]string {
+	if x != nil {
+		return x.System
+	}
+	return nil
+}
+
+func (x *GameNode) GetStatus() *GameNodeStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+func (x *GameNode) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *GameNode) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
 var File_internal_proto_gamenode_proto protoreflect.FileDescriptor
 
 const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\n" +
-	"\x1dinternal/proto/gamenode.proto\x12\bgamenode\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf3\x03\n" +
+	"\x1dinternal/proto/gamenode.proto\x12\bgamenode\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe7\x04\n" +
 	"\x0fRegisterRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05alias\x18\x02 \x01(\tR\x05alias\x12\x14\n" +
@@ -2095,7 +2705,11 @@ const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\blocation\x18\x05 \x01(\tR\blocation\x12C\n" +
 	"\bhardware\x18\x06 \x03(\v2'.gamenode.RegisterRequest.HardwareEntryR\bhardware\x12=\n" +
 	"\x06system\x18\a \x03(\v2%.gamenode.RegisterRequest.SystemEntryR\x06system\x12=\n" +
-	"\x06labels\x18\b \x03(\v2%.gamenode.RegisterRequest.LabelsEntryR\x06labels\x1a;\n" +
+	"\x06labels\x18\b \x03(\v2%.gamenode.RegisterRequest.LabelsEntryR\x06labels\x12;\n" +
+	"\rhardware_info\x18\t \x01(\v2\x16.gamenode.HardwareInfoR\fhardwareInfo\x125\n" +
+	"\vsystem_info\x18\n" +
+	" \x01(\v2\x14.gamenode.SystemInfoR\n" +
+	"systemInfo\x1a;\n" +
 	"\rHardwareEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
@@ -2107,13 +2721,13 @@ const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"F\n" +
 	"\x10RegisterResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\x9c\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x91\x01\n" +
 	"\x10HeartbeatRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x1c\n" +
-	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\x12;\n" +
-	"\rresource_info\x18\x04 \x01(\v2\x16.gamenode.ResourceInfoR\fresourceInfo\"E\n" +
+	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\x120\n" +
+	"\x06status\x18\x04 \x01(\v2\x18.gamenode.GameNodeStatusR\x06status\"E\n" +
 	"\x11HeartbeatResponse\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"i\n" +
@@ -2128,71 +2742,91 @@ const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\x06labels\x18\x04 \x03(\v2\x1c.gamenode.Metric.LabelsEntryR\x06labels\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"p\n" +
-	"\fResourceInfo\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
-	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x122\n" +
-	"\bhardware\x18\x03 \x01(\v2\x16.gamenode.HardwareInfoR\bhardware\"\xc7\x01\n" +
-	"\fHardwareInfo\x12'\n" +
-	"\x03cpu\x18\x01 \x01(\v2\x15.gamenode.CPUHardwareR\x03cpu\x120\n" +
-	"\x06memory\x18\x02 \x01(\v2\x18.gamenode.MemoryHardwareR\x06memory\x12'\n" +
-	"\x03gpu\x18\x03 \x01(\v2\x15.gamenode.GPUHardwareR\x03gpu\x123\n" +
-	"\astorage\x18\x04 \x01(\v2\x19.gamenode.StorageHardwareR\astorage\"\x87\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc0\x02\n" +
+	"\fResourceInfo\x12\x17\n" +
+	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1b\n" +
+	"\tnode_name\x18\x02 \x01(\tR\bnodeName\x126\n" +
+	"\n" +
+	"node_state\x18\x03 \x01(\x0e2\x17.gamenode.GameNodeStateR\tnodeState\x12/\n" +
+	"\tnode_type\x18\x04 \x01(\x0e2\x12.gamenode.NodeTypeR\bnodeType\x122\n" +
+	"\bhardware\x18\x05 \x01(\v2\x16.gamenode.HardwareInfoR\bhardware\x12,\n" +
+	"\x06system\x18\x06 \x01(\v2\x14.gamenode.SystemInfoR\x06system\x12/\n" +
+	"\ametrics\x18\a \x01(\v2\x15.gamenode.MetricsInfoR\ametrics\"\x84\x02\n" +
+	"\fHardwareInfo\x12)\n" +
+	"\x04cpus\x18\x01 \x03(\v2\x15.gamenode.CPUHardwareR\x04cpus\x124\n" +
+	"\bmemories\x18\x02 \x03(\v2\x18.gamenode.MemoryHardwareR\bmemories\x12)\n" +
+	"\x04gpus\x18\x03 \x03(\v2\x15.gamenode.GPUHardwareR\x04gpus\x123\n" +
+	"\bstorages\x18\x04 \x03(\v2\x17.gamenode.StorageDeviceR\bstorages\x123\n" +
+	"\bnetworks\x18\x05 \x03(\v2\x17.gamenode.NetworkDeviceR\bnetworks\"\xab\x01\n" +
 	"\vCPUHardware\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x14\n" +
 	"\x05cores\x18\x02 \x01(\x05R\x05cores\x12\x18\n" +
 	"\athreads\x18\x03 \x01(\x05R\athreads\x12\x1c\n" +
 	"\tfrequency\x18\x04 \x01(\x01R\tfrequency\x12\x14\n" +
-	"\x05cache\x18\x05 \x01(\x03R\x05cache\"t\n" +
-	"\x0eMemoryHardware\x12\x14\n" +
-	"\x05total\x18\x01 \x01(\x03R\x05total\x12\x12\n" +
+	"\x05cache\x18\x05 \x01(\x03R\x05cache\x12\"\n" +
+	"\farchitecture\x18\x06 \x01(\tR\farchitecture\"V\n" +
+	"\x0eMemoryHardware\x12\x12\n" +
+	"\x04size\x18\x01 \x01(\x03R\x04size\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1c\n" +
-	"\tfrequency\x18\x03 \x01(\x01R\tfrequency\x12\x1a\n" +
-	"\bchannels\x18\x04 \x01(\x05R\bchannels\"e\n" +
+	"\tfrequency\x18\x03 \x01(\x01R\tfrequency\"\xd2\x01\n" +
 	"\vGPUHardware\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12!\n" +
-	"\fmemory_total\x18\x02 \x01(\x03R\vmemoryTotal\x12\x1d\n" +
-	"\n" +
-	"cuda_cores\x18\x03 \x01(\x05R\tcudaCores\"D\n" +
-	"\x0fStorageHardware\x121\n" +
-	"\adevices\x18\x01 \x03(\v2\x17.gamenode.StorageDeviceR\adevices\"?\n" +
+	"\fmemory_total\x18\x02 \x01(\x03R\vmemoryTotal\x12\"\n" +
+	"\farchitecture\x18\x03 \x01(\tR\farchitecture\x12%\n" +
+	"\x0edriver_version\x18\x04 \x01(\tR\rdriverVersion\x12-\n" +
+	"\x12compute_capability\x18\x05 \x01(\tR\x11computeCapability\x12\x10\n" +
+	"\x03tdp\x18\x06 \x01(\x05R\x03tdp\"i\n" +
 	"\rStorageDevice\x12\x12\n" +
-	"\x04type\x18\x01 \x01(\tR\x04type\x12\x1a\n" +
-	"\bcapacity\x18\x02 \x01(\x03R\bcapacity\"\xf6\x01\n" +
-	"\vMetricsInfo\x12&\n" +
-	"\x03cpu\x18\x01 \x01(\v2\x14.gamenode.CPUMetricsR\x03cpu\x12/\n" +
-	"\x06memory\x18\x02 \x01(\v2\x17.gamenode.MemoryMetricsR\x06memory\x12&\n" +
-	"\x03gpu\x18\x03 \x01(\v2\x14.gamenode.GPUMetricsR\x03gpu\x122\n" +
-	"\astorage\x18\x04 \x01(\v2\x18.gamenode.StorageMetricsR\astorage\x122\n" +
-	"\anetwork\x18\x05 \x01(\v2\x18.gamenode.NetworkMetricsR\anetwork\"D\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x12\x14\n" +
+	"\x05model\x18\x02 \x01(\tR\x05model\x12\x1a\n" +
+	"\bcapacity\x18\x03 \x01(\x03R\bcapacity\x12\x12\n" +
+	"\x04path\x18\x04 \x01(\tR\x04path\"y\n" +
+	"\rNetworkDevice\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1f\n" +
+	"\vmac_address\x18\x02 \x01(\tR\n" +
+	"macAddress\x12\x1d\n" +
+	"\n" +
+	"ip_address\x18\x03 \x01(\tR\tipAddress\x12\x14\n" +
+	"\x05speed\x18\x04 \x01(\x03R\x05speed\"\xfc\x01\n" +
+	"\vMetricsInfo\x12(\n" +
+	"\x04cpus\x18\x01 \x03(\v2\x14.gamenode.CPUMetricsR\x04cpus\x12/\n" +
+	"\x06memory\x18\x02 \x01(\v2\x17.gamenode.MemoryMetricsR\x06memory\x12(\n" +
+	"\x04gpus\x18\x03 \x03(\v2\x14.gamenode.GPUMetricsR\x04gpus\x124\n" +
+	"\bstorages\x18\x04 \x03(\v2\x18.gamenode.StorageMetricsR\bstorages\x122\n" +
+	"\anetwork\x18\x05 \x01(\v2\x18.gamenode.NetworkMetricsR\anetwork\"h\n" +
 	"\n" +
 	"CPUMetrics\x12\x14\n" +
-	"\x05usage\x18\x01 \x01(\x01R\x05usage\x12 \n" +
-	"\vtemperature\x18\x02 \x01(\x01R\vtemperature\"W\n" +
-	"\rMemoryMetrics\x12\x1c\n" +
-	"\tavailable\x18\x01 \x01(\x03R\tavailable\x12\x12\n" +
-	"\x04used\x18\x02 \x01(\x03R\x04used\x12\x14\n" +
-	"\x05usage\x18\x03 \x01(\x01R\x05usage\"\xbf\x01\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x12\x14\n" +
+	"\x05cores\x18\x02 \x01(\x05R\x05cores\x12\x18\n" +
+	"\athreads\x18\x03 \x01(\x05R\athreads\x12\x14\n" +
+	"\x05usage\x18\x04 \x01(\x01R\x05usage\"m\n" +
+	"\rMemoryMetrics\x12\x14\n" +
+	"\x05total\x18\x01 \x01(\x03R\x05total\x12\x1c\n" +
+	"\tavailable\x18\x02 \x01(\x03R\tavailable\x12\x12\n" +
+	"\x04used\x18\x03 \x01(\x03R\x04used\x12\x14\n" +
+	"\x05usage\x18\x04 \x01(\x01R\x05usage\"\xc0\x01\n" +
 	"\n" +
 	"GPUMetrics\x12\x14\n" +
-	"\x05usage\x18\x01 \x01(\x01R\x05usage\x12\x1f\n" +
-	"\vmemory_used\x18\x02 \x01(\x03R\n" +
+	"\x05model\x18\x01 \x01(\tR\x05model\x12!\n" +
+	"\fmemory_total\x18\x02 \x01(\x03R\vmemoryTotal\x12\x14\n" +
+	"\x05usage\x18\x03 \x01(\x01R\x05usage\x12\x1f\n" +
+	"\vmemory_used\x18\x04 \x01(\x03R\n" +
 	"memoryUsed\x12\x1f\n" +
-	"\vmemory_free\x18\x03 \x01(\x03R\n" +
+	"\vmemory_free\x18\x05 \x01(\x03R\n" +
 	"memoryFree\x12!\n" +
-	"\fmemory_usage\x18\x04 \x01(\x01R\vmemoryUsage\x12 \n" +
-	"\vtemperature\x18\x05 \x01(\x01R\vtemperature\x12\x14\n" +
-	"\x05power\x18\x06 \x01(\x01R\x05power\"N\n" +
+	"\fmemory_usage\x18\x06 \x01(\x01R\vmemoryUsage\"\xa8\x01\n" +
 	"\x0eStorageMetrics\x12\x12\n" +
-	"\x04used\x18\x01 \x01(\x03R\x04used\x12\x12\n" +
-	"\x04free\x18\x02 \x01(\x03R\x04free\x12\x14\n" +
-	"\x05usage\x18\x03 \x01(\x01R\x05usage\"\x8b\x01\n" +
-	"\x0eNetworkMetrics\x12\x1c\n" +
-	"\tbandwidth\x18\x01 \x01(\x01R\tbandwidth\x12\x18\n" +
-	"\alatency\x18\x02 \x01(\x01R\alatency\x12 \n" +
-	"\vconnections\x18\x03 \x01(\x05R\vconnections\x12\x1f\n" +
-	"\vpacket_loss\x18\x04 \x01(\x01R\n" +
-	"packetLoss\"\xe0\x02\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x14\n" +
+	"\x05model\x18\x03 \x01(\tR\x05model\x12\x1a\n" +
+	"\bcapacity\x18\x04 \x01(\x03R\bcapacity\x12\x12\n" +
+	"\x04used\x18\x05 \x01(\x03R\x04used\x12\x12\n" +
+	"\x04free\x18\x06 \x01(\x03R\x04free\x12\x14\n" +
+	"\x05usage\x18\a \x01(\x01R\x05usage\"\x86\x01\n" +
+	"\x0eNetworkMetrics\x12'\n" +
+	"\x0finbound_traffic\x18\x01 \x01(\x01R\x0einboundTraffic\x12)\n" +
+	"\x10outbound_traffic\x18\x02 \x01(\x01R\x0foutboundTraffic\x12 \n" +
+	"\vconnections\x18\x03 \x01(\x05R\vconnections\"\xe0\x02\n" +
 	"\x16ExecutePipelineRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vpipeline_id\x18\x02 \x01(\tR\n" +
@@ -2268,6 +2902,52 @@ const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\x04data\x18\a \x03(\v2\x19.gamenode.Event.DataEntryR\x04data\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x82\x03\n" +
+	"\n" +
+	"SystemInfo\x12'\n" +
+	"\x0fos_distribution\x18\x01 \x01(\tR\x0eosDistribution\x12\x1d\n" +
+	"\n" +
+	"os_version\x18\x02 \x01(\tR\tosVersion\x12'\n" +
+	"\x0fos_architecture\x18\x03 \x01(\tR\x0eosArchitecture\x12%\n" +
+	"\x0ekernel_version\x18\x04 \x01(\tR\rkernelVersion\x12,\n" +
+	"\x12gpu_driver_version\x18\x05 \x01(\tR\x10gpuDriverVersion\x125\n" +
+	"\x17gpu_compute_api_version\x18\x06 \x01(\tR\x14gpuComputeApiVersion\x12%\n" +
+	"\x0edocker_version\x18\a \x01(\tR\rdockerVersion\x12-\n" +
+	"\x12containerd_version\x18\b \x01(\tR\x11containerdVersion\x12!\n" +
+	"\frunc_version\x18\t \x01(\tR\vruncVersion\"\xe2\x02\n" +
+	"\x0eGameNodeStatus\x12-\n" +
+	"\x05state\x18\x01 \x01(\x0e2\x17.gamenode.GameNodeStateR\x05state\x12\x16\n" +
+	"\x06online\x18\x02 \x01(\bR\x06online\x12;\n" +
+	"\vlast_online\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"lastOnline\x129\n" +
+	"\n" +
+	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x122\n" +
+	"\bhardware\x18\x05 \x01(\v2\x16.gamenode.HardwareInfoR\bhardware\x12,\n" +
+	"\x06system\x18\x06 \x01(\v2\x14.gamenode.SystemInfoR\x06system\x12/\n" +
+	"\ametrics\x18\a \x01(\v2\x15.gamenode.MetricsInfoR\ametrics\"\xff\x04\n" +
+	"\bGameNode\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05alias\x18\x02 \x01(\tR\x05alias\x12\x14\n" +
+	"\x05model\x18\x03 \x01(\tR\x05model\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12\x1a\n" +
+	"\blocation\x18\x05 \x01(\tR\blocation\x126\n" +
+	"\x06labels\x18\x06 \x03(\v2\x1e.gamenode.GameNode.LabelsEntryR\x06labels\x12<\n" +
+	"\bhardware\x18\a \x03(\v2 .gamenode.GameNode.HardwareEntryR\bhardware\x126\n" +
+	"\x06system\x18\b \x03(\v2\x1e.gamenode.GameNode.SystemEntryR\x06system\x120\n" +
+	"\x06status\x18\t \x01(\v2\x18.gamenode.GameNodeStatusR\x06status\x129\n" +
+	"\n" +
+	"created_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
+	"\rHardwareEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vSystemEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01*P\n" +
 	"\n" +
 	"StepStatus\x12\v\n" +
@@ -2276,7 +2956,19 @@ const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\tCOMPLETED\x10\x02\x12\n" +
 	"\n" +
 	"\x06FAILED\x10\x03\x12\r\n" +
-	"\tCANCELLED\x10\x042\xa5\x05\n" +
+	"\tCANCELLED\x10\x04*i\n" +
+	"\bNodeType\x12\x15\n" +
+	"\x11NODE_TYPE_UNKNOWN\x10\x00\x12\x16\n" +
+	"\x12NODE_TYPE_PHYSICAL\x10\x01\x12\x15\n" +
+	"\x11NODE_TYPE_VIRTUAL\x10\x02\x12\x17\n" +
+	"\x13NODE_TYPE_CONTAINER\x10\x03*\x9b\x01\n" +
+	"\rGameNodeState\x12\x16\n" +
+	"\x12NODE_STATE_OFFLINE\x10\x00\x12\x15\n" +
+	"\x11NODE_STATE_ONLINE\x10\x01\x12\x1a\n" +
+	"\x16NODE_STATE_MAINTENANCE\x10\x02\x12\x14\n" +
+	"\x10NODE_STATE_READY\x10\x03\x12\x13\n" +
+	"\x0fNODE_STATE_BUSY\x10\x04\x12\x14\n" +
+	"\x10NODE_STATE_ERROR\x10\x052\xa5\x05\n" +
 	"\x13GameNodeGRPCService\x12A\n" +
 	"\bRegister\x12\x19.gamenode.RegisterRequest\x1a\x1a.gamenode.RegisterResponse\x12D\n" +
 	"\tHeartbeat\x12\x1a.gamenode.HeartbeatRequest\x1a\x1b.gamenode.HeartbeatResponse\x12B\n" +
@@ -2301,97 +2993,123 @@ func file_internal_proto_gamenode_proto_rawDescGZIP() []byte {
 	return file_internal_proto_gamenode_proto_rawDescData
 }
 
-var file_internal_proto_gamenode_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_internal_proto_gamenode_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_internal_proto_gamenode_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_internal_proto_gamenode_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
 var file_internal_proto_gamenode_proto_goTypes = []any{
 	(StepStatus)(0),                 // 0: gamenode.StepStatus
-	(*RegisterRequest)(nil),         // 1: gamenode.RegisterRequest
-	(*RegisterResponse)(nil),        // 2: gamenode.RegisterResponse
-	(*HeartbeatRequest)(nil),        // 3: gamenode.HeartbeatRequest
-	(*HeartbeatResponse)(nil),       // 4: gamenode.HeartbeatResponse
-	(*MetricsReport)(nil),           // 5: gamenode.MetricsReport
-	(*Metric)(nil),                  // 6: gamenode.Metric
-	(*ResourceInfo)(nil),            // 7: gamenode.ResourceInfo
-	(*HardwareInfo)(nil),            // 8: gamenode.HardwareInfo
-	(*CPUHardware)(nil),             // 9: gamenode.CPUHardware
-	(*MemoryHardware)(nil),          // 10: gamenode.MemoryHardware
-	(*GPUHardware)(nil),             // 11: gamenode.GPUHardware
-	(*StorageHardware)(nil),         // 12: gamenode.StorageHardware
-	(*StorageDevice)(nil),           // 13: gamenode.StorageDevice
-	(*MetricsInfo)(nil),             // 14: gamenode.MetricsInfo
-	(*CPUMetrics)(nil),              // 15: gamenode.CPUMetrics
-	(*MemoryMetrics)(nil),           // 16: gamenode.MemoryMetrics
-	(*GPUMetrics)(nil),              // 17: gamenode.GPUMetrics
-	(*StorageMetrics)(nil),          // 18: gamenode.StorageMetrics
-	(*NetworkMetrics)(nil),          // 19: gamenode.NetworkMetrics
-	(*ExecutePipelineRequest)(nil),  // 20: gamenode.ExecutePipelineRequest
-	(*ExecutePipelineResponse)(nil), // 21: gamenode.ExecutePipelineResponse
-	(*PipelineStatusUpdate)(nil),    // 22: gamenode.PipelineStatusUpdate
-	(*StepStatusUpdate)(nil),        // 23: gamenode.StepStatusUpdate
-	(*PipelineCancelRequest)(nil),   // 24: gamenode.PipelineCancelRequest
-	(*CancelResponse)(nil),          // 25: gamenode.CancelResponse
-	(*LogRequest)(nil),              // 26: gamenode.LogRequest
-	(*LogEntry)(nil),                // 27: gamenode.LogEntry
-	(*UpdateResponse)(nil),          // 28: gamenode.UpdateResponse
-	(*ReportResponse)(nil),          // 29: gamenode.ReportResponse
-	(*Event)(nil),                   // 30: gamenode.Event
-	nil,                             // 31: gamenode.RegisterRequest.HardwareEntry
-	nil,                             // 32: gamenode.RegisterRequest.SystemEntry
-	nil,                             // 33: gamenode.RegisterRequest.LabelsEntry
-	nil,                             // 34: gamenode.Metric.LabelsEntry
-	nil,                             // 35: gamenode.ExecutePipelineRequest.EnvsEntry
-	nil,                             // 36: gamenode.ExecutePipelineRequest.ArgsEntry
-	nil,                             // 37: gamenode.Event.DataEntry
-	(*timestamppb.Timestamp)(nil),   // 38: google.protobuf.Timestamp
+	(NodeType)(0),                   // 1: gamenode.NodeType
+	(GameNodeState)(0),              // 2: gamenode.GameNodeState
+	(*RegisterRequest)(nil),         // 3: gamenode.RegisterRequest
+	(*RegisterResponse)(nil),        // 4: gamenode.RegisterResponse
+	(*HeartbeatRequest)(nil),        // 5: gamenode.HeartbeatRequest
+	(*HeartbeatResponse)(nil),       // 6: gamenode.HeartbeatResponse
+	(*MetricsReport)(nil),           // 7: gamenode.MetricsReport
+	(*Metric)(nil),                  // 8: gamenode.Metric
+	(*ResourceInfo)(nil),            // 9: gamenode.ResourceInfo
+	(*HardwareInfo)(nil),            // 10: gamenode.HardwareInfo
+	(*CPUHardware)(nil),             // 11: gamenode.CPUHardware
+	(*MemoryHardware)(nil),          // 12: gamenode.MemoryHardware
+	(*GPUHardware)(nil),             // 13: gamenode.GPUHardware
+	(*StorageDevice)(nil),           // 14: gamenode.StorageDevice
+	(*NetworkDevice)(nil),           // 15: gamenode.NetworkDevice
+	(*MetricsInfo)(nil),             // 16: gamenode.MetricsInfo
+	(*CPUMetrics)(nil),              // 17: gamenode.CPUMetrics
+	(*MemoryMetrics)(nil),           // 18: gamenode.MemoryMetrics
+	(*GPUMetrics)(nil),              // 19: gamenode.GPUMetrics
+	(*StorageMetrics)(nil),          // 20: gamenode.StorageMetrics
+	(*NetworkMetrics)(nil),          // 21: gamenode.NetworkMetrics
+	(*ExecutePipelineRequest)(nil),  // 22: gamenode.ExecutePipelineRequest
+	(*ExecutePipelineResponse)(nil), // 23: gamenode.ExecutePipelineResponse
+	(*PipelineStatusUpdate)(nil),    // 24: gamenode.PipelineStatusUpdate
+	(*StepStatusUpdate)(nil),        // 25: gamenode.StepStatusUpdate
+	(*PipelineCancelRequest)(nil),   // 26: gamenode.PipelineCancelRequest
+	(*CancelResponse)(nil),          // 27: gamenode.CancelResponse
+	(*LogRequest)(nil),              // 28: gamenode.LogRequest
+	(*LogEntry)(nil),                // 29: gamenode.LogEntry
+	(*UpdateResponse)(nil),          // 30: gamenode.UpdateResponse
+	(*ReportResponse)(nil),          // 31: gamenode.ReportResponse
+	(*Event)(nil),                   // 32: gamenode.Event
+	(*SystemInfo)(nil),              // 33: gamenode.SystemInfo
+	(*GameNodeStatus)(nil),          // 34: gamenode.GameNodeStatus
+	(*GameNode)(nil),                // 35: gamenode.GameNode
+	nil,                             // 36: gamenode.RegisterRequest.HardwareEntry
+	nil,                             // 37: gamenode.RegisterRequest.SystemEntry
+	nil,                             // 38: gamenode.RegisterRequest.LabelsEntry
+	nil,                             // 39: gamenode.Metric.LabelsEntry
+	nil,                             // 40: gamenode.ExecutePipelineRequest.EnvsEntry
+	nil,                             // 41: gamenode.ExecutePipelineRequest.ArgsEntry
+	nil,                             // 42: gamenode.Event.DataEntry
+	nil,                             // 43: gamenode.GameNode.LabelsEntry
+	nil,                             // 44: gamenode.GameNode.HardwareEntry
+	nil,                             // 45: gamenode.GameNode.SystemEntry
+	(*timestamppb.Timestamp)(nil),   // 46: google.protobuf.Timestamp
 }
 var file_internal_proto_gamenode_proto_depIdxs = []int32{
-	31, // 0: gamenode.RegisterRequest.hardware:type_name -> gamenode.RegisterRequest.HardwareEntry
-	32, // 1: gamenode.RegisterRequest.system:type_name -> gamenode.RegisterRequest.SystemEntry
-	33, // 2: gamenode.RegisterRequest.labels:type_name -> gamenode.RegisterRequest.LabelsEntry
-	7,  // 3: gamenode.HeartbeatRequest.resource_info:type_name -> gamenode.ResourceInfo
-	6,  // 4: gamenode.MetricsReport.metrics:type_name -> gamenode.Metric
-	34, // 5: gamenode.Metric.labels:type_name -> gamenode.Metric.LabelsEntry
-	8,  // 6: gamenode.ResourceInfo.hardware:type_name -> gamenode.HardwareInfo
-	9,  // 7: gamenode.HardwareInfo.cpu:type_name -> gamenode.CPUHardware
-	10, // 8: gamenode.HardwareInfo.memory:type_name -> gamenode.MemoryHardware
-	11, // 9: gamenode.HardwareInfo.gpu:type_name -> gamenode.GPUHardware
-	12, // 10: gamenode.HardwareInfo.storage:type_name -> gamenode.StorageHardware
-	13, // 11: gamenode.StorageHardware.devices:type_name -> gamenode.StorageDevice
-	15, // 12: gamenode.MetricsInfo.cpu:type_name -> gamenode.CPUMetrics
-	16, // 13: gamenode.MetricsInfo.memory:type_name -> gamenode.MemoryMetrics
-	17, // 14: gamenode.MetricsInfo.gpu:type_name -> gamenode.GPUMetrics
-	18, // 15: gamenode.MetricsInfo.storage:type_name -> gamenode.StorageMetrics
-	19, // 16: gamenode.MetricsInfo.network:type_name -> gamenode.NetworkMetrics
-	35, // 17: gamenode.ExecutePipelineRequest.envs:type_name -> gamenode.ExecutePipelineRequest.EnvsEntry
-	36, // 18: gamenode.ExecutePipelineRequest.args:type_name -> gamenode.ExecutePipelineRequest.ArgsEntry
-	38, // 19: gamenode.PipelineStatusUpdate.update_time:type_name -> google.protobuf.Timestamp
-	0,  // 20: gamenode.StepStatusUpdate.status:type_name -> gamenode.StepStatus
-	38, // 21: gamenode.LogEntry.timestamp:type_name -> google.protobuf.Timestamp
-	38, // 22: gamenode.Event.timestamp:type_name -> google.protobuf.Timestamp
-	37, // 23: gamenode.Event.data:type_name -> gamenode.Event.DataEntry
-	1,  // 24: gamenode.GameNodeGRPCService.Register:input_type -> gamenode.RegisterRequest
-	3,  // 25: gamenode.GameNodeGRPCService.Heartbeat:input_type -> gamenode.HeartbeatRequest
-	5,  // 26: gamenode.GameNodeGRPCService.ReportMetrics:input_type -> gamenode.MetricsReport
-	7,  // 27: gamenode.GameNodeGRPCService.UpdateResourceInfo:input_type -> gamenode.ResourceInfo
-	20, // 28: gamenode.GameNodeGRPCService.ExecutePipeline:input_type -> gamenode.ExecutePipelineRequest
-	22, // 29: gamenode.GameNodeGRPCService.UpdatePipelineStatus:input_type -> gamenode.PipelineStatusUpdate
-	23, // 30: gamenode.GameNodeGRPCService.UpdateStepStatus:input_type -> gamenode.StepStatusUpdate
-	24, // 31: gamenode.GameNodeGRPCService.CancelPipeline:input_type -> gamenode.PipelineCancelRequest
-	26, // 32: gamenode.GameNodeGRPCService.StreamLogs:input_type -> gamenode.LogRequest
-	2,  // 33: gamenode.GameNodeGRPCService.Register:output_type -> gamenode.RegisterResponse
-	4,  // 34: gamenode.GameNodeGRPCService.Heartbeat:output_type -> gamenode.HeartbeatResponse
-	29, // 35: gamenode.GameNodeGRPCService.ReportMetrics:output_type -> gamenode.ReportResponse
-	28, // 36: gamenode.GameNodeGRPCService.UpdateResourceInfo:output_type -> gamenode.UpdateResponse
-	21, // 37: gamenode.GameNodeGRPCService.ExecutePipeline:output_type -> gamenode.ExecutePipelineResponse
-	28, // 38: gamenode.GameNodeGRPCService.UpdatePipelineStatus:output_type -> gamenode.UpdateResponse
-	28, // 39: gamenode.GameNodeGRPCService.UpdateStepStatus:output_type -> gamenode.UpdateResponse
-	25, // 40: gamenode.GameNodeGRPCService.CancelPipeline:output_type -> gamenode.CancelResponse
-	27, // 41: gamenode.GameNodeGRPCService.StreamLogs:output_type -> gamenode.LogEntry
-	33, // [33:42] is the sub-list for method output_type
-	24, // [24:33] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	36, // 0: gamenode.RegisterRequest.hardware:type_name -> gamenode.RegisterRequest.HardwareEntry
+	37, // 1: gamenode.RegisterRequest.system:type_name -> gamenode.RegisterRequest.SystemEntry
+	38, // 2: gamenode.RegisterRequest.labels:type_name -> gamenode.RegisterRequest.LabelsEntry
+	10, // 3: gamenode.RegisterRequest.hardware_info:type_name -> gamenode.HardwareInfo
+	33, // 4: gamenode.RegisterRequest.system_info:type_name -> gamenode.SystemInfo
+	34, // 5: gamenode.HeartbeatRequest.status:type_name -> gamenode.GameNodeStatus
+	8,  // 6: gamenode.MetricsReport.metrics:type_name -> gamenode.Metric
+	39, // 7: gamenode.Metric.labels:type_name -> gamenode.Metric.LabelsEntry
+	2,  // 8: gamenode.ResourceInfo.node_state:type_name -> gamenode.GameNodeState
+	1,  // 9: gamenode.ResourceInfo.node_type:type_name -> gamenode.NodeType
+	10, // 10: gamenode.ResourceInfo.hardware:type_name -> gamenode.HardwareInfo
+	33, // 11: gamenode.ResourceInfo.system:type_name -> gamenode.SystemInfo
+	16, // 12: gamenode.ResourceInfo.metrics:type_name -> gamenode.MetricsInfo
+	11, // 13: gamenode.HardwareInfo.cpus:type_name -> gamenode.CPUHardware
+	12, // 14: gamenode.HardwareInfo.memories:type_name -> gamenode.MemoryHardware
+	13, // 15: gamenode.HardwareInfo.gpus:type_name -> gamenode.GPUHardware
+	14, // 16: gamenode.HardwareInfo.storages:type_name -> gamenode.StorageDevice
+	15, // 17: gamenode.HardwareInfo.networks:type_name -> gamenode.NetworkDevice
+	17, // 18: gamenode.MetricsInfo.cpus:type_name -> gamenode.CPUMetrics
+	18, // 19: gamenode.MetricsInfo.memory:type_name -> gamenode.MemoryMetrics
+	19, // 20: gamenode.MetricsInfo.gpus:type_name -> gamenode.GPUMetrics
+	20, // 21: gamenode.MetricsInfo.storages:type_name -> gamenode.StorageMetrics
+	21, // 22: gamenode.MetricsInfo.network:type_name -> gamenode.NetworkMetrics
+	40, // 23: gamenode.ExecutePipelineRequest.envs:type_name -> gamenode.ExecutePipelineRequest.EnvsEntry
+	41, // 24: gamenode.ExecutePipelineRequest.args:type_name -> gamenode.ExecutePipelineRequest.ArgsEntry
+	46, // 25: gamenode.PipelineStatusUpdate.update_time:type_name -> google.protobuf.Timestamp
+	0,  // 26: gamenode.StepStatusUpdate.status:type_name -> gamenode.StepStatus
+	46, // 27: gamenode.LogEntry.timestamp:type_name -> google.protobuf.Timestamp
+	46, // 28: gamenode.Event.timestamp:type_name -> google.protobuf.Timestamp
+	42, // 29: gamenode.Event.data:type_name -> gamenode.Event.DataEntry
+	2,  // 30: gamenode.GameNodeStatus.state:type_name -> gamenode.GameNodeState
+	46, // 31: gamenode.GameNodeStatus.last_online:type_name -> google.protobuf.Timestamp
+	46, // 32: gamenode.GameNodeStatus.updated_at:type_name -> google.protobuf.Timestamp
+	10, // 33: gamenode.GameNodeStatus.hardware:type_name -> gamenode.HardwareInfo
+	33, // 34: gamenode.GameNodeStatus.system:type_name -> gamenode.SystemInfo
+	16, // 35: gamenode.GameNodeStatus.metrics:type_name -> gamenode.MetricsInfo
+	43, // 36: gamenode.GameNode.labels:type_name -> gamenode.GameNode.LabelsEntry
+	44, // 37: gamenode.GameNode.hardware:type_name -> gamenode.GameNode.HardwareEntry
+	45, // 38: gamenode.GameNode.system:type_name -> gamenode.GameNode.SystemEntry
+	34, // 39: gamenode.GameNode.status:type_name -> gamenode.GameNodeStatus
+	46, // 40: gamenode.GameNode.created_at:type_name -> google.protobuf.Timestamp
+	46, // 41: gamenode.GameNode.updated_at:type_name -> google.protobuf.Timestamp
+	3,  // 42: gamenode.GameNodeGRPCService.Register:input_type -> gamenode.RegisterRequest
+	5,  // 43: gamenode.GameNodeGRPCService.Heartbeat:input_type -> gamenode.HeartbeatRequest
+	7,  // 44: gamenode.GameNodeGRPCService.ReportMetrics:input_type -> gamenode.MetricsReport
+	9,  // 45: gamenode.GameNodeGRPCService.UpdateResourceInfo:input_type -> gamenode.ResourceInfo
+	22, // 46: gamenode.GameNodeGRPCService.ExecutePipeline:input_type -> gamenode.ExecutePipelineRequest
+	24, // 47: gamenode.GameNodeGRPCService.UpdatePipelineStatus:input_type -> gamenode.PipelineStatusUpdate
+	25, // 48: gamenode.GameNodeGRPCService.UpdateStepStatus:input_type -> gamenode.StepStatusUpdate
+	26, // 49: gamenode.GameNodeGRPCService.CancelPipeline:input_type -> gamenode.PipelineCancelRequest
+	28, // 50: gamenode.GameNodeGRPCService.StreamLogs:input_type -> gamenode.LogRequest
+	4,  // 51: gamenode.GameNodeGRPCService.Register:output_type -> gamenode.RegisterResponse
+	6,  // 52: gamenode.GameNodeGRPCService.Heartbeat:output_type -> gamenode.HeartbeatResponse
+	31, // 53: gamenode.GameNodeGRPCService.ReportMetrics:output_type -> gamenode.ReportResponse
+	30, // 54: gamenode.GameNodeGRPCService.UpdateResourceInfo:output_type -> gamenode.UpdateResponse
+	23, // 55: gamenode.GameNodeGRPCService.ExecutePipeline:output_type -> gamenode.ExecutePipelineResponse
+	30, // 56: gamenode.GameNodeGRPCService.UpdatePipelineStatus:output_type -> gamenode.UpdateResponse
+	30, // 57: gamenode.GameNodeGRPCService.UpdateStepStatus:output_type -> gamenode.UpdateResponse
+	27, // 58: gamenode.GameNodeGRPCService.CancelPipeline:output_type -> gamenode.CancelResponse
+	29, // 59: gamenode.GameNodeGRPCService.StreamLogs:output_type -> gamenode.LogEntry
+	51, // [51:60] is the sub-list for method output_type
+	42, // [42:51] is the sub-list for method input_type
+	42, // [42:42] is the sub-list for extension type_name
+	42, // [42:42] is the sub-list for extension extendee
+	0,  // [0:42] is the sub-list for field type_name
 }
 
 func init() { file_internal_proto_gamenode_proto_init() }
@@ -2404,8 +3122,8 @@ func file_internal_proto_gamenode_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_proto_gamenode_proto_rawDesc), len(file_internal_proto_gamenode_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   37,
+			NumEnums:      3,
+			NumMessages:   43,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

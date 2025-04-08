@@ -52,17 +52,13 @@ func main() {
 		dockerClient = nil
 	}
 
-	// 创建 Agent 配置
-	config := gamenode.NewDefaultAgentConfig()
-
-	// 创建 Agent
+	// 使用函数式选项创建 Agent
 	agent := gamenode.NewGameNodeAgent(
-		*nodeID,
-		*serverAddr,
 		eventManager,
 		logManager,
 		dockerClient,
-		config,
+		gamenode.WithID(*nodeID),
+		gamenode.WithServerAddr(*serverAddr),
 	)
 
 	// 创建上下文

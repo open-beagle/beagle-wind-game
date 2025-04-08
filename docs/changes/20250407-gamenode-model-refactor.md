@@ -229,6 +229,7 @@ export function convertToOldResourceInfo(newResource: ResourceInfo): any {
 ```
 
 这些工具函数让前端组件能够:
+
 1. 处理从旧版API收到的数据
 2. 将新格式的数据转换为旧格式，以供仍使用旧格式的组件使用
 3. 在新旧版本之间平滑过渡

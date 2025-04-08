@@ -5,6 +5,8 @@ import (
 	"fmt"
 	stdlog "log"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -215,94 +217,140 @@ func (s *GameNodeServer) Heartbeat(ctx context.Context, req *pb.HeartbeatRequest
 	}, nil
 }
 
-// ReportMetrics 上报节点指标
+// ReportMetrics 报告节点指标
 func (s *GameNodeServer) ReportMetrics(ctx context.Context, req *pb.MetricsReport) (*pb.ReportResponse, error) {
-	// 创建MetricsInfo结构
-	metricsInfo := models.MetricsInfo{}
-
-	// 初始化CPU信息
-	cpuDevice := struct {
-		Model       string  `json:"model" yaml:"model"`
-		Cores       int32   `json:"cores" yaml:"cores"`
-		Threads     int32   `json:"threads" yaml:"threads"`
-		Usage       float64 `json:"usage" yaml:"usage"`
-		Temperature float64 `json:"temperature" yaml:"temperature"`
-	}{}
-
-	// 初始化GPU信息
-	gpuDevice := struct {
-		Model       string  `json:"model" yaml:"model"`
-		MemoryTotal int64   `json:"memory_total" yaml:"memory_total"`
-		Usage       float64 `json:"usage" yaml:"usage"`
-		MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`
-		MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`
-		MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"`
-		Temperature float64 `json:"temperature" yaml:"temperature"`
-		Power       float64 `json:"power" yaml:"power"`
-	}{}
-
-	// 初始化存储信息
-	storageDevice := struct {
-		Path       string  `json:"path" yaml:"path"`
-		Type       string  `json:"type" yaml:"type"`
-		Model      string  `json:"model" yaml:"model"`
-		Capacity   int64   `json:"capacity" yaml:"capacity"`
-		Used       int64   `json:"used" yaml:"used"`
-		Free       int64   `json:"free" yaml:"free"`
-		Usage      float64 `json:"usage" yaml:"usage"`
-		ReadSpeed  float64 `json:"read_speed" yaml:"read_speed"`
-		WriteSpeed float64 `json:"write_speed" yaml:"write_speed"`
-	}{
-		Path: "/",
+	// 验证请求
+	if req.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "node id is required")
 	}
 
-	// 处理指标数据
-	for _, m := range req.Metrics {
-		switch m.Name {
-		case "cpu_usage":
-			cpuDevice.Usage = m.Value
-		case "cpu_temperature":
-			cpuDevice.Temperature = m.Value
-		case "memory_usage":
-			metricsInfo.Memory.Usage = m.Value
-		case "memory_used":
-			metricsInfo.Memory.Used = int64(m.Value)
-		case "memory_available":
-			metricsInfo.Memory.Available = int64(m.Value)
-		case "disk_usage":
-			storageDevice.Usage = m.Value
-		case "disk_used":
-			storageDevice.Used = int64(m.Value)
-		case "disk_free":
-			storageDevice.Free = int64(m.Value)
-		case "gpu_usage":
-			gpuDevice.Usage = m.Value
-		case "gpu_memory_used":
-			gpuDevice.MemoryUsed = int64(m.Value)
-		case "gpu_memory_free":
-			gpuDevice.MemoryFree = int64(m.Value)
-		case "gpu_memory_usage":
-			gpuDevice.MemoryUsage = m.Value
-		case "gpu_temperature":
-			gpuDevice.Temperature = m.Value
-		case "gpu_power":
-			gpuDevice.Power = m.Value
-		case "network_inbound":
-			metricsInfo.Network.InboundTraffic = m.Value
-		case "network_outbound":
-			metricsInfo.Network.OutboundTraffic = m.Value
-		case "network_connections":
-			metricsInfo.Network.Connections = int32(m.Value)
+	// 验证节点存在
+	_, err := s.nodeService.Get(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("node not found: %v", err))
+	}
+
+	// 更新最后在线时间
+	err = s.nodeService.UpdateStatusOnlineStatus(req.Id, true)
+	if err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update online status: %v", err))
+	}
+
+	// 创建一个新的指标信息实例
+	metricsInfo := models.MetricsInfo{
+		CPUs:     []models.CPUMetrics{},
+		Memory:   models.MemoryMetrics{},
+		GPUs:     []models.GPUMetrics{},
+		Storages: []models.StorageMetrics{},
+		Network:  models.NetworkMetrics{},
+	}
+
+	// 遍历请求中的指标，并将其转换为我们的结构体
+	for _, metric := range req.Metrics {
+		// 基于指标名称分类
+		switch {
+		case strings.HasPrefix(metric.Name, "cpu."):
+			// 如果是CPU指标
+			if metric.Name == "cpu.usage" {
+				// 确保已有CPU设备，如果没有则创建
+				if len(metricsInfo.CPUs) == 0 {
+					metricsInfo.CPUs = append(metricsInfo.CPUs, models.CPUMetrics{})
+				}
+				// 更新使用率
+				metricsInfo.CPUs[0].Usage = metric.Value
+			} else if metric.Name == "cpu.temperature" {
+				// 注意：在新的模型中没有CPU温度字段，记录到日志
+				s.eventManager.Publish(event.NewNodeEvent(req.Id, "warn", "CPU temperature metric ignored - field not in model"))
+			}
+		case strings.HasPrefix(metric.Name, "memory."):
+			// 如果是内存指标
+			if metric.Name == "memory.usage" {
+				metricsInfo.Memory.Usage = metric.Value
+			} else if metric.Name == "memory.used" {
+				metricsInfo.Memory.Used = int64(metric.Value)
+			} else if metric.Name == "memory.available" {
+				metricsInfo.Memory.Available = int64(metric.Value)
+			} else if metric.Name == "memory.total" {
+				metricsInfo.Memory.Total = int64(metric.Value)
+			}
+		case strings.HasPrefix(metric.Name, "gpu."):
+			// 如果是GPU指标
+			if metric.Name == "gpu.usage" {
+				// 确保已有GPU设备，如果没有则创建
+				if len(metricsInfo.GPUs) == 0 {
+					metricsInfo.GPUs = append(metricsInfo.GPUs, models.GPUMetrics{})
+				}
+				// 更新使用率
+				metricsInfo.GPUs[0].Usage = metric.Value
+			} else if metric.Name == "gpu.memory_usage" {
+				// 确保已有GPU设备，如果没有则创建
+				if len(metricsInfo.GPUs) == 0 {
+					metricsInfo.GPUs = append(metricsInfo.GPUs, models.GPUMetrics{})
+				}
+				// 更新显存使用率
+				metricsInfo.GPUs[0].MemoryUsage = metric.Value
+			} else if metric.Name == "gpu.temperature" {
+				// 注意：在新的模型中没有GPU温度字段，记录到日志
+				s.eventManager.Publish(event.NewNodeEvent(req.Id, "warn", "GPU temperature metric ignored - field not in model"))
+			} else if metric.Name == "gpu.memory_used" {
+				// 确保已有GPU设备，如果没有则创建
+				if len(metricsInfo.GPUs) == 0 {
+					metricsInfo.GPUs = append(metricsInfo.GPUs, models.GPUMetrics{})
+				}
+				// 更新已用显存
+				metricsInfo.GPUs[0].MemoryUsed = int64(metric.Value)
+			} else if metric.Name == "gpu.memory_free" {
+				// 确保已有GPU设备，如果没有则创建
+				if len(metricsInfo.GPUs) == 0 {
+					metricsInfo.GPUs = append(metricsInfo.GPUs, models.GPUMetrics{})
+				}
+				// 更新可用显存
+				metricsInfo.GPUs[0].MemoryFree = int64(metric.Value)
+			} else if metric.Name == "gpu.power" {
+				// 注意：在新的模型中没有GPU功耗字段，记录到日志
+				s.eventManager.Publish(event.NewNodeEvent(req.Id, "warn", "GPU power metric ignored - field not in model"))
+			}
+		case strings.HasPrefix(metric.Name, "storage."):
+			// 如果是存储指标
+			parts := strings.Split(metric.Name, ".")
+			if len(parts) >= 3 {
+				index, err := strconv.Atoi(parts[1])
+				if err == nil {
+					// 确保存储列表有足够的容量
+					for len(metricsInfo.Storages) <= index {
+						metricsInfo.Storages = append(metricsInfo.Storages, models.StorageMetrics{})
+					}
+					// 更新对应索引的存储指标
+					if parts[2] == "usage" {
+						metricsInfo.Storages[index].Usage = metric.Value
+					} else if parts[2] == "used" {
+						metricsInfo.Storages[index].Used = int64(metric.Value)
+					} else if parts[2] == "free" {
+						metricsInfo.Storages[index].Free = int64(metric.Value)
+					} else if parts[2] == "capacity" {
+						metricsInfo.Storages[index].Capacity = int64(metric.Value)
+					}
+				}
+			}
+		case strings.HasPrefix(metric.Name, "network."):
+			// 如果是网络指标
+			if metric.Name == "network.inbound" {
+				metricsInfo.Network.InboundTraffic = metric.Value
+			} else if metric.Name == "network.outbound" {
+				metricsInfo.Network.OutboundTraffic = metric.Value
+			} else if metric.Name == "network.connections" {
+				metricsInfo.Network.Connections = int32(metric.Value)
+			}
 		}
 	}
 
-	// 将指标加入到结构体中
-	metricsInfo.CPU.Devices = append(metricsInfo.CPU.Devices, cpuDevice)
-	metricsInfo.GPU.Devices = append(metricsInfo.GPU.Devices, gpuDevice)
-	metricsInfo.Storage.Devices = append(metricsInfo.Storage.Devices, storageDevice)
+	// 如果没有存储设备，添加一个默认的
+	if len(metricsInfo.Storages) == 0 {
+		metricsInfo.Storages = append(metricsInfo.Storages, models.StorageMetrics{})
+	}
 
 	// 更新节点指标
-	err := s.nodeService.UpdateStatusMetrics(req.Id, metricsInfo)
+	err = s.nodeService.UpdateStatusMetrics(req.Id, metricsInfo)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update metrics: %v", err))
 	}
@@ -318,101 +366,94 @@ func (s *GameNodeServer) ReportMetrics(ctx context.Context, req *pb.MetricsRepor
 
 // UpdateResourceInfo 更新资源信息
 func (s *GameNodeServer) UpdateResourceInfo(ctx context.Context, req *pb.ResourceInfo) (*pb.UpdateResponse, error) {
-	// 转换为硬件信息
-	hardwareInfo := models.HardwareInfo{}
-
-	// CPU信息
-	if req.Hardware.Cpu != nil {
-		cpuDevice := struct {
-			Model        string  `json:"model" yaml:"model"`
-			Cores        int32   `json:"cores" yaml:"cores"`
-			Threads      int32   `json:"threads" yaml:"threads"`
-			Frequency    float64 `json:"frequency" yaml:"frequency"`
-			Cache        int64   `json:"cache" yaml:"cache"`
-			Socket       string  `json:"socket" yaml:"socket"`
-			Manufacturer string  `json:"manufacturer" yaml:"manufacturer"`
-			Architecture string  `json:"architecture" yaml:"architecture"`
-		}{
-			Model:     req.Hardware.Cpu.Model,
-			Cores:     req.Hardware.Cpu.Cores,
-			Threads:   req.Hardware.Cpu.Threads,
-			Frequency: req.Hardware.Cpu.Frequency,
-			Cache:     req.Hardware.Cpu.Cache,
-		}
-		hardwareInfo.CPU.Devices = append(hardwareInfo.CPU.Devices, cpuDevice)
+	// 转换为硬件信息 - 使用扁平结构
+	hardwareInfo := models.HardwareInfo{
+		CPUs:     []models.CPUDevice{},
+		Memories: []models.MemoryDevice{},
+		GPUs:     []models.GPUDevice{},
+		Storages: []models.StorageDevice{},
+		Networks: []models.NetworkDevice{},
 	}
 
-	// 内存信息
-	if req.Hardware.Memory != nil {
-		memoryDevice := struct {
-			Size         int64   `json:"size" yaml:"size"`
-			Type         string  `json:"type" yaml:"type"`
-			Frequency    float64 `json:"frequency" yaml:"frequency"`
-			Manufacturer string  `json:"manufacturer" yaml:"manufacturer"`
-			Serial       string  `json:"serial" yaml:"serial"`
-			Slot         string  `json:"slot" yaml:"slot"`
-			PartNumber   string  `json:"part_number" yaml:"part_number"`
-			FormFactor   string  `json:"form_factor" yaml:"form_factor"`
-		}{
-			Size:      req.Hardware.Memory.Total,
-			Type:      req.Hardware.Memory.Type,
-			Frequency: req.Hardware.Memory.Frequency,
+	// CPU信息 - 从扁平结构获取
+	for _, cpu := range req.Hardware.Cpus {
+		cpuDevice := models.CPUDevice{
+			Model:        cpu.Model,
+			Cores:        cpu.Cores,
+			Threads:      cpu.Threads,
+			Frequency:    cpu.Frequency,
+			Cache:        cpu.Cache,
+			Architecture: cpu.Architecture,
 		}
-		hardwareInfo.Memory.Devices = append(hardwareInfo.Memory.Devices, memoryDevice)
+		hardwareInfo.CPUs = append(hardwareInfo.CPUs, cpuDevice)
 	}
 
-	// GPU信息
-	if req.Hardware.Gpu != nil {
-		gpuDevice := struct {
-			Model        string `json:"model" yaml:"model"`
-			MemoryTotal  int64  `json:"memory_total" yaml:"memory_total"`
-			CudaCores    int32  `json:"cuda_cores" yaml:"cuda_cores"`
-			Manufacturer string `json:"manufacturer" yaml:"manufacturer"`
-			Bus          string `json:"bus" yaml:"bus"`
-			PciSlot      string `json:"pci_slot" yaml:"pci_slot"`
-			Serial       string `json:"serial" yaml:"serial"`
-			Architecture string `json:"architecture" yaml:"architecture"`
-			TDP          int32  `json:"tdp" yaml:"tdp"` // 功耗指标(W)
-		}{
-			Model:       req.Hardware.Gpu.Model,
-			MemoryTotal: req.Hardware.Gpu.MemoryTotal,
-			CudaCores:   req.Hardware.Gpu.CudaCores,
+	// 内存信息 - 从扁平结构获取
+	for _, memory := range req.Hardware.Memories {
+		memoryDevice := models.MemoryDevice{
+			Size:      memory.Size,
+			Type:      memory.Type,
+			Frequency: memory.Frequency,
 		}
-		hardwareInfo.GPU.Devices = append(hardwareInfo.GPU.Devices, gpuDevice)
+		hardwareInfo.Memories = append(hardwareInfo.Memories, memoryDevice)
 	}
 
-	// 存储设备信息
-	if req.Hardware.Storage != nil && len(req.Hardware.Storage.Devices) > 0 {
-		for _, device := range req.Hardware.Storage.Devices {
-			storageDevice := struct {
-				Type         string `json:"type" yaml:"type"`
-				Model        string `json:"model" yaml:"model"`
-				Capacity     int64  `json:"capacity" yaml:"capacity"`
-				Path         string `json:"path" yaml:"path"`
-				Serial       string `json:"serial" yaml:"serial"`
-				Interface    string `json:"interface" yaml:"interface"`
-				Manufacturer string `json:"manufacturer" yaml:"manufacturer"`
-				FormFactor   string `json:"form_factor" yaml:"form_factor"`
-				Firmware     string `json:"firmware" yaml:"firmware"`
-			}{
-				Type:     device.Type,
-				Capacity: device.Capacity,
-			}
-			hardwareInfo.Storage.Devices = append(hardwareInfo.Storage.Devices, storageDevice)
+	// GPU信息 - 从扁平结构获取
+	for _, gpu := range req.Hardware.Gpus {
+		gpuDevice := models.GPUDevice{
+			Model:             gpu.Model,
+			MemoryTotal:       gpu.MemoryTotal,
+			Architecture:      gpu.Architecture,
+			DriverVersion:     gpu.DriverVersion,
+			ComputeCapability: gpu.ComputeCapability,
+			TDP:               gpu.Tdp,
 		}
+		hardwareInfo.GPUs = append(hardwareInfo.GPUs, gpuDevice)
 	}
 
-	// 创建系统信息（暂时为空，可以从其他字段中获取）
-	systemInfo := models.SystemInfo{}
+	// 存储设备信息 - 从扁平结构获取
+	for _, storage := range req.Hardware.Storages {
+		storageDevice := models.StorageDevice{
+			Type:     storage.Type,
+			Model:    storage.Model,
+			Capacity: storage.Capacity,
+			Path:     storage.Path,
+		}
+		hardwareInfo.Storages = append(hardwareInfo.Storages, storageDevice)
+	}
+
+	// 网络设备信息 - 从扁平结构获取
+	for _, network := range req.Hardware.Networks {
+		networkDevice := models.NetworkDevice{
+			Name:       network.Name,
+			MacAddress: network.MacAddress,
+			IpAddress:  network.IpAddress,
+			Speed:      network.Speed,
+		}
+		hardwareInfo.Networks = append(hardwareInfo.Networks, networkDevice)
+	}
+
+	// 创建系统信息
+	systemInfo := models.SystemInfo{
+		OSDistribution:       req.System.OsDistribution,
+		OSVersion:            req.System.OsVersion,
+		OSArchitecture:       req.System.OsArchitecture,
+		KernelVersion:        req.System.KernelVersion,
+		GPUDriverVersion:     req.System.GpuDriverVersion,
+		GPUComputeAPIVersion: req.System.GpuComputeApiVersion,
+		DockerVersion:        req.System.DockerVersion,
+		ContainerdVersion:    req.System.ContainerdVersion,
+		RuncVersion:          req.System.RuncVersion,
+	}
 
 	// 更新节点硬件和系统信息
-	err := s.nodeService.UpdateHardwareAndSystem(req.Id, hardwareInfo, systemInfo)
+	err := s.nodeService.UpdateHardwareAndSystem(req.NodeId, hardwareInfo, systemInfo)
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update hardware and system info: %v", err))
 	}
 
 	// 发布资源更新事件
-	s.eventManager.Publish(event.NewNodeEvent(req.Id, "resource_updated", "Node hardware and system info updated"))
+	s.eventManager.Publish(event.NewNodeEvent(req.NodeId, "resource_updated", "Node hardware and system info updated"))
 
 	return &pb.UpdateResponse{
 		Status:  "success",

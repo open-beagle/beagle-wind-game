@@ -25,211 +25,122 @@ const (
 	GameNodeStateError       GameNodeState = "error"       // 错误
 )
 
-// CPUInfo CPU信息
-type CPUInfo struct {
-	Model       string  `json:"model" yaml:"model"`             // CPU型号
-	Cores       int32   `json:"cores" yaml:"cores"`             // 核心数
-	Threads     int32   `json:"threads" yaml:"threads"`         // 线程数
-	Frequency   float64 `json:"frequency" yaml:"frequency"`     // 频率
-	Temperature float64 `json:"temperature" yaml:"temperature"` // 温度
-	Usage       float64 `json:"usage" yaml:"usage"`             // 使用率
-	Cache       int64   `json:"cache" yaml:"cache"`             // 缓存大小
+// CPUDevice CPU设备信息
+type CPUDevice struct {
+	Model        string  `json:"model" yaml:"model"`               // CPU型号
+	Cores        int32   `json:"cores" yaml:"cores"`               // 物理核心数
+	Threads      int32   `json:"threads" yaml:"threads"`           // 线程数
+	Frequency    float64 `json:"frequency" yaml:"frequency"`       // 基准频率
+	Cache        int64   `json:"cache" yaml:"cache"`               // 缓存大小
+	Architecture string  `json:"architecture" yaml:"architecture"` // 架构
 }
 
-// MemoryInfo 内存信息
-type MemoryInfo struct {
-	Total     int64   `json:"total" yaml:"total"`         // 总量
-	Available int64   `json:"available" yaml:"available"` // 可用量
-	Used      int64   `json:"used" yaml:"used"`           // 已用量
-	Usage     float64 `json:"usage" yaml:"usage"`         // 使用率
+// MemoryDevice 内存设备信息
+type MemoryDevice struct {
+	Size      int64   `json:"size" yaml:"size"`           // 内存条容量
 	Type      string  `json:"type" yaml:"type"`           // 内存类型
 	Frequency float64 `json:"frequency" yaml:"frequency"` // 频率
-	Channels  int32   `json:"channels" yaml:"channels"`   // 通道数
 }
 
-// GPUInfo GPU信息
-type GPUInfo struct {
+// GPUDevice GPU设备信息
+type GPUDevice struct {
+	Model             string `json:"model" yaml:"model"`                           // 显卡型号
+	MemoryTotal       int64  `json:"memory_total" yaml:"memory_total"`             // 显存总量
+	Architecture      string `json:"architecture" yaml:"architecture"`             // GPU架构
+	DriverVersion     string `json:"driver_version" yaml:"driver_version"`         // 驱动版本
+	ComputeCapability string `json:"compute_capability" yaml:"compute_capability"` // 计算能力
+	TDP               int32  `json:"tdp" yaml:"tdp"`                               // 功耗指标(W)
+}
+
+// StorageDevice 存储设备信息
+type StorageDevice struct {
+	Type     string `json:"type" yaml:"type"`         // 存储类型(SSD/HDD/NVMe)
+	Model    string `json:"model" yaml:"model"`       // 设备型号
+	Capacity int64  `json:"capacity" yaml:"capacity"` // 总容量
+	Path     string `json:"path" yaml:"path"`         // 挂载路径
+}
+
+// NetworkDevice 网络设备信息
+type NetworkDevice struct {
+	Name       string `json:"name" yaml:"name"`               // 网卡名称
+	MacAddress string `json:"mac_address" yaml:"mac_address"` // MAC地址
+	IpAddress  string `json:"ip_address" yaml:"ip_address"`   // IP地址
+	Speed      int64  `json:"speed" yaml:"speed"`             // 网卡速率(Mbps)
+}
+
+// CPUMetrics CPU监控指标
+type CPUMetrics struct {
+	Model   string  `json:"model" yaml:"model"`     // CPU型号
+	Cores   int32   `json:"cores" yaml:"cores"`     // 物理核心数
+	Threads int32   `json:"threads" yaml:"threads"` // 线程数
+	Usage   float64 `json:"usage" yaml:"usage"`     // CPU使用率
+}
+
+// MemoryMetrics 内存监控指标
+type MemoryMetrics struct {
+	Total     int64   `json:"total" yaml:"total"`         // 总容量
+	Available int64   `json:"available" yaml:"available"` // 可用内存
+	Used      int64   `json:"used" yaml:"used"`           // 已用内存
+	Usage     float64 `json:"usage" yaml:"usage"`         // 使用率
+}
+
+// GPUMetrics GPU监控指标
+type GPUMetrics struct {
 	Model       string  `json:"model" yaml:"model"`               // GPU型号
 	MemoryTotal int64   `json:"memory_total" yaml:"memory_total"` // 显存总量
-	MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`   // 显存已用
-	MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`   // 显存剩余
-	MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"` // 显存使用率
 	Usage       float64 `json:"usage" yaml:"usage"`               // GPU使用率
-	Temperature float64 `json:"temperature" yaml:"temperature"`   // 温度
-	Power       float64 `json:"power" yaml:"power"`               // 功耗
-	CUDACores   int32   `json:"cuda_cores" yaml:"cuda_cores"`     // CUDA核心数
+	MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`   // 已用显存
+	MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`   // 可用显存
+	MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"` // 显存使用率
 }
 
-// DiskInfo 磁盘信息
-type DiskInfo struct {
-	Model      string  `json:"model" yaml:"model"`             // 磁盘型号
-	Capacity   int64   `json:"capacity" yaml:"capacity"`       // 容量
-	Used       int64   `json:"used" yaml:"used"`               // 已用空间
-	Free       int64   `json:"free" yaml:"free"`               // 剩余空间
-	Usage      float64 `json:"usage" yaml:"usage"`             // 使用率
-	Type       string  `json:"type" yaml:"type"`               // 磁盘类型
-	Interface  string  `json:"interface" yaml:"interface"`     // 接口类型
-	ReadSpeed  float64 `json:"read_speed" yaml:"read_speed"`   // 读取速度
-	WriteSpeed float64 `json:"write_speed" yaml:"write_speed"` // 写入速度
-	IOPS       int64   `json:"iops" yaml:"iops"`               // IOPS
+// StorageMetrics 存储设备监控指标
+type StorageMetrics struct {
+	Path     string  `json:"path" yaml:"path"`         // 挂载路径
+	Type     string  `json:"type" yaml:"type"`         // 存储类型
+	Model    string  `json:"model" yaml:"model"`       // 设备型号
+	Capacity int64   `json:"capacity" yaml:"capacity"` // 总容量
+	Used     int64   `json:"used" yaml:"used"`         // 已用空间
+	Free     int64   `json:"free" yaml:"free"`         // 可用空间
+	Usage    float64 `json:"usage" yaml:"usage"`       // 使用率
 }
 
-// SoftwareInfo 软件信息
-type SoftwareInfo struct {
-	OSDistribution    string `json:"os_distribution" yaml:"os_distribution"`       // 操作系统发行版
-	OSVersion         string `json:"os_version" yaml:"os_version"`                 // 操作系统版本
-	OSArchitecture    string `json:"os_architecture" yaml:"os_architecture"`       // 操作系统架构
-	KernelVersion     string `json:"kernel_version" yaml:"kernel_version"`         // 内核版本
-	GPUDriverVersion  string `json:"gpu_driver_version" yaml:"gpu_driver_version"` // GPU驱动版本
-	CUDAVersion       string `json:"cuda_version" yaml:"cuda_version"`             // CUDA版本
-	DockerVersion     string `json:"docker_version" yaml:"docker_version"`         // Docker版本
-	ContainerdVersion string `json:"containerd_version" yaml:"containerd_version"` // Containerd版本
-	RuncVersion       string `json:"runc_version" yaml:"runc_version"`             // Runc版本
+// NetworkMetrics 网络监控指标
+type NetworkMetrics struct {
+	InboundTraffic  float64 `json:"inbound_traffic" yaml:"inbound_traffic"`   // 流入流量(Mbps)
+	OutboundTraffic float64 `json:"outbound_traffic" yaml:"outbound_traffic"` // 流出流量(Mbps)
+	Connections     int32   `json:"connections" yaml:"connections"`           // 连接数
 }
 
-// NetworkInfo 网络信息
-type NetworkInfo struct {
-	Bandwidth   float64 `json:"bandwidth" yaml:"bandwidth"`     // 带宽
-	Latency     float64 `json:"latency" yaml:"latency"`         // 延迟
-	Connections int32   `json:"connections" yaml:"connections"` // 连接数
-	PacketLoss  float64 `json:"packet_loss" yaml:"packet_loss"` // 丢包率
-}
-
-// HardwareInfo 硬件信息
+// HardwareInfo 硬件信息 - 重构为扁平结构
 type HardwareInfo struct {
-	CPU struct {
-		Devices []struct {
-			Model        string  `json:"model" yaml:"model"`               // CPU型号
-			Cores        int32   `json:"cores" yaml:"cores"`               // 物理核心数
-			Threads      int32   `json:"threads" yaml:"threads"`           // 线程数
-			Frequency    float64 `json:"frequency" yaml:"frequency"`       // 基准频率
-			Cache        int64   `json:"cache" yaml:"cache"`               // 缓存大小
-			Socket       string  `json:"socket" yaml:"socket"`             // CPU插槽
-			Manufacturer string  `json:"manufacturer" yaml:"manufacturer"` // 制造商
-			Architecture string  `json:"architecture" yaml:"architecture"` // 架构
-		} `json:"devices" yaml:"devices"`
-	} `json:"cpu" yaml:"cpu"`
-
-	Memory struct {
-		Devices []struct {
-			Size         int64   `json:"size" yaml:"size"`                 // 内存条容量
-			Type         string  `json:"type" yaml:"type"`                 // 内存类型
-			Frequency    float64 `json:"frequency" yaml:"frequency"`       // 频率
-			Manufacturer string  `json:"manufacturer" yaml:"manufacturer"` // 制造商
-			Serial       string  `json:"serial" yaml:"serial"`             // 序列号
-			Slot         string  `json:"slot" yaml:"slot"`                 // 插槽位置
-			PartNumber   string  `json:"part_number" yaml:"part_number"`   // 部件号
-			FormFactor   string  `json:"form_factor" yaml:"form_factor"`   // 内存形式
-		} `json:"devices" yaml:"devices"`
-	} `json:"memory" yaml:"memory"`
-
-	GPU struct {
-		Devices []struct {
-			Model        string `json:"model" yaml:"model"`               // 显卡型号
-			MemoryTotal  int64  `json:"memory_total" yaml:"memory_total"` // 显存总量
-			CudaCores    int32  `json:"cuda_cores" yaml:"cuda_cores"`     // CUDA核心数
-			Manufacturer string `json:"manufacturer" yaml:"manufacturer"` // 制造商
-			Bus          string `json:"bus" yaml:"bus"`                   // 总线类型
-			PciSlot      string `json:"pci_slot" yaml:"pci_slot"`         // PCI插槽
-			Serial       string `json:"serial" yaml:"serial"`             // 序列号
-			Architecture string `json:"architecture" yaml:"architecture"` // GPU架构
-			TDP          int32  `json:"tdp" yaml:"tdp"`                   // 功耗指标(W)
-		} `json:"devices" yaml:"devices"`
-	} `json:"gpu" yaml:"gpu"`
-
-	Storage struct {
-		Devices []struct {
-			Type         string `json:"type" yaml:"type"`                 // 存储类型(SSD/HDD/NVMe)
-			Model        string `json:"model" yaml:"model"`               // 设备型号
-			Capacity     int64  `json:"capacity" yaml:"capacity"`         // 总容量
-			Path         string `json:"path" yaml:"path"`                 // 挂载路径
-			Serial       string `json:"serial" yaml:"serial"`             // 序列号
-			Interface    string `json:"interface" yaml:"interface"`       // 接口类型(SATA/NVMe/SAS)
-			Manufacturer string `json:"manufacturer" yaml:"manufacturer"` // 制造商
-			FormFactor   string `json:"form_factor" yaml:"form_factor"`   // 尺寸规格(2.5"/3.5"/M.2)
-			Firmware     string `json:"firmware" yaml:"firmware"`         // 固件版本
-		} `json:"devices" yaml:"devices"`
-	} `json:"storage" yaml:"storage"`
-
-	Network struct {
-		Devices []struct {
-			Name         string `json:"name" yaml:"name"`                 // 网卡名称
-			Model        string `json:"model" yaml:"model"`               // 网卡型号
-			MacAddress   string `json:"mac_address" yaml:"mac_address"`   // MAC地址
-			IpAddress    string `json:"ip_address" yaml:"ip_address"`     // IP地址
-			Speed        int64  `json:"speed" yaml:"speed"`               // 网卡速率(Mbps)
-			Duplex       string `json:"duplex" yaml:"duplex"`             // 双工模式
-			Manufacturer string `json:"manufacturer" yaml:"manufacturer"` // 制造商
-			Interface    string `json:"interface" yaml:"interface"`       // 接口类型
-			PciSlot      string `json:"pci_slot" yaml:"pci_slot"`         // PCI插槽
-		} `json:"devices" yaml:"devices"`
-	} `json:"network" yaml:"network"`
+	CPUs     []CPUDevice     `json:"cpus" yaml:"cpus"`         // CPU设备列表
+	Memories []MemoryDevice  `json:"memories" yaml:"memories"` // 内存设备列表
+	GPUs     []GPUDevice     `json:"gpus" yaml:"gpus"`         // GPU设备列表
+	Storages []StorageDevice `json:"storages" yaml:"storages"` // 存储设备列表
+	Networks []NetworkDevice `json:"networks" yaml:"networks"` // 网络设备列表
 }
 
 // SystemInfo 系统信息
 type SystemInfo struct {
-	OSDistribution    string `json:"os_distribution" yaml:"os_distribution"`       // 操作系统发行版
-	OSVersion         string `json:"os_version" yaml:"os_version"`                 // 操作系统版本
-	OSArchitecture    string `json:"os_architecture" yaml:"os_architecture"`       // 操作系统架构
-	KernelVersion     string `json:"kernel_version" yaml:"kernel_version"`         // 内核版本
-	GPUDriverVersion  string `json:"gpu_driver_version" yaml:"gpu_driver_version"` // GPU驱动版本
-	CUDAVersion       string `json:"cuda_version" yaml:"cuda_version"`             // CUDA版本
-	DockerVersion     string `json:"docker_version" yaml:"docker_version"`         // Docker版本
-	ContainerdVersion string `json:"containerd_version" yaml:"containerd_version"` // Containerd版本
-	RuncVersion       string `json:"runc_version" yaml:"runc_version"`             // Runc版本
+	OSDistribution       string `json:"os_distribution" yaml:"os_distribution"`                 // 操作系统发行版
+	OSVersion            string `json:"os_version" yaml:"os_version"`                           // 操作系统版本
+	OSArchitecture       string `json:"os_architecture" yaml:"os_architecture"`                 // 操作系统架构
+	KernelVersion        string `json:"kernel_version" yaml:"kernel_version"`                   // 内核版本
+	GPUDriverVersion     string `json:"gpu_driver_version" yaml:"gpu_driver_version"`           // GPU驱动版本
+	GPUComputeAPIVersion string `json:"gpu_compute_api_version" yaml:"gpu_compute_api_version"` // GPU计算框架版本(CUDA/ROCm/oneAPI/OpenCL)
+	DockerVersion        string `json:"docker_version" yaml:"docker_version"`                   // Docker版本
+	ContainerdVersion    string `json:"containerd_version" yaml:"containerd_version"`           // Containerd版本
+	RuncVersion          string `json:"runc_version" yaml:"runc_version"`                       // Runc版本
 }
 
-// MetricsInfo 监控指标信息
+// MetricsInfo 监控指标信息 - 重构为扁平结构
 type MetricsInfo struct {
-	CPU struct {
-		Devices []struct {
-			Model       string  `json:"model" yaml:"model"`             // CPU型号
-			Cores       int32   `json:"cores" yaml:"cores"`             // 物理核心数
-			Threads     int32   `json:"threads" yaml:"threads"`         // 线程数
-			Usage       float64 `json:"usage" yaml:"usage"`             // CPU使用率
-			Temperature float64 `json:"temperature" yaml:"temperature"` // CPU温度
-		} `json:"devices" yaml:"devices"`
-	} `json:"cpu" yaml:"cpu"`
-
-	Memory struct {
-		Total     int64   `json:"total" yaml:"total"`         // 总容量
-		Available int64   `json:"available" yaml:"available"` // 可用内存
-		Used      int64   `json:"used" yaml:"used"`           // 已用内存
-		Usage     float64 `json:"usage" yaml:"usage"`         // 使用率
-	} `json:"memory" yaml:"memory"`
-
-	GPU struct {
-		Devices []struct {
-			Model       string  `json:"model" yaml:"model"`               // GPU型号
-			MemoryTotal int64   `json:"memory_total" yaml:"memory_total"` // 显存总量
-			Usage       float64 `json:"usage" yaml:"usage"`               // GPU使用率
-			MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`   // 已用显存
-			MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`   // 可用显存
-			MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"` // 显存使用率
-			Temperature float64 `json:"temperature" yaml:"temperature"`   // GPU温度
-			Power       float64 `json:"power" yaml:"power"`               // 功耗
-		} `json:"devices" yaml:"devices"`
-	} `json:"gpu" yaml:"gpu"`
-
-	Storage struct {
-		Devices []struct {
-			Path       string  `json:"path" yaml:"path"`               // 挂载路径
-			Type       string  `json:"type" yaml:"type"`               // 存储类型
-			Model      string  `json:"model" yaml:"model"`             // 设备型号
-			Capacity   int64   `json:"capacity" yaml:"capacity"`       // 总容量
-			Used       int64   `json:"used" yaml:"used"`               // 已用空间
-			Free       int64   `json:"free" yaml:"free"`               // 可用空间
-			Usage      float64 `json:"usage" yaml:"usage"`             // 使用率
-			ReadSpeed  float64 `json:"read_speed" yaml:"read_speed"`   // 读取速度
-			WriteSpeed float64 `json:"write_speed" yaml:"write_speed"` // 写入速度
-		} `json:"devices" yaml:"devices"`
-	} `json:"storage" yaml:"storage"`
-
-	Network struct {
-		InboundTraffic  float64 `json:"inbound_traffic" yaml:"inbound_traffic"`   // 流入流量(Mbps)
-		OutboundTraffic float64 `json:"outbound_traffic" yaml:"outbound_traffic"` // 流出流量(Mbps)
-		Connections     int32   `json:"connections" yaml:"connections"`           // 连接数
-	} `json:"network" yaml:"network"`
+	CPUs     []CPUMetrics     `json:"cpus" yaml:"cpus"`         // CPU指标列表
+	Memory   MemoryMetrics    `json:"memory" yaml:"memory"`     // 内存指标
+	GPUs     []GPUMetrics     `json:"gpus" yaml:"gpus"`         // GPU指标列表
+	Storages []StorageMetrics `json:"storages" yaml:"storages"` // 存储指标列表
+	Network  NetworkMetrics   `json:"network" yaml:"network"`   // 网络指标
 }
 
 // GameNodeStatus 节点状态信息
@@ -241,14 +152,6 @@ type GameNodeStatus struct {
 	Hardware   HardwareInfo  `json:"hardware" yaml:"hardware"`       // 硬件配置
 	System     SystemInfo    `json:"system" yaml:"system"`           // 系统配置
 	Metrics    MetricsInfo   `json:"metrics" yaml:"metrics"`         // 监控指标
-}
-
-// ResourceInfo 资源信息
-type ResourceInfo struct {
-	ID        string       `json:"id" yaml:"id"`               // 节点ID
-	Timestamp int64        `json:"timestamp" yaml:"timestamp"` // 时间戳
-	Hardware  HardwareInfo `json:"hardware" yaml:"hardware"`   // 硬件信息
-	Metrics   MetricsInfo  `json:"metrics" yaml:"metrics"`     // 监控指标
 }
 
 // GameNode 游戏节点

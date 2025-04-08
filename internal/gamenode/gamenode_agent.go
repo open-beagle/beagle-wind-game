@@ -3,22 +3,17 @@ package gamenode
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"math"
 	"os"
-	"os/exec"
-	"regexp"
-	"strconv"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -27,6 +22,7 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/log"
 	"github.com/open-beagle/beagle-wind-game/internal/models"
 	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
+	"github.com/open-beagle/beagle-wind-game/internal/sysinfo"
 )
 
 // GameNodeAgent 游戏节点代理
@@ -51,78 +47,51 @@ type GameNodeAgent struct {
 	logManager log.LogManager
 
 	// 配置
-	config *AgentConfig
-
-	// 资源采集
-	resourceCollector *ResourceCollector
+	opts *Options
 
 	// Docker 客户端
 	dockerClient *dockerclient.Client
 
-	// 硬件和系统信息
-	hardwareConfig map[string]string   // 兼容现有简化版硬件配置
-	hardware       models.HardwareInfo // 详细硬件信息
-	system         models.SystemInfo   // 详细系统信息
-	cpuCores       int
-	cpuThreads     int
-}
+	// 系统信息采集器
+	hardwareCollector *sysinfo.HardwareCollector
+	systemCollector   *sysinfo.SystemCollector
+	metricsCollector  *sysinfo.MetricsCollector
 
-// AgentConfig 代理配置
-type AgentConfig struct {
-	// 基本配置
-	Alias    string            // 节点别名
-	Model    string            // 节点型号
-	Type     string            // 节点类型
-	Location string            // 节点位置
-	Labels   map[string]string // 节点标签
-
-	// 运行配置
-	HeartbeatPeriod time.Duration // 心跳周期
-	RetryCount      int           // 重试次数
-	RetryDelay      time.Duration // 重试延迟
-	MetricsInterval time.Duration // 指标采集间隔
-}
-
-// ResourceCollector 资源采集器
-type ResourceCollector struct {
-	mu sync.RWMutex
-	// 系统指标
-	cpuUsage    float64
-	memoryUsage float64
-	diskUsage   float64
-	networkIO   struct {
-		read  int64
-		write int64
+	// 节点基本信息（原来存储在status中，但根据模型定义需要分开存储）
+	nodeInfo struct {
+		name      string
+		namespace string
+		nodeType  models.GameNodeType
+		ip        string
+		labels    map[string]string
 	}
-	// GPU指标
-	gpuUsage  float64
-	gpuMemory float64
-	gpuTemp   float64
-	gpuPower  float64
 }
 
 // NewGameNodeAgent 创建新的游戏节点代理
-func NewGameNodeAgent(
-	id string,
-	serverAddr string,
-	eventManager event.EventManager,
-	logManager log.LogManager,
-	dockerClient *dockerclient.Client,
-	config *AgentConfig,
-) *GameNodeAgent {
-	if config == nil {
-		config = NewDefaultAgentConfig()
+func NewGameNodeAgent(eventManager event.EventManager, logManager log.LogManager, dockerClient *dockerclient.Client, opts ...Option) *GameNodeAgent {
+	options := applyOptions(opts...)
+
+	// 创建系统信息采集器配置
+	sysInfoOpts := make(map[string]string)
+
+	// 检查是否提供了自定义GPU工具路径
+	if path, exists := os.LookupEnv("NVIDIA_SMI_PATH"); exists {
+		sysInfoOpts["nvidia_smi_path"] = path
+	}
+	if path, exists := os.LookupEnv("ROCM_SMI_PATH"); exists {
+		sysInfoOpts["rocm_smi_path"] = path
+	}
+	if path, exists := os.LookupEnv("INTEL_GPU_TOP_PATH"); exists {
+		sysInfoOpts["intel_gpu_top_path"] = path
 	}
 
 	agent := &GameNodeAgent{
-		id:                id,
-		serverAddr:        serverAddr,
-		eventManager:      eventManager,
-		logManager:        logManager,
-		config:            config,
-		resourceCollector: &ResourceCollector{},
-		dockerClient:      dockerClient,
-		hardwareConfig:    make(map[string]string),
+		id:           options.ID,
+		serverAddr:   options.ServerAddr,
+		eventManager: eventManager,
+		logManager:   logManager,
+		opts:         options,
+		dockerClient: dockerClient,
 		status: &models.GameNodeStatus{
 			State:      models.GameNodeStateOffline,
 			Online:     false,
@@ -133,36 +102,129 @@ func NewGameNodeAgent(
 			Metrics:    models.MetricsInfo{},
 		},
 		pipelines: make(map[string]*models.GameNodePipeline),
+
+		// 初始化系统信息采集器
+		hardwareCollector: sysinfo.NewHardwareCollector(sysInfoOpts),
+		systemCollector:   sysinfo.NewSystemCollector(sysInfoOpts),
+		metricsCollector:  sysinfo.NewMetricsCollector(sysInfoOpts),
 	}
 
+	// 设置节点基本信息
+	agent.nodeInfo.name = options.Name
+	agent.nodeInfo.namespace = options.Namespace
+	agent.nodeInfo.nodeType = options.NodeType
+	agent.nodeInfo.ip = options.IP
+	agent.nodeInfo.labels = options.Labels
+
 	// 初始化 gRPC 连接
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
-	conn, err := grpc.Dial(serverAddr, opts...)
-	if err == nil {
-		agent.conn = conn
-		agent.client = pb.NewGameNodeGRPCServiceClient(conn)
+	err := agent.connectClient()
+	if err != nil {
+		// 记录错误但不中断初始化流程，将在Start时重试
+		eventManager.Publish(event.NewNodeEvent(agent.id, "warn", fmt.Sprintf("初始化连接失败，将在启动时重试: %v", err)))
 	}
 
 	return agent
+}
+
+// connectClient 连接gRPC服务
+func (a *GameNodeAgent) connectClient() error {
+	// 实现指数退避重试逻辑
+	var err error
+	maxRetries := 5
+	initialBackoff := 500 * time.Millisecond
+	maxBackoff := 10 * time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		if i > 0 {
+			// 计算退避时间
+			backoff := initialBackoff * time.Duration(1<<uint(i-1))
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+
+			a.eventManager.Publish(event.NewNodeEvent(a.id, "info", fmt.Sprintf("重试连接服务器 (尝试 %d/%d)，等待 %v", i+1, maxRetries, backoff)))
+			time.Sleep(backoff)
+		}
+
+		// 尝试建立连接
+		if err = a.tryConnect(); err == nil {
+			// 连接成功
+			return nil
+		}
+	}
+
+	// 所有重试都失败
+	return fmt.Errorf("连接服务器失败，已重试 %d 次: %v", maxRetries, err)
+}
+
+// tryConnect 尝试建立单次连接
+func (a *GameNodeAgent) tryConnect() error {
+	// 设置连接选项
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	// 关闭旧连接
+	if a.conn != nil {
+		a.conn.Close()
+		a.conn = nil
+		a.client = nil
+	}
+
+	// 使用NewClient建立连接
+	clientConn, err := grpc.NewClient(a.serverAddr, opts...)
+	if err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "error", fmt.Sprintf("连接服务器失败: %v", err)))
+		return err
+	}
+
+	// 检查连接状态
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		for {
+			state := clientConn.GetState()
+			if state == connectivity.Ready {
+				a.eventManager.Publish(event.NewNodeEvent(a.id, "info", "连接已就绪"))
+				return
+			} else if state == connectivity.TransientFailure || state == connectivity.Shutdown {
+				a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("连接状态异常: %v", state)))
+				return
+			}
+
+			if !clientConn.WaitForStateChange(ctx, state) {
+				a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", "等待连接状态变化超时"))
+				return
+			}
+		}
+	}()
+
+	// 设置连接和客户端
+	a.conn = clientConn
+	a.client = pb.NewGameNodeGRPCServiceClient(clientConn)
+	a.eventManager.Publish(event.NewNodeEvent(a.id, "info", "已成功创建连接到服务器"))
+
+	return nil
 }
 
 // Start 启动代理
 func (a *GameNodeAgent) Start(ctx context.Context) error {
 	// 检测节点类型
 	nodeType := a.DetectNodeType()
-	a.config.Type = string(nodeType)
+	a.nodeInfo.nodeType = nodeType
 	a.eventManager.Publish(event.NewNodeEvent(a.id, "info", fmt.Sprintf("检测到节点类型: %s", nodeType)))
 
 	// 建立连接
-	if err := a.connect(ctx); err != nil {
-		return fmt.Errorf("failed to connect: %v", err)
+	if a.client == nil {
+		if err := a.connectClient(); err != nil {
+			return fmt.Errorf("建立连接失败: %v", err)
+		}
 	}
 
 	// 注册节点
 	if err := a.Register(ctx); err != nil {
-		return fmt.Errorf("failed to register: %v", err)
+		return fmt.Errorf("注册失败: %v", err)
 	}
 
 	// 启动心跳
@@ -183,7 +245,7 @@ func (a *GameNodeAgent) DetectNodeType() models.GameNodeType {
 
 	// 2. 检查 cgroup 路径
 	cgroupPath := "/proc/1/cgroup"
-	if content, err := ioutil.ReadFile(cgroupPath); err == nil {
+	if content, err := os.ReadFile(cgroupPath); err == nil {
 		contentStr := string(content)
 		if strings.Contains(contentStr, "docker") ||
 			strings.Contains(contentStr, "kubepods") ||
@@ -197,7 +259,7 @@ func (a *GameNodeAgent) DetectNodeType() models.GameNodeType {
 		return models.GameNodeTypeVirtual
 	}
 
-	if content, err := ioutil.ReadFile("/proc/cpuinfo"); err == nil {
+	if content, err := os.ReadFile("/proc/cpuinfo"); err == nil {
 		contentStr := string(content)
 		if strings.Contains(contentStr, "hypervisor") ||
 			strings.Contains(contentStr, "VMware") ||
@@ -211,23 +273,9 @@ func (a *GameNodeAgent) DetectNodeType() models.GameNodeType {
 	return models.GameNodeTypePhysical
 }
 
-// connect 建立连接
-func (a *GameNodeAgent) connect(_ context.Context) error {
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
-	conn, err := grpc.Dial(a.serverAddr, opts...)
-	if err != nil {
-		return fmt.Errorf("failed to create client: %v", err)
-	}
-	a.conn = conn
-	a.client = pb.NewGameNodeGRPCServiceClient(conn)
-	return nil
-}
-
 // startHeartbeat 启动心跳
 func (a *GameNodeAgent) startHeartbeat(ctx context.Context) {
-	ticker := time.NewTicker(a.config.HeartbeatPeriod)
+	ticker := time.NewTicker(a.opts.HeartbeatPeriod)
 	defer ticker.Stop()
 
 	for {
@@ -244,7 +292,7 @@ func (a *GameNodeAgent) startHeartbeat(ctx context.Context) {
 
 // startMetricsCollection 启动指标采集
 func (a *GameNodeAgent) startMetricsCollection(ctx context.Context) {
-	ticker := time.NewTicker(a.config.MetricsInterval)
+	ticker := time.NewTicker(a.opts.MetricsInterval)
 	defer ticker.Stop()
 
 	for {
@@ -261,32 +309,43 @@ func (a *GameNodeAgent) startMetricsCollection(ctx context.Context) {
 
 // Register 注册节点
 func (a *GameNodeAgent) Register(ctx context.Context) error {
-	// 获取节点信息
-	nodeInfo, err := a.collectNodeInfo()
-	if err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("failed to collect node info: %v", err))
+	// 收集节点信息
+	if err := a.collectNodeInfo(); err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "error", fmt.Sprintf("收集节点信息失败: %v", err)))
+		return err
 	}
 
-	// 获取硬件配置和系统配置
-	hardwareConfig, hardwareInfo, err := a.GetHardwareConfig()
-	if err != nil {
-		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("获取硬件配置失败: %v", err)))
+	// 收集硬件和系统信息
+	if err := a.collectHardwareAndSystemInfo(); err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("收集硬件和系统信息失败: %v", err)))
 	}
-	a.hardwareConfig = hardwareConfig
-	a.hardware = hardwareInfo
 
-	systemConfig, systemInfo, err := a.GetSystemConfig()
-	if err != nil {
-		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("获取系统配置失败: %v", err)))
+	// 收集指标信息
+	if err := a.collectMetricsInfo(); err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("收集指标信息失败: %v", err)))
 	}
-	a.system = systemInfo
 
-	// 使用获取到的配置完善注册请求
-	nodeInfo.Hardware = hardwareConfig
-	nodeInfo.System = systemConfig
+	// 准备硬件和系统信息的简化版表示（兼容现有API）
+	hardwareConfig, err := a.hardwareCollector.GetSimplifiedHardwareInfo()
+	if err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("获取简化版硬件信息失败: %v", err)))
+	}
+
+	systemConfig, err := a.systemCollector.GetSimplifiedSystemInfo()
+	if err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("获取简化版系统信息失败: %v", err)))
+	}
 
 	// 发送注册请求
-	resp, err := a.client.Register(ctx, nodeInfo)
+	req := &pb.RegisterRequest{
+		Id:       a.id,
+		Type:     string(a.nodeInfo.nodeType),
+		Hardware: hardwareConfig,
+		System:   systemConfig,
+		Labels:   a.nodeInfo.labels,
+	}
+
+	resp, err := a.client.Register(ctx, req)
 	if err != nil {
 		return status.Error(codes.Internal, fmt.Sprintf("failed to register: %v", err))
 	}
@@ -296,179 +355,12 @@ func (a *GameNodeAgent) Register(ctx context.Context) error {
 		return status.Error(codes.Internal, fmt.Sprintf("registration failed: %s", resp.Message))
 	}
 
-	// 初始化指标信息
-	metricsInfo := models.MetricsInfo{
-		CPU: struct {
-			Devices []struct {
-				Model       string  `json:"model" yaml:"model"`
-				Cores       int32   `json:"cores" yaml:"cores"`
-				Threads     int32   `json:"threads" yaml:"threads"`
-				Usage       float64 `json:"usage" yaml:"usage"`
-				Temperature float64 `json:"temperature" yaml:"temperature"`
-			} `json:"devices" yaml:"devices"`
-		}{
-			Devices: []struct {
-				Model       string  `json:"model" yaml:"model"`
-				Cores       int32   `json:"cores" yaml:"cores"`
-				Threads     int32   `json:"threads" yaml:"threads"`
-				Usage       float64 `json:"usage" yaml:"usage"`
-				Temperature float64 `json:"temperature" yaml:"temperature"`
-			}{},
-		},
-		Memory: struct {
-			Total     int64   `json:"total" yaml:"total"`
-			Available int64   `json:"available" yaml:"available"`
-			Used      int64   `json:"used" yaml:"used"`
-			Usage     float64 `json:"usage" yaml:"usage"`
-		}{},
-		GPU: struct {
-			Devices []struct {
-				Model       string  `json:"model" yaml:"model"`
-				MemoryTotal int64   `json:"memory_total" yaml:"memory_total"`
-				Usage       float64 `json:"usage" yaml:"usage"`
-				MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`
-				MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`
-				MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"`
-				Temperature float64 `json:"temperature" yaml:"temperature"`
-				Power       float64 `json:"power" yaml:"power"`
-			} `json:"devices" yaml:"devices"`
-		}{
-			Devices: []struct {
-				Model       string  `json:"model" yaml:"model"`
-				MemoryTotal int64   `json:"memory_total" yaml:"memory_total"`
-				Usage       float64 `json:"usage" yaml:"usage"`
-				MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`
-				MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`
-				MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"`
-				Temperature float64 `json:"temperature" yaml:"temperature"`
-				Power       float64 `json:"power" yaml:"power"`
-			}{},
-		},
-		Storage: struct {
-			Devices []struct {
-				Path       string  `json:"path" yaml:"path"`
-				Type       string  `json:"type" yaml:"type"`
-				Model      string  `json:"model" yaml:"model"`
-				Capacity   int64   `json:"capacity" yaml:"capacity"`
-				Used       int64   `json:"used" yaml:"used"`
-				Free       int64   `json:"free" yaml:"free"`
-				Usage      float64 `json:"usage" yaml:"usage"`
-				ReadSpeed  float64 `json:"read_speed" yaml:"read_speed"`
-				WriteSpeed float64 `json:"write_speed" yaml:"write_speed"`
-			} `json:"devices" yaml:"devices"`
-		}{
-			Devices: []struct {
-				Path       string  `json:"path" yaml:"path"`
-				Type       string  `json:"type" yaml:"type"`
-				Model      string  `json:"model" yaml:"model"`
-				Capacity   int64   `json:"capacity" yaml:"capacity"`
-				Used       int64   `json:"used" yaml:"used"`
-				Free       int64   `json:"free" yaml:"free"`
-				Usage      float64 `json:"usage" yaml:"usage"`
-				ReadSpeed  float64 `json:"read_speed" yaml:"read_speed"`
-				WriteSpeed float64 `json:"write_speed" yaml:"write_speed"`
-			}{},
-		},
-		Network: struct {
-			InboundTraffic  float64 `json:"inbound_traffic" yaml:"inbound_traffic"`
-			OutboundTraffic float64 `json:"outbound_traffic" yaml:"outbound_traffic"`
-			Connections     int32   `json:"connections" yaml:"connections"`
-		}{},
-	}
-
-	// 如果存在CPU信息，添加到指标中
-	if len(hardwareInfo.CPU.Devices) > 0 {
-		for _, cpu := range hardwareInfo.CPU.Devices {
-			metricsInfo.CPU.Devices = append(metricsInfo.CPU.Devices, struct {
-				Model       string  `json:"model" yaml:"model"`
-				Cores       int32   `json:"cores" yaml:"cores"`
-				Threads     int32   `json:"threads" yaml:"threads"`
-				Usage       float64 `json:"usage" yaml:"usage"`
-				Temperature float64 `json:"temperature" yaml:"temperature"`
-			}{
-				Model:       cpu.Model,
-				Cores:       cpu.Cores,
-				Threads:     cpu.Threads,
-				Usage:       0,
-				Temperature: 45, // 默认温度
-			})
-		}
-	}
-
-	// 如果存在GPU信息，添加到指标中
-	if len(hardwareInfo.GPU.Devices) > 0 {
-		for _, gpu := range hardwareInfo.GPU.Devices {
-			metricsInfo.GPU.Devices = append(metricsInfo.GPU.Devices, struct {
-				Model       string  `json:"model" yaml:"model"`
-				MemoryTotal int64   `json:"memory_total" yaml:"memory_total"`
-				Usage       float64 `json:"usage" yaml:"usage"`
-				MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`
-				MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`
-				MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"`
-				Temperature float64 `json:"temperature" yaml:"temperature"`
-				Power       float64 `json:"power" yaml:"power"`
-			}{
-				Model:       gpu.Model,
-				MemoryTotal: gpu.MemoryTotal,
-				MemoryFree:  gpu.MemoryTotal, // 初始时全部可用
-				Temperature: 38,              // 默认温度
-				Power:       30,              // 默认功耗
-			})
-		}
-	}
-
-	// 如果存在存储设备信息，添加到指标中
-	if len(hardwareInfo.Storage.Devices) > 0 {
-		for _, storage := range hardwareInfo.Storage.Devices {
-			used := storage.Capacity / 4 // 假设使用了25%
-			free := storage.Capacity - used
-			metricsInfo.Storage.Devices = append(metricsInfo.Storage.Devices, struct {
-				Path       string  `json:"path" yaml:"path"`
-				Type       string  `json:"type" yaml:"type"`
-				Model      string  `json:"model" yaml:"model"`
-				Capacity   int64   `json:"capacity" yaml:"capacity"`
-				Used       int64   `json:"used" yaml:"used"`
-				Free       int64   `json:"free" yaml:"free"`
-				Usage      float64 `json:"usage" yaml:"usage"`
-				ReadSpeed  float64 `json:"read_speed" yaml:"read_speed"`
-				WriteSpeed float64 `json:"write_speed" yaml:"write_speed"`
-			}{
-				Path:     "/",
-				Type:     storage.Type,
-				Model:    storage.Model,
-				Capacity: storage.Capacity,
-				Used:     used,
-				Free:     free,
-				Usage:    25, // 25%
-			})
-		}
-	}
-
-	// 如果存在内存设备信息，添加到指标中
-	if len(hardwareInfo.Memory.Devices) > 0 {
-		totalMem := hardwareInfo.Memory.Devices[0].Size
-		usedMem := totalMem / 8 // 假设使用了12.5%
-		availMem := totalMem - usedMem
-		metricsInfo.Memory.Total = totalMem
-		metricsInfo.Memory.Used = usedMem
-		metricsInfo.Memory.Available = availMem
-		metricsInfo.Memory.Usage = 12.5
-	}
-
-	// 设置默认网络信息
-	metricsInfo.Network.InboundTraffic = 10.5
-	metricsInfo.Network.OutboundTraffic = 2.3
-	metricsInfo.Network.Connections = 120
-
 	// 更新状态
 	a.mu.Lock()
 	a.status.State = models.GameNodeStateOnline
 	a.status.Online = true
 	a.status.LastOnline = time.Now()
 	a.status.UpdatedAt = time.Now()
-	a.status.Hardware = hardwareInfo
-	a.status.System = systemInfo
-	a.status.Metrics = metricsInfo
 	a.mu.Unlock()
 
 	// 发布注册成功事件
@@ -477,1851 +369,1031 @@ func (a *GameNodeAgent) Register(ctx context.Context) error {
 	return nil
 }
 
-// collectResourceInfo 采集资源信息
-func (a *GameNodeAgent) collectResourceInfo() (*pb.ResourceInfo, error) {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	// 获取硬件信息
-	hardwareInfo := &pb.HardwareInfo{
-		Cpu:     &pb.CPUHardware{},
-		Memory:  &pb.MemoryHardware{},
-		Gpu:     &pb.GPUHardware{},
-		Storage: &pb.StorageHardware{},
-	}
-
-	// 添加CPU信息
-	if len(a.hardware.CPU.Devices) > 0 {
-		cpu := a.hardware.CPU.Devices[0]
-		hardwareInfo.Cpu = &pb.CPUHardware{
-			Model:     cpu.Model,
-			Cores:     cpu.Cores,
-			Threads:   cpu.Threads,
-			Frequency: cpu.Frequency,
-			Cache:     cpu.Cache,
-		}
-	}
-
-	// 添加内存信息
-	if len(a.hardware.Memory.Devices) > 0 {
-		mem := a.hardware.Memory.Devices[0]
-		hardwareInfo.Memory = &pb.MemoryHardware{
-			Total:     mem.Size,
-			Type:      mem.Type,
-			Frequency: mem.Frequency,
-		}
-	}
-
-	// 添加GPU信息
-	if len(a.hardware.GPU.Devices) > 0 {
-		gpu := a.hardware.GPU.Devices[0]
-		hardwareInfo.Gpu = &pb.GPUHardware{
-			Model:       gpu.Model,
-			MemoryTotal: gpu.MemoryTotal,
-			CudaCores:   gpu.CudaCores,
-		}
-	}
-
-	// 添加存储设备信息
-	hardwareInfo.Storage.Devices = make([]*pb.StorageDevice, len(a.hardware.Storage.Devices))
-	for i, device := range a.hardware.Storage.Devices {
-		hardwareInfo.Storage.Devices[i] = &pb.StorageDevice{
-			Type:     device.Type,
-			Capacity: device.Capacity,
-		}
-	}
-
-	return &pb.ResourceInfo{
-		Id:        a.id,
-		Timestamp: time.Now().Unix(),
-		Hardware:  hardwareInfo,
-	}, nil
-}
-
-// parseMemorySize 从内存大小字符串解析为数值（GB）
-func parseMemorySize(memStr string) int64 {
-	// 示例解析，实际应根据输入格式调整
-	// 预期格式："{size} GB"，如 "16 GB"
-	parts := strings.Split(memStr, " ")
-	if len(parts) < 2 {
-		return 0
-	}
-
-	size, err := strconv.ParseInt(parts[0], 10, 64)
-	if err != nil {
-		return 0
-	}
-
-	return size
-}
-
 // Heartbeat 发送心跳
 func (a *GameNodeAgent) Heartbeat(ctx context.Context) error {
-	// 获取资源信息
-	resourceInfo, err := a.collectResourceInfo()
-	if err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("failed to collect resource info: %v", err))
+	// 首先更新硬件和系统信息
+	if err := a.collectHardwareAndSystemInfo(); err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("收集硬件和系统信息失败: %v", err)))
 	}
 
-	// 发送心跳请求
-	req := &pb.HeartbeatRequest{
-		Id:           a.id,
-		Timestamp:    time.Now().Unix(),
-		ResourceInfo: resourceInfo,
+	// 收集最新的指标信息
+	if err := a.collectMetricsInfo(); err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("收集指标信息失败: %v", err)))
 	}
 
-	_, err = a.client.Heartbeat(ctx, req)
-	if err != nil {
-		return status.Error(codes.Internal, fmt.Sprintf("failed to send heartbeat: %v", err))
-	}
-
-	// 更新状态
+	// 更新在线状态和时间
 	a.mu.Lock()
+	a.status.Online = true
+	a.status.State = models.GameNodeStateOnline
 	a.status.LastOnline = time.Now()
 	a.status.UpdatedAt = time.Now()
 	a.mu.Unlock()
 
+	// 发送心跳请求
+	req := &pb.HeartbeatRequest{
+		Id:        a.id,
+		SessionId: a.id,
+		Timestamp: time.Now().Unix(),
+		Status:    a.collectProtobufNodeStatus(),
+	}
+
+	_, err := a.client.Heartbeat(ctx, req)
+	if err != nil {
+		return fmt.Errorf("发送心跳失败: %v", err)
+	}
+
 	return nil
 }
 
-// ReportMetrics 上报指标
+// ReportMetrics 报告指标信息
 func (a *GameNodeAgent) ReportMetrics(ctx context.Context) error {
-	// 获取指标数据
-	metrics := a.collectMetrics()
-
-	// 发送指标报告
-	req := &pb.MetricsReport{
-		Id:        a.id,
-		Timestamp: time.Now().Unix(),
-		Metrics:   metrics,
+	// 首先更新硬件和系统信息
+	if err := a.collectHardwareAndSystemInfo(); err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("收集硬件和系统信息失败: %v", err)))
 	}
 
-	_, err := a.client.ReportMetrics(ctx, req)
+	// 收集最新的指标信息
+	if err := a.collectMetricsInfo(); err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("收集指标信息失败: %v", err)))
+		return err
+	}
+
+	// 更新状态
+	a.mu.Lock()
+	a.status.UpdatedAt = time.Now()
+	// 确保节点状态为在线
+	if a.status.State != models.GameNodeStateOffline {
+		a.status.State = models.GameNodeStateOnline
+		a.status.Online = true
+	}
+	a.mu.Unlock()
+
+	// 准备指标报告
+	report := a.prepareMetricsReport()
+
+	// 发送指标请求
+	_, err := a.client.ReportMetrics(ctx, report)
 	if err != nil {
 		return status.Error(codes.Internal, fmt.Sprintf("failed to report metrics: %v", err))
 	}
 
-	// 更新状态中的指标信息
-	a.mu.Lock()
-	// 初始化指标信息
-	var metricsInfo models.MetricsInfo
-
-	// 初始化CPU指标
-	cpuDevice := struct {
-		Model       string  `json:"model" yaml:"model"`
-		Cores       int32   `json:"cores" yaml:"cores"`
-		Threads     int32   `json:"threads" yaml:"threads"`
-		Usage       float64 `json:"usage" yaml:"usage"`
-		Temperature float64 `json:"temperature" yaml:"temperature"`
-	}{
-		Cores:   int32(a.cpuCores),
-		Threads: int32(a.cpuThreads),
+	// 同步更新状态 - 发送完整的资源信息
+	resourceInfo := a.collectProtobufResourceInfo()
+	_, updateErr := a.client.UpdateResourceInfo(ctx, resourceInfo)
+	if updateErr != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("更新资源信息失败: %v", updateErr)))
 	}
 
-	// 初始化GPU指标
-	gpuDevice := struct {
-		Model       string  `json:"model" yaml:"model"`
-		MemoryTotal int64   `json:"memory_total" yaml:"memory_total"`
-		Usage       float64 `json:"usage" yaml:"usage"`
-		MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`
-		MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`
-		MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"`
-		Temperature float64 `json:"temperature" yaml:"temperature"`
-		Power       float64 `json:"power" yaml:"power"`
-	}{}
+	return nil
+}
 
-	// 初始化存储指标
-	storageDevice := struct {
-		Path       string  `json:"path" yaml:"path"`
-		Type       string  `json:"type" yaml:"type"`
-		Model      string  `json:"model" yaml:"model"`
-		Capacity   int64   `json:"capacity" yaml:"capacity"`
-		Used       int64   `json:"used" yaml:"used"`
-		Free       int64   `json:"free" yaml:"free"`
-		Usage      float64 `json:"usage" yaml:"usage"`
-		ReadSpeed  float64 `json:"read_speed" yaml:"read_speed"`
-		WriteSpeed float64 `json:"write_speed" yaml:"write_speed"`
-	}{
-		Path: "/",
+// prepareMetricsReport 准备指标报告
+func (a *GameNodeAgent) prepareMetricsReport() *pb.MetricsReport {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	report := &pb.MetricsReport{
+		Id:        a.id,
+		Timestamp: time.Now().Unix(),
+		Metrics:   []*pb.Metric{},
 	}
 
-	// 转换指标值
-	for _, m := range metrics {
-		switch m.Name {
-		case "cpu_usage":
-			cpuDevice.Usage = m.Value
-		case "cpu_temperature":
-			cpuDevice.Temperature = m.Value
-		case "memory_usage":
-			metricsInfo.Memory.Usage = m.Value
-		case "memory_used":
-			metricsInfo.Memory.Used = int64(m.Value)
-		case "memory_available":
-			metricsInfo.Memory.Available = int64(m.Value)
-		case "disk_usage":
-			storageDevice.Usage = m.Value
-		case "disk_used":
-			storageDevice.Used = int64(m.Value)
-		case "disk_free":
-			storageDevice.Free = int64(m.Value)
-		case "gpu_usage":
-			gpuDevice.Usage = m.Value
-		case "gpu_memory_used":
-			gpuDevice.MemoryUsed = int64(m.Value)
-		case "gpu_memory_free":
-			gpuDevice.MemoryFree = int64(m.Value)
-		case "gpu_memory_usage":
-			gpuDevice.MemoryUsage = m.Value
-		case "gpu_temperature":
-			gpuDevice.Temperature = m.Value
-		case "gpu_power":
-			gpuDevice.Power = m.Value
-		case "network_inbound":
-			metricsInfo.Network.InboundTraffic = m.Value
-		case "network_outbound":
-			metricsInfo.Network.OutboundTraffic = m.Value
-		case "network_connections":
-			metricsInfo.Network.Connections = int32(m.Value)
+	// 添加CPU指标
+	if len(a.status.Metrics.CPUs) > 0 {
+		report.Metrics = append(report.Metrics, &pb.Metric{
+			Name:  "cpu.usage",
+			Type:  "gauge",
+			Value: a.status.Metrics.CPUs[0].Usage,
+		})
+	}
+
+	// 添加内存指标
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "memory.usage",
+		Type:  "gauge",
+		Value: a.status.Metrics.Memory.Usage,
+	})
+
+	// 添加GPU指标
+	if len(a.status.Metrics.GPUs) > 0 {
+		report.Metrics = append(report.Metrics, &pb.Metric{
+			Name:  "gpu.usage",
+			Type:  "gauge",
+			Value: a.status.Metrics.GPUs[0].Usage,
+		})
+		report.Metrics = append(report.Metrics, &pb.Metric{
+			Name:  "gpu.memory_usage",
+			Type:  "gauge",
+			Value: a.status.Metrics.GPUs[0].MemoryUsage,
+		})
+	}
+
+	// 添加存储指标
+	if len(a.status.Metrics.Storages) > 0 {
+		// 只报告重要的存储设备（最多3个）
+		maxDevicesToReport := 3
+		devicesToReport := len(a.status.Metrics.Storages)
+		if devicesToReport > maxDevicesToReport {
+			devicesToReport = maxDevicesToReport
+		}
+
+		for i := 0; i < devicesToReport; i++ {
+			device := a.status.Metrics.Storages[i]
+
+			// 确保设备有路径和容量
+			if device.Path == "" || device.Capacity == 0 {
+				continue
+			}
+
+			prefix := fmt.Sprintf("storage.%d", i)
+			report.Metrics = append(report.Metrics, &pb.Metric{
+				Name:  prefix + ".usage",
+				Type:  "gauge",
+				Value: device.Usage,
+			})
+			report.Metrics = append(report.Metrics, &pb.Metric{
+				Name:  prefix + ".used",
+				Type:  "gauge",
+				Value: float64(device.Used),
+			})
+			report.Metrics = append(report.Metrics, &pb.Metric{
+				Name:  prefix + ".free",
+				Type:  "gauge",
+				Value: float64(device.Free),
+			})
+			report.Metrics = append(report.Metrics, &pb.Metric{
+				Name:  prefix + ".capacity",
+				Type:  "gauge",
+				Value: float64(device.Capacity),
+			})
+
+			// 添加可选的路径标识
+			if device.Path != "" {
+				report.Metrics = append(report.Metrics, &pb.Metric{
+					Name:   prefix + ".path",
+					Type:   "label",
+					Value:  0,
+					Labels: map[string]string{"path": device.Path},
+				})
+			}
+
+			// 添加可选的类型标识
+			if device.Type != "" {
+				report.Metrics = append(report.Metrics, &pb.Metric{
+					Name:   prefix + ".type",
+					Type:   "label",
+					Value:  0,
+					Labels: map[string]string{"type": device.Type},
+				})
+			}
 		}
 	}
 
-	// 将指标加入到结构体中
-	metricsInfo.CPU.Devices = append(metricsInfo.CPU.Devices, cpuDevice)
-	metricsInfo.GPU.Devices = append(metricsInfo.GPU.Devices, gpuDevice)
-	metricsInfo.Storage.Devices = append(metricsInfo.Storage.Devices, storageDevice)
+	// 添加网络指标
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "network.inbound",
+		Type:  "gauge",
+		Value: a.status.Metrics.Network.InboundTraffic,
+	})
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "network.outbound",
+		Type:  "gauge",
+		Value: a.status.Metrics.Network.OutboundTraffic,
+	})
 
-	a.status.Metrics = metricsInfo
+	return report
+}
+
+// collectProtobufResourceInfo 收集protobuf格式资源信息
+func (a *GameNodeAgent) collectProtobufResourceInfo() *pb.ResourceInfo {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	// 创建HardwareInfo - 使用新的扁平结构
+	pbHardware := &pb.HardwareInfo{
+		Cpus:     []*pb.CPUHardware{},
+		Memories: []*pb.MemoryHardware{},
+		Gpus:     []*pb.GPUHardware{},
+		Storages: []*pb.StorageDevice{},
+		Networks: []*pb.NetworkDevice{},
+	}
+
+	// CPU信息
+	for _, device := range a.status.Hardware.CPUs {
+		pbHardware.Cpus = append(pbHardware.Cpus, &pb.CPUHardware{
+			Model:        device.Model,
+			Cores:        device.Cores,
+			Threads:      device.Threads,
+			Frequency:    device.Frequency,
+			Cache:        device.Cache,
+			Architecture: device.Architecture,
+		})
+	}
+
+	// 内存信息
+	for _, device := range a.status.Hardware.Memories {
+		pbHardware.Memories = append(pbHardware.Memories, &pb.MemoryHardware{
+			Size:      device.Size,
+			Type:      device.Type,
+			Frequency: device.Frequency,
+		})
+	}
+
+	// GPU信息
+	for _, device := range a.status.Hardware.GPUs {
+		pbHardware.Gpus = append(pbHardware.Gpus, &pb.GPUHardware{
+			Model:             device.Model,
+			MemoryTotal:       device.MemoryTotal,
+			Architecture:      device.Architecture,
+			DriverVersion:     device.DriverVersion,
+			ComputeCapability: device.ComputeCapability,
+			Tdp:               device.TDP,
+		})
+	}
+
+	// 存储信息
+	for _, device := range a.status.Hardware.Storages {
+		pbHardware.Storages = append(pbHardware.Storages, &pb.StorageDevice{
+			Type:     device.Type,
+			Model:    device.Model,
+			Capacity: device.Capacity,
+			Path:     device.Path,
+		})
+	}
+
+	// 网络信息
+	for _, device := range a.status.Hardware.Networks {
+		pbHardware.Networks = append(pbHardware.Networks, &pb.NetworkDevice{
+			Name:       device.Name,
+			MacAddress: device.MacAddress,
+			IpAddress:  device.IpAddress,
+			Speed:      device.Speed,
+		})
+	}
+
+	// 创建SystemInfo
+	pbSystem := &pb.SystemInfo{
+		OsDistribution:       a.status.System.OSDistribution,
+		OsVersion:            a.status.System.OSVersion,
+		OsArchitecture:       a.status.System.OSArchitecture,
+		KernelVersion:        a.status.System.KernelVersion,
+		GpuDriverVersion:     a.status.System.GPUDriverVersion,
+		GpuComputeApiVersion: a.status.System.GPUComputeAPIVersion,
+		DockerVersion:        a.status.System.DockerVersion,
+		ContainerdVersion:    a.status.System.ContainerdVersion,
+		RuncVersion:          a.status.System.RuncVersion,
+	}
+
+	// 创建MetricsInfo
+	pbMetrics := &pb.MetricsInfo{
+		Cpus:     []*pb.CPUMetrics{},
+		Memory:   &pb.MemoryMetrics{},
+		Gpus:     []*pb.GPUMetrics{},
+		Storages: []*pb.StorageMetrics{},
+		Network:  &pb.NetworkMetrics{},
+	}
+
+	// CPU指标
+	for _, metric := range a.status.Metrics.CPUs {
+		pbMetrics.Cpus = append(pbMetrics.Cpus, &pb.CPUMetrics{
+			Model:   metric.Model,
+			Cores:   metric.Cores,
+			Threads: metric.Threads,
+			Usage:   metric.Usage,
+		})
+	}
+
+	// 内存指标
+	pbMetrics.Memory = &pb.MemoryMetrics{
+		Total:     a.status.Metrics.Memory.Total,
+		Available: a.status.Metrics.Memory.Available,
+		Used:      a.status.Metrics.Memory.Used,
+		Usage:     a.status.Metrics.Memory.Usage,
+	}
+
+	// GPU指标
+	for _, metric := range a.status.Metrics.GPUs {
+		pbMetrics.Gpus = append(pbMetrics.Gpus, &pb.GPUMetrics{
+			Model:       metric.Model,
+			MemoryTotal: metric.MemoryTotal,
+			Usage:       metric.Usage,
+			MemoryUsed:  metric.MemoryUsed,
+			MemoryFree:  metric.MemoryFree,
+			MemoryUsage: metric.MemoryUsage,
+		})
+	}
+
+	// 存储指标
+	for _, metric := range a.status.Metrics.Storages {
+		pbMetrics.Storages = append(pbMetrics.Storages, &pb.StorageMetrics{
+			Path:     metric.Path,
+			Type:     metric.Type,
+			Model:    metric.Model,
+			Capacity: metric.Capacity,
+			Used:     metric.Used,
+			Free:     metric.Free,
+			Usage:    metric.Usage,
+		})
+	}
+
+	// 网络指标
+	pbMetrics.Network = &pb.NetworkMetrics{
+		InboundTraffic:  a.status.Metrics.Network.InboundTraffic,
+		OutboundTraffic: a.status.Metrics.Network.OutboundTraffic,
+		Connections:     a.status.Metrics.Network.Connections,
+	}
+
+	// 节点类型转换
+	var nodeType pb.NodeType
+	switch a.nodeInfo.nodeType {
+	case models.GameNodeTypePhysical:
+		nodeType = pb.NodeType_NODE_TYPE_PHYSICAL
+	case models.GameNodeTypeVirtual:
+		nodeType = pb.NodeType_NODE_TYPE_VIRTUAL
+	case models.GameNodeTypeContainer:
+		nodeType = pb.NodeType_NODE_TYPE_CONTAINER
+	default:
+		nodeType = pb.NodeType_NODE_TYPE_UNKNOWN
+	}
+
+	// 创建ResourceInfo
+	resourceInfo := &pb.ResourceInfo{
+		NodeId:    a.id,
+		NodeName:  a.id,
+		NodeState: pb.GameNodeState_NODE_STATE_OFFLINE, // 默认值，后面会根据实际状态更新
+		NodeType:  nodeType,
+		Hardware:  pbHardware,
+		System:    pbSystem,
+		Metrics:   pbMetrics,
+	}
+
+	// 更新节点状态
+	switch a.status.State {
+	case models.GameNodeStateOffline:
+		resourceInfo.NodeState = pb.GameNodeState_NODE_STATE_OFFLINE
+	case models.GameNodeStateOnline:
+		resourceInfo.NodeState = pb.GameNodeState_NODE_STATE_ONLINE
+	case models.GameNodeStateMaintenance:
+		resourceInfo.NodeState = pb.GameNodeState_NODE_STATE_MAINTENANCE
+	case models.GameNodeStateReady:
+		resourceInfo.NodeState = pb.GameNodeState_NODE_STATE_READY
+	case models.GameNodeStateBusy:
+		resourceInfo.NodeState = pb.GameNodeState_NODE_STATE_BUSY
+	case models.GameNodeStateError:
+		resourceInfo.NodeState = pb.GameNodeState_NODE_STATE_ERROR
+	default:
+		resourceInfo.NodeState = pb.GameNodeState_NODE_STATE_OFFLINE
+	}
+
+	return resourceInfo
+}
+
+// collectProtobufNodeStatus 收集protobuf格式的节点状态
+func (a *GameNodeAgent) collectProtobufNodeStatus() *pb.GameNodeStatus {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	// 处理状态转换
+	var pbState pb.GameNodeState
+	switch a.status.State {
+	case models.GameNodeStateOffline:
+		pbState = pb.GameNodeState_NODE_STATE_OFFLINE
+	case models.GameNodeStateOnline:
+		pbState = pb.GameNodeState_NODE_STATE_ONLINE
+	case models.GameNodeStateMaintenance:
+		pbState = pb.GameNodeState_NODE_STATE_MAINTENANCE
+	case models.GameNodeStateReady:
+		pbState = pb.GameNodeState_NODE_STATE_READY
+	case models.GameNodeStateBusy:
+		pbState = pb.GameNodeState_NODE_STATE_BUSY
+	case models.GameNodeStateError:
+		pbState = pb.GameNodeState_NODE_STATE_ERROR
+	default:
+		pbState = pb.GameNodeState_NODE_STATE_OFFLINE
+	}
+
+	// 创建状态对象
+	pbStatus := &pb.GameNodeStatus{
+		State:    pbState,
+		Online:   a.status.Online,
+		Hardware: a.collectProtobufResourceInfo().Hardware,
+		System:   a.collectProtobufResourceInfo().System,
+		Metrics:  a.collectProtobufResourceInfo().Metrics,
+	}
+
+	// 转换时间戳
+	if !a.status.LastOnline.IsZero() {
+		pbStatus.LastOnline = timestamppb.New(a.status.LastOnline)
+	}
+	if !a.status.UpdatedAt.IsZero() {
+		pbStatus.UpdatedAt = timestamppb.New(a.status.UpdatedAt)
+	}
+
+	return pbStatus
+}
+
+// collectNodeInfo 收集节点基本信息
+func (a *GameNodeAgent) collectNodeInfo() error {
+	// 基本信息已在初始化时设置
+	return nil
+}
+
+// collectHardwareAndSystemInfo 收集硬件和系统信息
+func (a *GameNodeAgent) collectHardwareAndSystemInfo() error {
+	// 收集硬件信息
+	hardwareInfo, err := a.hardwareCollector.GetHardwareInfo()
+	if err != nil {
+		return fmt.Errorf("获取硬件信息失败: %v", err)
+	}
+
+	// 收集系统信息
+	systemInfo, err := a.systemCollector.GetSystemInfo()
+	if err != nil {
+		return fmt.Errorf("获取系统信息失败: %v", err)
+	}
+
+	// 更新状态
+	a.mu.Lock()
+	a.status.Hardware = hardwareInfo
+	a.status.System = systemInfo
 	a.status.UpdatedAt = time.Now()
 	a.mu.Unlock()
 
-	return nil
-}
-
-// collectMetrics 采集指标数据
-func (a *GameNodeAgent) collectMetrics() []*pb.Metric {
-	a.resourceCollector.mu.RLock()
-	defer a.resourceCollector.mu.RUnlock()
-
-	return []*pb.Metric{
-		{
-			Name:  "cpu_usage",
-			Type:  "gauge",
-			Value: a.resourceCollector.cpuUsage,
-		},
-		{
-			Name:  "cpu_temperature",
-			Type:  "gauge",
-			Value: 45.0, // 示例值，实际应从硬件获取
-		},
-		{
-			Name:  "memory_usage",
-			Type:  "gauge",
-			Value: a.resourceCollector.memoryUsage,
-		},
-		{
-			Name:  "memory_used",
-			Type:  "gauge",
-			Value: float64(8 * 1024 * 1024 * 1024), // 示例值，实际应计算
-		},
-		{
-			Name:  "memory_available",
-			Type:  "gauge",
-			Value: float64(8 * 1024 * 1024 * 1024), // 示例值，实际应计算
-		},
-		{
-			Name:  "disk_usage",
-			Type:  "gauge",
-			Value: a.resourceCollector.diskUsage,
-		},
-		{
-			Name:  "disk_used",
-			Type:  "gauge",
-			Value: float64(100 * 1024 * 1024 * 1024), // 示例值，实际应计算
-		},
-		{
-			Name:  "disk_free",
-			Type:  "gauge",
-			Value: float64(900 * 1024 * 1024 * 1024), // 示例值，实际应计算
-		},
-		{
-			Name:  "gpu_usage",
-			Type:  "gauge",
-			Value: a.resourceCollector.gpuUsage,
-		},
-		{
-			Name:  "gpu_memory_used",
-			Type:  "gauge",
-			Value: float64(2 * 1024), // 示例值：2GB，实际应从硬件获取
-		},
-		{
-			Name:  "gpu_memory_free",
-			Type:  "gauge",
-			Value: float64(6 * 1024), // 示例值：6GB，实际应从硬件获取
-		},
-		{
-			Name:  "gpu_memory_usage",
-			Type:  "gauge",
-			Value: a.resourceCollector.gpuMemory,
-		},
-		{
-			Name:  "gpu_temperature",
-			Type:  "gauge",
-			Value: a.resourceCollector.gpuTemp,
-		},
-		{
-			Name:  "gpu_power",
-			Type:  "gauge",
-			Value: a.resourceCollector.gpuPower,
-		},
-		{
-			Name:  "network_inbound",
-			Type:  "counter",
-			Value: float64(a.resourceCollector.networkIO.read),
-		},
-		{
-			Name:  "network_outbound",
-			Type:  "counter",
-			Value: float64(a.resourceCollector.networkIO.write),
-		},
-		{
-			Name:  "network_connections",
-			Type:  "gauge",
-			Value: 100, // 示例值，实际应计算网络连接数
-		},
-	}
-}
-
-// GetHardwareConfig 获取硬件配置信息
-func (a *GameNodeAgent) GetHardwareConfig() (map[string]string, models.HardwareInfo, error) {
-	// 简化版硬件配置（用于兼容现有接口）
-	config := make(map[string]string)
-
-	// 完整硬件信息结构
-	var hardwareInfo models.HardwareInfo
-
-	// 1. 获取CPU信息
-	cpuModel := ""
-	cpuCores := 0
-	cpuThreads := 0
-	var cpuFrequency float64 = 0
-
-	if content, err := ioutil.ReadFile("/proc/cpuinfo"); err == nil {
-		lines := strings.Split(string(content), "\n")
-		var cores []string
-		var processors []string
-
-		for _, line := range lines {
-			if strings.HasPrefix(line, "model name") {
-				parts := strings.Split(line, ":")
-				if len(parts) > 1 {
-					cpuModel = strings.TrimSpace(parts[1])
-				}
-			} else if strings.HasPrefix(line, "core id") {
-				parts := strings.Split(line, ":")
-				if len(parts) > 1 {
-					coreID := strings.TrimSpace(parts[1])
-					if !contains(cores, coreID) {
-						cores = append(cores, coreID)
-					}
-				}
-			} else if strings.HasPrefix(line, "processor") {
-				parts := strings.Split(line, ":")
-				if len(parts) > 1 {
-					processorID := strings.TrimSpace(parts[1])
-					if !contains(processors, processorID) {
-						processors = append(processors, processorID)
-					}
-				}
-			} else if strings.HasPrefix(line, "cpu MHz") {
-				parts := strings.Split(line, ":")
-				if len(parts) > 1 {
-					if freq, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err == nil {
-						// 记录每个核心的频率，这里简化处理取第一个有效值
-						if cpuFrequency == 0 {
-							cpuFrequency = freq
-						}
-					}
-				}
-			}
-		}
-
-		cpuCores = len(cores)
-		if cpuCores == 0 {
-			// 备选方法
-			if out, err := exec.Command("nproc").Output(); err == nil {
-				if val, err := strconv.Atoi(strings.TrimSpace(string(out))); err == nil {
-					cpuCores = val
-				}
-			}
-		}
-
-		cpuThreads = len(processors)
-		if cpuThreads == 0 {
-			cpuThreads = cpuCores * 2 // 默认假设超线程
-		}
-	}
-
-	// 设置简化版配置
-	config["CPU"] = cpuModel
-
-	// 存储CPU核心数和线程数
-	a.cpuCores = cpuCores
-	a.cpuThreads = cpuThreads
-
-	// 提取CPU型号中的主频信息
-	freqInModelName := 0.0
-	cpuModelLower := strings.ToLower(cpuModel)
-	// 尝试从型号中提取频率信息，例如: "Intel Core i7-9700K @ 3.60GHz"
-	if strings.Contains(cpuModelLower, "ghz") {
-		// 查找数字 + GHz 模式
-		freqRegex := regexp.MustCompile(`(\d+\.\d+)ghz`)
-		matches := freqRegex.FindStringSubmatch(cpuModelLower)
-		if len(matches) > 1 {
-			if freq, err := strconv.ParseFloat(matches[1], 64); err == nil {
-				freqInModelName = freq
-			}
-		}
-	}
-
-	// 如果从型号中提取到了频率，优先使用，否则使用从cpuinfo中读取的
-	if freqInModelName > 0 {
-		cpuFrequency = freqInModelName * 1000 // 转换为MHz
-	} else if cpuFrequency == 0 {
-		// 如果还是没有频率信息，尝试从lscpu获取
-		if out, err := exec.Command("lscpu").Output(); err == nil {
-			lines := strings.Split(string(out), "\n")
-			for _, line := range lines {
-				if strings.Contains(line, "CPU MHz") || strings.Contains(line, "CPU max MHz") {
-					parts := strings.Split(line, ":")
-					if len(parts) > 1 {
-						if freq, err := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64); err == nil {
-							cpuFrequency = freq
-							break
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// 获取CPU插槽信息
-	var cpuSockets []string
-	if out, err := exec.Command("lscpu").Output(); err == nil {
-		lines := strings.Split(string(out), "\n")
-		for _, line := range lines {
-			if strings.Contains(line, "Socket(s)") {
-				parts := strings.Split(line, ":")
-				if len(parts) > 1 {
-					socketCount, err := strconv.Atoi(strings.TrimSpace(parts[1]))
-					if err == nil {
-						// 根据socket数量创建socket标识
-						for i := 0; i < socketCount; i++ {
-							cpuSockets = append(cpuSockets, fmt.Sprintf("%d", i))
-						}
-					}
-				}
-				break
-			}
-		}
-	}
-
-	// 如果没有找到socket信息，假设只有一个socket
-	if len(cpuSockets) == 0 {
-		cpuSockets = append(cpuSockets, "0")
-	}
-
-	// 更新CPU静态信息，添加核心数、主频和TDP
-	var cpuInfos []string
-	if cpuFrequency > 0 {
-		// 将MHz转换为GHz
-		cpuFreqGHz := cpuFrequency / 1000.0
-
-		// 基于CPU型号和核心数估算TDP
-		var cpuTDP int = 0
-		if strings.Contains(cpuModelLower, "i9") {
-			if cpuCores >= 12 {
-				cpuTDP = 125
-			} else {
-				cpuTDP = 95
-			}
-		} else if strings.Contains(cpuModelLower, "i7") {
-			if cpuCores >= 8 {
-				cpuTDP = 95
-			} else {
-				cpuTDP = 65
-			}
-		} else if strings.Contains(cpuModelLower, "i5") {
-			cpuTDP = 65
-		} else if strings.Contains(cpuModelLower, "i3") {
-			cpuTDP = 58
-		} else if strings.Contains(cpuModelLower, "xeon") {
-			if cpuCores >= 24 {
-				cpuTDP = 225
-			} else if cpuCores >= 16 {
-				cpuTDP = 165
-			} else if cpuCores >= 8 {
-				cpuTDP = 125
-			} else {
-				cpuTDP = 95
-			}
-		} else if strings.Contains(cpuModelLower, "ryzen") {
-			if strings.Contains(cpuModelLower, "threadripper") {
-				cpuTDP = 280
-			} else if strings.Contains(cpuModelLower, "9") {
-				cpuTDP = 105
-			} else if strings.Contains(cpuModelLower, "7") {
-				cpuTDP = 95
-			} else if strings.Contains(cpuModelLower, "5") {
-				cpuTDP = 65
-			} else {
-				cpuTDP = 65
-			}
-		} else {
-			// 基于核心数的通用估算
-			if cpuCores <= 4 {
-				cpuTDP = 65
-			} else if cpuCores <= 8 {
-				cpuTDP = 95
-			} else if cpuCores <= 16 {
-				cpuTDP = 125
-			} else {
-				cpuTDP = 165
-			}
-		}
-
-		// 为每个CPU插槽创建信息字符串
-		for _, socketID := range cpuSockets {
-			// 简化CPU型号
-			simplifiedModel := simpleCPUModel(cpuModel)
-			cpuInfos = append(cpuInfos, fmt.Sprintf("%s,%s %dCore %.1fGHz %dW", socketID, simplifiedModel, cpuCores/len(cpuSockets), cpuFreqGHz, cpuTDP))
-		}
-	} else {
-		// 没有频率信息时
-		for _, socketID := range cpuSockets {
-			// 简化CPU型号
-			simplifiedModel := simpleCPUModel(cpuModel)
-			cpuInfos = append(cpuInfos, fmt.Sprintf("%s,%s %dCore", socketID, simplifiedModel, cpuCores/len(cpuSockets)))
-		}
-	}
-
-	// 设置格式化后的CPU信息
-	config["CPU"] = strings.Join(cpuInfos, ";")
-
-	// 设置详细硬件信息 - CPU
-	cpuDevice := struct {
-		Model        string  `json:"model" yaml:"model"`
-		Cores        int32   `json:"cores" yaml:"cores"`
-		Threads      int32   `json:"threads" yaml:"threads"`
-		Frequency    float64 `json:"frequency" yaml:"frequency"`
-		Cache        int64   `json:"cache" yaml:"cache"`
-		Socket       string  `json:"socket" yaml:"socket"`
-		Manufacturer string  `json:"manufacturer" yaml:"manufacturer"`
-		Architecture string  `json:"architecture" yaml:"architecture"`
-	}{
-		Model:     cpuModel,
-		Cores:     int32(cpuCores),
-		Threads:   int32(cpuThreads),
-		Frequency: cpuFrequency,
-		Socket:    "0", // 默认插槽
-	}
-	hardwareInfo.CPU.Devices = append(hardwareInfo.CPU.Devices, cpuDevice)
-
-	// 2. 获取内存信息
-	var memorySize int64 = 0
-	if content, err := ioutil.ReadFile("/proc/meminfo"); err == nil {
-		lines := strings.Split(string(content), "\n")
-		for _, line := range lines {
-			if strings.HasPrefix(line, "MemTotal") {
-				parts := strings.Split(line, ":")
-				if len(parts) > 1 {
-					memoryInfo := strings.TrimSpace(parts[1])
-					// 将 KB 转换为 GB 表示
-					if strings.Contains(memoryInfo, "kB") {
-						memoryValue := strings.TrimSpace(strings.Replace(memoryInfo, "kB", "", -1))
-						if memVal, err := strconv.ParseInt(memoryValue, 10, 64); err == nil {
-							// 获取 KB 转为 GB，并向上取整
-							actualGB := float64(memVal) / 1024.0 / 1024.0
-							roundedGB := int(math.Ceil(actualGB))
-							config["RAM"] = fmt.Sprintf("%d GB", roundedGB)
-
-							// 记录内存大小（字节）
-							memorySize = int64(roundedGB) * 1024 * 1024 * 1024
-						} else {
-							config["RAM"] = memoryInfo // 如果转换失败，保留原始信息
-						}
-					} else {
-						config["RAM"] = memoryInfo
-					}
-					break
-				}
-			}
-		}
-	}
-
-	// 设置详细硬件信息 - 内存
-	memoryDevice := struct {
-		Size         int64   `json:"size" yaml:"size"`
-		Type         string  `json:"type" yaml:"type"`
-		Frequency    float64 `json:"frequency" yaml:"frequency"`
-		Manufacturer string  `json:"manufacturer" yaml:"manufacturer"`
-		Serial       string  `json:"serial" yaml:"serial"`
-		Slot         string  `json:"slot" yaml:"slot"`
-		PartNumber   string  `json:"part_number" yaml:"part_number"`
-		FormFactor   string  `json:"form_factor" yaml:"form_factor"`
-	}{
-		Size: memorySize,
-		Type: "Unknown",
-	}
-	hardwareInfo.Memory.Devices = append(hardwareInfo.Memory.Devices, memoryDevice)
-
-	// 3. 获取GPU信息
-	gpuModels := []string{}
-	gpuMemories := []int64{}
-	gpuBuses := []string{}
-
-	// 使用nvidia-smi列出所有GPU
-	if out, err := exec.Command("nvidia-smi", "--query-gpu=name,memory.total,pci.bus_id", "--format=csv,noheader").Output(); err == nil {
-		lines := strings.Split(string(out), "\n")
-		for _, line := range lines {
-			if len(line) > 0 {
-				fields := strings.Split(line, ", ")
-				if len(fields) >= 3 {
-					gpuModels = append(gpuModels, strings.TrimSpace(fields[0]))
-
-					// 解析显存
-					memStr := strings.TrimSpace(fields[1])
-					var memory int64 = 0
-					if strings.Contains(memStr, "MiB") {
-						memVal := strings.TrimSuffix(memStr, " MiB")
-						if val, err := strconv.ParseInt(memVal, 10, 64); err == nil {
-							memory = val
-						}
-					}
-					gpuMemories = append(gpuMemories, memory)
-
-					// 解析PCI总线ID
-					busID := strings.TrimSpace(fields[2])
-					gpuBuses = append(gpuBuses, busID)
-				}
-			}
-		}
-	}
-
-	// 如果没有找到GPU，尝试使用简单命令获取
-	if len(gpuModels) == 0 {
-		if out, err := exec.Command("nvidia-smi", "--query-gpu=name", "--format=csv,noheader").Output(); err == nil {
-			gpuModel := strings.TrimSpace(string(out))
-			if len(gpuModel) > 0 {
-				gpuModels = append(gpuModels, gpuModel)
-				gpuBuses = append(gpuBuses, "0") // 默认总线ID
-
-				// 尝试获取显存信息
-				if out, err := exec.Command("nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader").Output(); err == nil {
-					memStr := strings.TrimSpace(string(out))
-					var memory int64 = 0
-					if strings.Contains(memStr, "MiB") {
-						memVal := strings.TrimSuffix(memStr, " MiB")
-						if val, err := strconv.ParseInt(memVal, 10, 64); err == nil {
-							memory = val
-						}
-					}
-					gpuMemories = append(gpuMemories, memory)
-				} else {
-					gpuMemories = append(gpuMemories, 0)
-				}
-			}
-		}
-	}
-
-	// 格式化GPU信息
-	var gpuInfos []string
-	for i, model := range gpuModels {
-		// 获取GPU序号
-		gpuIndex := i
-
-		// 从PCI总线ID提取序号
-		if i < len(gpuBuses) && len(gpuBuses[i]) > 0 {
-			parts := strings.Split(gpuBuses[i], ":")
-			if len(parts) > 1 {
-				// 使用最后一部分作为简化的序号
-				lastPart := parts[len(parts)-1]
-				if val, err := strconv.Atoi(lastPart); err == nil {
-					gpuIndex = val
-				}
-			}
-		}
-
-		// 添加显存信息
-		var memory int64 = 0
-		if i < len(gpuMemories) {
-			memory = gpuMemories[i]
-		}
-
-		// 估算GPU TDP值
-		tdp := estimateGPUTDP(model)
-
-		// 添加到指标设备
-		gpuDevice := struct {
-			Model        string `json:"model" yaml:"model"`
-			MemoryTotal  int64  `json:"memory_total" yaml:"memory_total"`
-			CudaCores    int32  `json:"cuda_cores" yaml:"cuda_cores"`
-			Manufacturer string `json:"manufacturer" yaml:"manufacturer"`
-			Bus          string `json:"bus" yaml:"bus"`
-			PciSlot      string `json:"pci_slot" yaml:"pci_slot"`
-			Serial       string `json:"serial" yaml:"serial"`
-			Architecture string `json:"architecture" yaml:"architecture"`
-			TDP          int32  `json:"tdp" yaml:"tdp"`
-		}{
-			Model:        model,
-			MemoryTotal:  memory,
-			CudaCores:    0,
-			Manufacturer: "NVIDIA",
-			Bus:          gpuBuses[i],
-			PciSlot:      gpuBuses[i],
-			TDP:          int32(tdp),
-		}
-		hardwareInfo.GPU.Devices = append(hardwareInfo.GPU.Devices, gpuDevice)
-
-		if memory > 0 {
-			// 将MiB转换为GB
-			gpuMemGB := float64(memory) / 1024
-			if gpuMemGB >= 1 {
-				// 四舍五入到整数
-				gpuInfos = append(gpuInfos, fmt.Sprintf("%d,%s %dGB %dW", gpuIndex, model, int(math.Round(gpuMemGB)), tdp))
-			} else {
-				// 如果小于1GB，显示MB
-				gpuInfos = append(gpuInfos, fmt.Sprintf("%d,%s %dMB %dW", gpuIndex, model, memory, tdp))
-			}
-		} else {
-			gpuInfos = append(gpuInfos, fmt.Sprintf("%d,%s %dW", gpuIndex, model, tdp))
-		}
-	}
-
-	// 设置格式化后的GPU信息
-	if len(gpuInfos) > 0 {
-		config["GPU"] = strings.Join(gpuInfos, ";")
-	} else {
-		// 尝试使用替代方法检测GPU
-		if out, err := exec.Command("lspci", "-v").Output(); err == nil {
-			output := string(out)
-			if strings.Contains(strings.ToLower(output), "vga") ||
-				strings.Contains(strings.ToLower(output), "nvidia") ||
-				strings.Contains(strings.ToLower(output), "amd") ||
-				strings.Contains(strings.ToLower(output), "intel") ||
-				strings.Contains(strings.ToLower(output), "display") {
-
-				// 提取显卡信息
-				lines := strings.Split(output, "\n")
-				for _, line := range lines {
-					if strings.Contains(strings.ToLower(line), "vga") ||
-						strings.Contains(strings.ToLower(line), "display") ||
-						strings.Contains(strings.ToLower(line), "3d") {
-
-						parts := strings.SplitN(line, ":", 3)
-						if len(parts) >= 2 {
-							gpuModel := strings.TrimSpace(parts[1])
-							if gpuModel != "" {
-								// 估算TDP
-								tdp := 75 // 默认集成显卡功耗
-
-								// 添加到硬件信息结构
-								gpuDevice := struct {
-									Model        string `json:"model" yaml:"model"`
-									MemoryTotal  int64  `json:"memory_total" yaml:"memory_total"`
-									CudaCores    int32  `json:"cuda_cores" yaml:"cuda_cores"`
-									Manufacturer string `json:"manufacturer" yaml:"manufacturer"`
-									Bus          string `json:"bus" yaml:"bus"`
-									PciSlot      string `json:"pci_slot" yaml:"pci_slot"`
-									Serial       string `json:"serial" yaml:"serial"`
-									Architecture string `json:"architecture" yaml:"architecture"`
-									TDP          int32  `json:"tdp" yaml:"tdp"`
-								}{
-									Model: gpuModel,
-									TDP:   int32(tdp),
-								}
-
-								// 确定制造商
-								if strings.Contains(strings.ToLower(gpuModel), "nvidia") {
-									gpuDevice.Manufacturer = "NVIDIA"
-								} else if strings.Contains(strings.ToLower(gpuModel), "amd") ||
-									strings.Contains(strings.ToLower(gpuModel), "radeon") {
-									gpuDevice.Manufacturer = "AMD"
-								} else if strings.Contains(strings.ToLower(gpuModel), "intel") {
-									gpuDevice.Manufacturer = "Intel"
-								} else {
-									gpuDevice.Manufacturer = "Unknown"
-								}
-
-								hardwareInfo.GPU.Devices = append(hardwareInfo.GPU.Devices, gpuDevice)
-								config["GPU"] = fmt.Sprintf("0,%s %dW", gpuModel, tdp)
-								break
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// 如果还是没有找到GPU信息，检查是否在WSL环境中
-		if config["GPU"] == "" {
-			isWSL := false
-
-			// 检查是否在WSL环境
-			if _, err := os.Stat("/proc/sys/fs/binfmt_misc/WSLInterop"); err == nil {
-				isWSL = true
-			} else if out, err := exec.Command("uname", "-r").Output(); err == nil {
-				if strings.Contains(strings.ToLower(string(out)), "microsoft") ||
-					strings.Contains(strings.ToLower(string(out)), "wsl") {
-					isWSL = true
-				}
-			}
-
-			// 在WSL2环境中，强制尝试使用nvidia-smi直接获取GPU信息
-			if isWSL {
-				// 输出调试信息
-				fmt.Println("检测到WSL环境，尝试强制获取GPU信息")
-
-				// 尝试在WSL2环境下使用nvidia-smi获取GPU名称
-				if out, err := exec.Command("nvidia-smi", "--query-gpu=name", "--format=csv,noheader").Output(); err == nil {
-					gpuModel := strings.TrimSpace(string(out))
-					if len(gpuModel) > 0 {
-						// 获取显存
-						var memory int64 = 8 * 1024 // 默认8GB，单位MiB
-						if memOut, err := exec.Command("nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader").Output(); err == nil {
-							memStr := strings.TrimSpace(string(memOut))
-							if strings.Contains(memStr, "MiB") {
-								memVal := strings.TrimSuffix(memStr, " MiB")
-								if val, err := strconv.ParseInt(memVal, 10, 64); err == nil {
-									memory = val
-								}
-							}
-						}
-
-						// 估算TDP
-						tdp := 100
-						if strings.Contains(gpuModel, "4070") {
-							tdp = 100
-						} else if strings.Contains(gpuModel, "4080") {
-							tdp = 320
-						} else if strings.Contains(gpuModel, "4090") {
-							tdp = 450
-						}
-
-						// 配置GPU信息
-						gpuMemGB := float64(memory) / 1024
-						config["GPU"] = fmt.Sprintf("0,%s %dGB %dW", gpuModel, int(math.Round(gpuMemGB)), tdp)
-
-						// 添加到硬件信息结构
-						gpuDevice := struct {
-							Model        string `json:"model" yaml:"model"`
-							MemoryTotal  int64  `json:"memory_total" yaml:"memory_total"`
-							CudaCores    int32  `json:"cuda_cores" yaml:"cuda_cores"`
-							Manufacturer string `json:"manufacturer" yaml:"manufacturer"`
-							Bus          string `json:"bus" yaml:"bus"`
-							PciSlot      string `json:"pci_slot" yaml:"pci_slot"`
-							Serial       string `json:"serial" yaml:"serial"`
-							Architecture string `json:"architecture" yaml:"architecture"`
-							TDP          int32  `json:"tdp" yaml:"tdp"`
-						}{
-							Model:        gpuModel,
-							MemoryTotal:  memory,
-							Manufacturer: "NVIDIA",
-							TDP:          int32(tdp),
-						}
-
-						hardwareInfo.GPU.Devices = append(hardwareInfo.GPU.Devices, gpuDevice)
-						fmt.Println("成功配置GPU: ", config["GPU"])
-					}
-				}
-			}
-		}
-	}
-
-	// 4. 获取存储信息
-	var storageDevices []struct {
-		Name     string
-		Model    string
-		Type     string
-		Capacity int64
-	}
-
-	// 获取存储设备列表
-	if out, err := exec.Command("lsblk", "-d", "-o", "NAME,MODEL,SIZE,TYPE", "-n").Output(); err == nil {
-		lines := strings.Split(string(out), "\n")
-		for _, line := range lines {
-			fields := strings.Fields(line)
-			if len(fields) >= 3 {
-				var device struct {
-					Name     string
-					Model    string
-					Type     string
-					Capacity int64
-				}
-
-				// 设备名称
-				if len(fields) >= 1 {
-					device.Name = fields[0]
-				}
-
-				// 设备模型，可能为空，需要处理
-				if len(fields) >= 2 {
-					device.Model = fields[1]
-				} else {
-					device.Model = "Unknown"
-				}
-
-				// 设备容量
-				sizeStr := fields[2]
-				device.Capacity = parseStorageSize(sizeStr)
-
-				// 设备类型
-				if len(fields) >= 4 {
-					device.Type = fields[3]
-				} else {
-					device.Type = "disk"
-				}
-
-				// 细化存储类型
-				if device.Type == "disk" {
-					device.Type = getStorageDeviceType(device.Name, device.Model)
-				}
-
-				// 跳过loop设备和空设备
-				if device.Type != "loop" && device.Capacity > 0 {
-					storageDevices = append(storageDevices, device)
-				}
-			}
-		}
-	}
-
-	// 如果找到了存储设备，设置配置
-	if len(storageDevices) > 0 {
-		// 设置详细硬件信息 - 存储设备
-		for _, device := range storageDevices {
-			storageDevice := struct {
-				Type         string `json:"type" yaml:"type"`
-				Model        string `json:"model" yaml:"model"`
-				Capacity     int64  `json:"capacity" yaml:"capacity"`
-				Path         string `json:"path" yaml:"path"`
-				Serial       string `json:"serial" yaml:"serial"`
-				Interface    string `json:"interface" yaml:"interface"`
-				Manufacturer string `json:"manufacturer" yaml:"manufacturer"`
-				FormFactor   string `json:"form_factor" yaml:"form_factor"`
-				Firmware     string `json:"firmware" yaml:"firmware"`
-			}{
-				Type:     device.Type,
-				Model:    device.Model,
-				Capacity: device.Capacity,
-			}
-			hardwareInfo.Storage.Devices = append(hardwareInfo.Storage.Devices, storageDevice)
-		}
-
-		// 尝试获取挂载点信息
-		var mountInfos []struct {
-			Device string
-			Mount  string
-			Type   string
-		}
-
-		// 获取挂载信息
-		if out, err := exec.Command("df", "-T").Output(); err == nil {
-			lines := strings.Split(string(out), "\n")
-			// 跳过标题行
-			for i := 1; i < len(lines); i++ {
-				if i < len(lines) && len(lines[i]) > 0 {
-					fields := strings.Fields(lines[i])
-					if len(fields) >= 7 {
-						mountInfos = append(mountInfos, struct {
-							Device string
-							Mount  string
-							Type   string
-						}{
-							Device: fields[0],
-							Type:   fields[1],
-							Mount:  fields[6],
-						})
-					}
-				}
-			}
-		}
-
-		// 对于简化版配置，按照挂载点展示存储设备信息
-		var storageInfos []string
-
-		// 创建设备名到设备信息的映射，方便查找
-		deviceMap := make(map[string]struct {
-			Name     string
-			Model    string
-			Type     string
-			Capacity int64
-		})
-
-		for _, device := range storageDevices {
-			deviceMap[device.Name] = device
-			// 有些情况下需要添加/dev/前缀进行匹配
-			deviceMap["dev/"+device.Name] = device
-			deviceMap["/dev/"+device.Name] = device
-		}
-
-		// 首先尝试匹配根目录(/)
-		foundRoot := false
-		for _, mount := range mountInfos {
-			if mount.Mount == "/" {
-				foundRoot = true
-				deviceName := ""
-
-				// 提取设备名
-				if strings.HasPrefix(mount.Device, "/dev/") {
-					deviceName = strings.TrimPrefix(mount.Device, "/dev/")
-				} else {
-					deviceName = mount.Device
-				}
-
-				// 查找匹配的设备
-				if device, ok := deviceMap[deviceName]; ok {
-					capacityStr := formatStorageSize(device.Capacity)
-					storageInfos = append(storageInfos, fmt.Sprintf("/,%s %s", device.Type, capacityStr))
-				} else {
-					// 如果没有直接匹配，尝试部分匹配
-					for _, device := range storageDevices {
-						if strings.Contains(deviceName, device.Name) || strings.Contains(device.Name, deviceName) {
-							capacityStr := formatStorageSize(device.Capacity)
-							storageInfos = append(storageInfos, fmt.Sprintf("/,%s %s", device.Type, capacityStr))
-							break
-						}
-					}
-				}
-				break
-			}
-		}
-
-		// 如果没有找到根目录挂载点，使用第一个存储设备作为根目录
-		if !foundRoot && len(storageDevices) > 0 {
-			device := storageDevices[0]
-			capacityStr := formatStorageSize(device.Capacity)
-			storageInfos = append(storageInfos, fmt.Sprintf("/,%s %s", device.Type, capacityStr))
-		} else if !foundRoot {
-			// 如果根本没有找到任何存储设备，添加一个带"-"类型的根目录
-			storageInfos = append(storageInfos, "/,-")
-		}
-
-		// 添加其他主要挂载点（非系统挂载点）
-		for _, mount := range mountInfos {
-			// 排除系统挂载点和已处理的根目录
-			if mount.Mount != "/" &&
-				!strings.HasPrefix(mount.Mount, "/boot") &&
-				!strings.HasPrefix(mount.Mount, "/sys") &&
-				!strings.HasPrefix(mount.Mount, "/proc") &&
-				!strings.HasPrefix(mount.Mount, "/dev") &&
-				!strings.HasPrefix(mount.Mount, "/run") &&
-				!strings.HasPrefix(mount.Mount, "/tmp") {
-
-				deviceName := ""
-
-				// 提取设备名
-				if strings.HasPrefix(mount.Device, "/dev/") {
-					deviceName = strings.TrimPrefix(mount.Device, "/dev/")
-				} else {
-					deviceName = mount.Device
-				}
-
-				// 查找匹配的设备
-				if device, ok := deviceMap[deviceName]; ok {
-					capacityStr := formatStorageSize(device.Capacity)
-					storageInfos = append(storageInfos, fmt.Sprintf("%s,%s %s", mount.Mount, device.Type, capacityStr))
-				} else {
-					// 如果没有直接匹配，尝试部分匹配
-					found := false
-					for _, device := range storageDevices {
-						if strings.Contains(deviceName, device.Name) || strings.Contains(device.Name, deviceName) {
-							capacityStr := formatStorageSize(device.Capacity)
-							storageInfos = append(storageInfos, fmt.Sprintf("%s,%s %s", mount.Mount, device.Type, capacityStr))
-							found = true
-							break
-						}
-					}
-
-					// 如果还是找不到匹配，但挂载点看起来是重要的数据目录，则添加
-					if !found && (strings.HasPrefix(mount.Mount, "/data") ||
-						strings.HasPrefix(mount.Mount, "/mnt") ||
-						strings.HasPrefix(mount.Mount, "/media") ||
-						strings.HasPrefix(mount.Mount, "/home")) {
-						// 使用挂载点信息，类型设为"-"
-						storageInfos = append(storageInfos, fmt.Sprintf("%s,-", mount.Mount))
-					}
-				}
-			}
-		}
-
-		// 如果没有找到任何有效的挂载点信息，回退到简单列出所有存储设备
-		if len(storageInfos) == 0 {
-			for _, device := range storageDevices {
-				capacityStr := formatStorageSize(device.Capacity)
-				storageInfos = append(storageInfos, fmt.Sprintf("-,%s %s", device.Type, capacityStr))
-			}
-		}
-
-		config["Storage"] = strings.Join(storageInfos, ";")
-	}
-
-	// 确保Storage信息正确赋值，修复Storage信息可能缺失的问题
-	if config["Storage"] == "" || !strings.Contains(config["Storage"], ",") {
-		// 如果没有Storage信息或者格式不正确，尝试从根目录获取一个基本信息
-		rootInfo := "/"
-		rootType := "HDD"
-		rootSize := "Unknown"
-
-		// 尝试使用df命令直接获取根目录信息
-		if out, err := exec.Command("df", "-h", "/").Output(); err == nil {
-			lines := strings.Split(string(out), "\n")
-			if len(lines) > 1 {
-				fields := strings.Fields(lines[1])
-				if len(fields) >= 2 {
-					rootSize = fields[1]
-				}
-			}
-		}
-
-		// 如果有存储设备信息，使用第一个设备信息
-		if len(storageDevices) > 0 {
-			device := storageDevices[0]
-			rootType = device.Type
-			rootSize = formatStorageSize(device.Capacity)
-		}
-
-		config["Storage"] = fmt.Sprintf("%s,%s %s", rootInfo, rootType, rootSize)
-
-		// 确保硬件信息结构中也有对应的存储设备
-		if len(hardwareInfo.Storage.Devices) == 0 {
-			var capacityBytes int64 = 0
-			// 尝试解析容量字符串
-			if strings.HasSuffix(rootSize, "GB") || strings.HasSuffix(rootSize, "G") {
-				sizeStr := strings.TrimSuffix(strings.TrimSuffix(rootSize, "GB"), "G")
-				if size, err := strconv.ParseFloat(sizeStr, 64); err == nil {
-					capacityBytes = int64(size * 1024 * 1024 * 1024)
-				}
-			} else if strings.HasSuffix(rootSize, "TB") || strings.HasSuffix(rootSize, "T") {
-				sizeStr := strings.TrimSuffix(strings.TrimSuffix(rootSize, "TB"), "T")
-				if size, err := strconv.ParseFloat(sizeStr, 64); err == nil {
-					capacityBytes = int64(size * 1024 * 1024 * 1024 * 1024)
-				}
-			}
-
-			storageDevice := struct {
-				Type         string `json:"type" yaml:"type"`
-				Model        string `json:"model" yaml:"model"`
-				Capacity     int64  `json:"capacity" yaml:"capacity"`
-				Path         string `json:"path" yaml:"path"`
-				Serial       string `json:"serial" yaml:"serial"`
-				Interface    string `json:"interface" yaml:"interface"`
-				Manufacturer string `json:"manufacturer" yaml:"manufacturer"`
-				FormFactor   string `json:"form_factor" yaml:"form_factor"`
-				Firmware     string `json:"firmware" yaml:"firmware"`
-			}{
-				Type:     rootType,
-				Model:    "System Disk",
-				Capacity: capacityBytes,
-				Path:     "/",
-			}
-			hardwareInfo.Storage.Devices = append(hardwareInfo.Storage.Devices, storageDevice)
-		}
-	}
-
-	return config, hardwareInfo, nil
-}
-
-// GetSystemConfig 获取系统配置信息
-func (a *GameNodeAgent) GetSystemConfig() (map[string]string, models.SystemInfo, error) {
-	// 简化版系统配置（用于兼容现有接口）
-	config := make(map[string]string)
-
-	// 完整系统信息结构
-	var systemInfo models.SystemInfo
-
-	// 1. 获取操作系统信息
-	if content, err := ioutil.ReadFile("/etc/os-release"); err == nil {
-		lines := strings.Split(string(content), "\n")
-		for _, line := range lines {
-			if strings.HasPrefix(line, "NAME=") {
-				osType := strings.Trim(strings.TrimPrefix(line, "NAME="), "\"")
-				config["os_type"] = osType
-				systemInfo.OSDistribution = osType
-			} else if strings.HasPrefix(line, "VERSION_ID=") {
-				osVersion := strings.Trim(strings.TrimPrefix(line, "VERSION_ID="), "\"")
-				config["os_version"] = osVersion
-				systemInfo.OSVersion = osVersion
-			}
-		}
-	}
-
-	// 2. 获取操作系统架构
-	if out, err := exec.Command("uname", "-m").Output(); err == nil {
-		systemInfo.OSArchitecture = strings.TrimSpace(string(out))
-	}
-
-	// 3. 获取内核版本
-	if out, err := exec.Command("uname", "-r").Output(); err == nil {
-		systemInfo.KernelVersion = strings.TrimSpace(string(out))
-	}
-
-	// 4. 获取GPU驱动信息
-	if out, err := exec.Command("nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader").Output(); err == nil {
-		driverVersion := strings.TrimSpace(string(out))
-		formattedDriverVersion := fmt.Sprintf("NVIDIA Driver %s", driverVersion)
-		config["gpu_driver"] = formattedDriverVersion
-		systemInfo.GPUDriverVersion = formattedDriverVersion
-	}
-
-	// 5. 获取CUDA版本
-	if out, err := exec.Command("nvidia-smi", "--query-gpu=cuda_version", "--format=csv,noheader").Output(); err == nil {
-		cudaVersion := strings.TrimSpace(string(out))
-		config["cuda_version"] = cudaVersion
-		systemInfo.CUDAVersion = cudaVersion
-	}
-
-	// 6. 获取容器运行时信息
-	if out, err := exec.Command("docker", "--version").Output(); err == nil {
-		systemInfo.DockerVersion = strings.TrimSpace(string(out))
-	}
-
-	if out, err := exec.Command("containerd", "--version").Output(); err == nil {
-		systemInfo.ContainerdVersion = strings.TrimSpace(string(out))
-	}
-
-	if out, err := exec.Command("runc", "--version").Output(); err == nil {
-		systemInfo.RuncVersion = strings.TrimSpace(string(out))
-	}
-
-	// 7. 获取网络信息
-	if out, err := exec.Command("ip", "route", "get", "1").Output(); err == nil {
-		lines := strings.Split(string(out), "\n")
-		for _, line := range lines {
-			if strings.Contains(line, "src") {
-				fields := strings.Fields(line)
-				for i, field := range fields {
-					if field == "src" && i+1 < len(fields) {
-						config["ip_address"] = fields[i+1]
-						break
-					}
-				}
-			}
-		}
-	}
-
-	return config, systemInfo, nil
-}
-
-// contains 检查字符串是否在切片中
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
-}
-
-// parseStorageSize 解析存储大小字符串为字节数
-func parseStorageSize(sizeStr string) int64 {
-	// 移除空格
-	sizeStr = strings.TrimSpace(sizeStr)
-
-	// 检查单位
-	var multiplier int64 = 1
-	unit := ""
-
-	if len(sizeStr) > 0 {
-		lastChar := sizeStr[len(sizeStr)-1]
-		if !('0' <= lastChar && lastChar <= '9') {
-			// 最后一个字符是单位
-			unit = sizeStr[len(sizeStr)-1:]
-			sizeStr = sizeStr[:len(sizeStr)-1]
-
-			// 可能有两个字符的单位，如GB
-			if len(sizeStr) > 0 && !('0' <= sizeStr[len(sizeStr)-1] && sizeStr[len(sizeStr)-1] <= '9') {
-				unit = sizeStr[len(sizeStr)-1:] + unit
-				sizeStr = sizeStr[:len(sizeStr)-1]
-			}
-		}
-	}
-
-	// 解析数值部分
-	value, err := strconv.ParseFloat(strings.TrimSpace(sizeStr), 64)
-	if err != nil {
-		return 0
-	}
-
-	// 根据单位确定乘数
-	unit = strings.ToUpper(unit)
-	switch unit {
-	case "K", "KB":
-		multiplier = 1 << 10 // 1024
-	case "M", "MB":
-		multiplier = 1 << 20 // 1024^2
-	case "G", "GB":
-		multiplier = 1 << 30 // 1024^3
-	case "T", "TB":
-		multiplier = 1 << 40 // 1024^4
-	case "P", "PB":
-		multiplier = 1 << 50 // 1024^5
-	}
-
-	return int64(value * float64(multiplier))
-}
-
-// formatStorageSize 格式化存储大小
-func formatStorageSize(bytes int64) string {
-	const (
-		_          = iota
-		KB float64 = 1 << (10 * iota)
-		MB
-		GB
-		TB
-		PB
-	)
-
-	unit := ""
-	value := float64(bytes)
-
-	switch {
-	case bytes >= int64(PB):
-		unit = "PB"
-		value = value / PB
-	case bytes >= int64(TB):
-		unit = "TB"
-		value = value / TB
-	case bytes >= int64(GB):
-		unit = "GB"
-		value = value / GB
-	case bytes >= int64(MB):
-		unit = "MB"
-		value = value / MB
-	case bytes >= int64(KB):
-		unit = "KB"
-		value = value / KB
-	default:
-		unit = "B"
-	}
-
-	if value >= 10 {
-		return fmt.Sprintf("%.0f %s", value, unit)
-	}
-	return fmt.Sprintf("%.1f %s", value, unit)
-}
-
-// collectNodeInfo 采集节点信息
-func (a *GameNodeAgent) collectNodeInfo() (*pb.RegisterRequest, error) {
-	// 获取硬件和系统配置 - 静态信息，使用简化版格式
-	hardware, hardwareInfo, err := a.GetHardwareConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get hardware config: %v", err)
-	}
-
-	system, systemInfo, err := a.GetSystemConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get system config: %v", err)
-	}
-
-	// 初始化状态中的硬件和系统信息 - 动态信息，使用详细版格式
-	a.mu.Lock()
-	if a.status == nil {
-		a.status = &models.GameNodeStatus{
-			State:      models.GameNodeStateOffline,
-			Online:     false,
-			LastOnline: time.Now(),
-			UpdatedAt:  time.Now(),
-		}
-	}
-	a.status.Hardware = hardwareInfo
-	a.status.System = systemInfo
-	a.mu.Unlock()
-
-	return &pb.RegisterRequest{
-		Id:       a.id,
-		Type:     a.config.Type,
-		Hardware: hardware, // 静态信息，键值对格式
-		System:   system,   // 静态信息，键值对格式
-	}, nil
-}
-
-// ExecutePipeline 执行流水线
-func (a *GameNodeAgent) ExecutePipeline(ctx context.Context, req *pb.ExecutePipelineRequest) error {
-	// 创建流水线
-	pipeline, err := models.NewGameNodePipelineFromYAML(req.PipelineData)
-	if err != nil {
-		a.eventManager.Publish(event.NewNodeEvent(a.id, "error", fmt.Sprintf("failed to create pipeline: %v", err)))
-		return status.Error(codes.Internal, fmt.Sprintf("failed to create pipeline: %v", err))
-	}
-
-	// 保存流水线
-	a.mu.Lock()
-	a.pipelines[req.PipelineId] = pipeline
-	a.mu.Unlock()
-
-	// 执行流水线
-	if err := a.executePipelineSteps(ctx, pipeline); err != nil {
-		a.eventManager.Publish(event.NewNodeEvent(a.id, "error", fmt.Sprintf("failed to execute pipeline: %v", err)))
-		return status.Error(codes.Internal, fmt.Sprintf("failed to execute pipeline: %v", err))
-	}
-
-	a.eventManager.Publish(event.NewNodeEvent(a.id, "info", "Pipeline completed successfully"))
-	return nil
-}
-
-// executePipelineSteps 执行流水线步骤
-func (a *GameNodeAgent) executePipelineSteps(ctx context.Context, pipeline *models.GameNodePipeline) error {
-	for _, step := range pipeline.Steps {
-		// 更新步骤状态
-		statusUpdate := &pb.StepStatusUpdate{
-			PipelineId: pipeline.Name,
-			StepId:     step.Name,
-			Status:     pb.StepStatus_RUNNING,
-			StartTime:  time.Now().Unix(),
-		}
-
-		_, err := a.client.UpdateStepStatus(ctx, statusUpdate)
-		if err != nil {
-			return fmt.Errorf("failed to update step status: %v", err)
-		}
-
-		// 执行步骤
-		if err := a.executeStep(ctx, &step); err != nil {
-			// 更新失败状态
-			statusUpdate.Status = pb.StepStatus_FAILED
-			statusUpdate.EndTime = time.Now().Unix()
-			statusUpdate.ErrorMessage = err.Error()
-			_, _ = a.client.UpdateStepStatus(ctx, statusUpdate)
-			return err
-		}
-
-		// 更新完成状态
-		statusUpdate.Status = pb.StepStatus_COMPLETED
-		statusUpdate.EndTime = time.Now().Unix()
-		_, err = a.client.UpdateStepStatus(ctx, statusUpdate)
-		if err != nil {
-			return fmt.Errorf("failed to update step status: %v", err)
-		}
-	}
-
-	return nil
-}
-
-// executeStep 执行单个步骤
-func (a *GameNodeAgent) executeStep(ctx context.Context, step *models.PipelineStep) error {
-	if a.dockerClient == nil {
-		return fmt.Errorf("Docker client not initialized")
-	}
-
-	// 创建容器配置
-	config := &container.Config{
-		Image:      step.Container.Image,
-		Cmd:        step.Container.Command,
-		Env:        convertEnvMapToSlice(step.Container.Environment),
-		WorkingDir: "/",
-	}
-
-	// 创建主机配置
-	hostConfig := &container.HostConfig{
-		Binds:       step.Container.Volumes,
-		NetworkMode: container.NetworkMode("host"),
-		Resources: container.Resources{
-			Memory:     1024 * 1024 * 1024, // 1GB
-			MemorySwap: 1024 * 1024 * 1024, // 1GB
-			CPUShares:  1024,
-			CPUPeriod:  100000,
-			CPUQuota:   100000,
-		},
-	}
-
-	// 创建容器
-	resp, err := a.dockerClient.ContainerCreate(ctx, config, hostConfig, nil, nil, fmt.Sprintf("step-%s-%s", step.Name, uuid.New().String()))
-	if err != nil {
-		return fmt.Errorf("failed to create container: %v", err)
-	}
-
-	// 启动容器
-	err = a.dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to start container: %v", err)
-	}
-
-	// 等待容器完成
-	statusCh, errCh := a.dockerClient.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return fmt.Errorf("failed to wait container: %v", err)
-		}
-	case status := <-statusCh:
-		if status.StatusCode != 0 {
-			return fmt.Errorf("container exited with status %d", status.StatusCode)
-		}
-	}
-
-	// 获取容器日志
-	logs, err := a.dockerClient.ContainerLogs(ctx, resp.ID, container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get container logs: %v", err)
-	}
-
-	// 读取日志内容
-	logContent, err := io.ReadAll(logs)
-	if err != nil {
-		return fmt.Errorf("failed to read container logs: %v", err)
-	}
-
-	// 记录日志
-	logEntry := &pb.LogEntry{
-		PipelineId: step.Name,
-		StepId:     step.Name,
-		Level:      "info",
-		Message:    string(logContent),
-		Timestamp:  timestamppb.Now(),
-	}
-	a.logManager.AddLog(step.Name, logEntry)
-
-	// 删除容器
-	err = a.dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
-	if err != nil {
-		return fmt.Errorf("failed to remove container: %v", err)
-	}
-
-	return nil
-}
-
-// convertEnvMapToSlice 将环境变量 map 转换为 slice
-func convertEnvMapToSlice(envMap map[string]string) []string {
-	envSlice := make([]string, 0, len(envMap))
-	for k, v := range envMap {
-		envSlice = append(envSlice, fmt.Sprintf("%s=%s", k, v))
-	}
-	return envSlice
-}
-
-// GetPipelineStatus 获取流水线状态
-func (a *GameNodeAgent) GetPipelineStatus(ctx context.Context, pipelineID string) (*models.PipelineStatus, error) {
-	// 获取流水线状态
-	status := &models.PipelineStatus{
-		ID:          pipelineID,
-		NodeID:      a.id,
-		State:       "unknown",
-		CurrentStep: 0,
-		TotalSteps:  0,
-		Progress:    0,
-		StartTime:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
-
-	return status, nil
-}
-
-// CancelPipeline 取消流水线
-func (a *GameNodeAgent) CancelPipeline(ctx context.Context, pipelineID string) error {
-	// 发布取消事件
-	a.eventManager.Publish(event.NewNodeEvent(a.id, "info", fmt.Sprintf("Pipeline %s cancelled", pipelineID)))
-	return nil
-}
-
-// SubscribeEvents 订阅事件
-func (a *GameNodeAgent) SubscribeEvents(ctx context.Context, types []string) (<-chan *pb.Event, error) {
-	subscriber := a.eventManager.Subscribe(types)
-	eventCh := make(chan *pb.Event, 100)
-
+	// 如果客户端连接有效，异步发送资源信息更新
 	go func() {
-		defer close(eventCh)
-		for {
-			select {
-			case <-ctx.Done():
-				a.eventManager.Unsubscribe(subscriber)
-				return
-			default:
-				// 事件处理逻辑
-			}
+		if a.client == nil {
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		// 使用已有的ResourceInfo接口发送硬件和系统信息
+		resourceInfo := a.collectProtobufResourceInfo()
+		_, err := a.client.UpdateResourceInfo(ctx, resourceInfo)
+		if err != nil {
+			a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("更新资源信息失败: %v", err)))
 		}
 	}()
 
-	return eventCh, nil
+	return nil
 }
 
-// handleEvent 处理事件
-func (a *GameNodeAgent) handleEvent(event *pb.Event) {
-	switch event.Type {
-	case "container":
-		// 处理容器事件
-		a.handleContainerEvent(event)
-	case "pipeline":
-		// 处理流水线事件
-		a.handlePipelineEvent(event)
-	case "node":
-		// 处理节点事件
-		a.handleNodeEvent(event)
+// collectMetricsInfo 收集指标信息
+func (a *GameNodeAgent) collectMetricsInfo() error {
+	// 收集指标信息
+	newMetricsInfo, err := a.metricsCollector.GetMetricsInfo()
+	if err != nil {
+		return fmt.Errorf("获取指标信息失败: %v", err)
+	}
+
+	// 更新状态，保留历史数据（仅更新有采集到数据的指标）
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// 获取当前状态的副本，用于保留历史数据
+	currentMetrics := a.status.Metrics
+
+	// 1. 合并CPU指标
+	if len(newMetricsInfo.CPUs) > 0 {
+		// 新指标中有CPU数据，更新CPU数据
+		if len(currentMetrics.CPUs) == 0 {
+			// 当前无CPU数据，直接使用新数据
+			currentMetrics.CPUs = newMetricsInfo.CPUs
+		} else {
+			// 合并CPU指标：保留基本信息，更新最新的用量指标
+			for i, newCPU := range newMetricsInfo.CPUs {
+				if i < len(currentMetrics.CPUs) {
+					// 仅更新有效的使用率
+					if newCPU.Usage > 0 {
+						currentMetrics.CPUs[i].Usage = newCPU.Usage
+					}
+
+					// 只有当当前值为空且新值不为空时才更新这些基础信息
+					if currentMetrics.CPUs[i].Model == "" && newCPU.Model != "" {
+						currentMetrics.CPUs[i].Model = newCPU.Model
+					}
+					if currentMetrics.CPUs[i].Cores == 0 && newCPU.Cores > 0 {
+						currentMetrics.CPUs[i].Cores = newCPU.Cores
+					}
+					if currentMetrics.CPUs[i].Threads == 0 && newCPU.Threads > 0 {
+						currentMetrics.CPUs[i].Threads = newCPU.Threads
+					}
+				} else {
+					// 添加新的CPU
+					currentMetrics.CPUs = append(currentMetrics.CPUs, newCPU)
+				}
+			}
+		}
+	}
+
+	// 2. 合并内存指标
+	if newMetricsInfo.Memory.Total > 0 {
+		// 内存总量不为0，表示采集到了有效数据
+		currentMetrics.Memory = newMetricsInfo.Memory
+	}
+
+	// 3. 合并GPU指标
+	if len(newMetricsInfo.GPUs) > 0 {
+		// 新指标中有GPU数据，更新GPU数据
+		if len(currentMetrics.GPUs) == 0 {
+			// 当前无GPU数据，直接使用新数据
+			currentMetrics.GPUs = newMetricsInfo.GPUs
+		} else {
+			// 合并GPU指标：保留基本信息，更新最新的用量指标
+			for i, newGPU := range newMetricsInfo.GPUs {
+				if i < len(currentMetrics.GPUs) {
+					// 只更新有效的使用率数据
+					if newGPU.Usage > 0 {
+						currentMetrics.GPUs[i].Usage = newGPU.Usage
+					}
+					if newGPU.MemoryUsage > 0 {
+						currentMetrics.GPUs[i].MemoryUsage = newGPU.MemoryUsage
+					}
+					if newGPU.MemoryUsed > 0 {
+						currentMetrics.GPUs[i].MemoryUsed = newGPU.MemoryUsed
+					}
+					if newGPU.MemoryFree > 0 {
+						currentMetrics.GPUs[i].MemoryFree = newGPU.MemoryFree
+					}
+
+					// 只有当当前值为空且新值不为空时才更新这些基础信息
+					if currentMetrics.GPUs[i].Model == "" && newGPU.Model != "" {
+						currentMetrics.GPUs[i].Model = newGPU.Model
+					}
+					if currentMetrics.GPUs[i].MemoryTotal == 0 && newGPU.MemoryTotal > 0 {
+						currentMetrics.GPUs[i].MemoryTotal = newGPU.MemoryTotal
+					}
+				} else {
+					// 添加新的GPU
+					currentMetrics.GPUs = append(currentMetrics.GPUs, newGPU)
+				}
+			}
+		}
+	}
+
+	// 4. 合并存储指标
+	if len(newMetricsInfo.Storages) > 0 {
+		// 定义最小有效存储大小（100MB），过滤掉太小的设备
+		const minValidStorageSize int64 = 100 * 1024 * 1024
+
+		// 首先使用路径和容量范围作为键构建映射
+		storageMap := make(map[string]models.StorageMetrics)
+
+		// 工具函数：生成存储设备的唯一键
+		generateStorageKey := func(storage models.StorageMetrics) string {
+			if storage.Path != "" {
+				return storage.Path // 直接使用路径作为唯一键
+			}
+
+			// 如果是WSL驱动器，使用特殊标识
+			if storage.Type == "Virtual" && storage.Path != "" && len(storage.Path) >= 6 && strings.HasPrefix(storage.Path, "/mnt/") {
+				driveLetter := storage.Path[5:6]
+				return fmt.Sprintf("wsl-drive-%s", strings.ToUpper(driveLetter))
+			}
+
+			// 其他设备类型，使用容量范围作为键
+			sizeGB := float64(storage.Capacity) / (1024 * 1024 * 1024)
+			// 舍入到最接近的10GB
+			sizeRounded := math.Round(sizeGB/10) * 10
+			return fmt.Sprintf("%.0fGB-%s", sizeRounded, storage.Type)
+		}
+
+		// 首先添加当前存储设备（保留有效的设备）
+		for _, storage := range currentMetrics.Storages {
+			// 跳过无效或容量太小的设备
+			if storage.Path == "" || storage.Capacity < minValidStorageSize {
+				continue
+			}
+
+			key := generateStorageKey(storage)
+			storageMap[key] = storage
+		}
+
+		// 然后处理新的存储指标
+		for _, newStorage := range newMetricsInfo.Storages {
+			// 跳过无效或太小的存储设备
+			if newStorage.Path == "" || newStorage.Capacity < minValidStorageSize {
+				continue
+			}
+
+			// 检查是否有相同路径的设备
+			key := generateStorageKey(newStorage)
+			if existing, exists := storageMap[key]; exists {
+				// 只更新有效的指标数据
+				if newStorage.Usage > 0 {
+					existing.Usage = newStorage.Usage
+				}
+				if newStorage.Used > 0 {
+					existing.Used = newStorage.Used
+				}
+				if newStorage.Free > 0 {
+					existing.Free = newStorage.Free
+				}
+
+				// 只在当前值为空且新值不为空时才更新静态信息
+				if existing.Model == "" && newStorage.Model != "" {
+					existing.Model = newStorage.Model
+				}
+				if existing.Type == "" && newStorage.Type != "" {
+					existing.Type = newStorage.Type
+				}
+
+				storageMap[key] = existing
+			} else {
+				// 添加新设备
+				storageMap[key] = newStorage
+			}
+		}
+
+		// 转换回数组并按容量排序
+		var storageSlice []models.StorageMetrics
+		for _, storage := range storageMap {
+			storageSlice = append(storageSlice, storage)
+		}
+
+		// 按容量降序排序
+		sort.Slice(storageSlice, func(i, j int) bool {
+			return storageSlice[i].Capacity > storageSlice[j].Capacity
+		})
+
+		// 更新存储设备列表
+		currentMetrics.Storages = storageSlice
+	}
+
+	// 5. 更新网络指标 - 只有当采集到的数据有效时才更新
+	if newMetricsInfo.Network.InboundTraffic > 0 || newMetricsInfo.Network.OutboundTraffic > 0 || newMetricsInfo.Network.Connections > 0 {
+		currentMetrics.Network = newMetricsInfo.Network
+	}
+
+	// 更新状态
+	a.status.Metrics = currentMetrics
+	a.status.UpdatedAt = time.Now()
+
+	// 解锁以便调用collectMetricsFromHardware
+	a.mu.Unlock()
+
+	// 从硬件信息中补充完善指标信息（CPU/GPU型号、存储路径等）
+	if err := a.collectMetricsFromHardware(); err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("从硬件信息补充指标失败: %v", err)))
+	}
+
+	// 重新上锁，以便后续操作
+	a.mu.Lock()
+
+	// 异步发送指标报告
+	go a.asyncReportMetrics()
+
+	return nil
+}
+
+// asyncReportMetrics 异步发送指标报告
+func (a *GameNodeAgent) asyncReportMetrics() {
+	if a.client == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// 获取当前指标
+	a.mu.RLock()
+	metricsInfo := a.status.Metrics
+	a.mu.RUnlock()
+
+	// 将指标信息转换为MetricsReport格式
+	report := &pb.MetricsReport{
+		Id:        a.id,
+		Timestamp: time.Now().Unix(),
+		Metrics:   []*pb.Metric{},
+	}
+
+	// 添加CPU指标
+	if len(metricsInfo.CPUs) > 0 {
+		device := metricsInfo.CPUs[0]
+		report.Metrics = append(report.Metrics, &pb.Metric{
+			Name:  "cpu.usage",
+			Type:  "gauge",
+			Value: device.Usage,
+		})
+	}
+
+	// 添加内存指标
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "memory.usage",
+		Type:  "gauge",
+		Value: metricsInfo.Memory.Usage,
+	})
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "memory.used",
+		Type:  "gauge",
+		Value: float64(metricsInfo.Memory.Used),
+	})
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "memory.available",
+		Type:  "gauge",
+		Value: float64(metricsInfo.Memory.Available),
+	})
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "memory.total",
+		Type:  "gauge",
+		Value: float64(metricsInfo.Memory.Total),
+	})
+
+	// 添加GPU指标
+	if len(metricsInfo.GPUs) > 0 {
+		device := metricsInfo.GPUs[0]
+		report.Metrics = append(report.Metrics, &pb.Metric{
+			Name:  "gpu.usage",
+			Type:  "gauge",
+			Value: device.Usage,
+		})
+		report.Metrics = append(report.Metrics, &pb.Metric{
+			Name:  "gpu.memory_usage",
+			Type:  "gauge",
+			Value: device.MemoryUsage,
+		})
+		report.Metrics = append(report.Metrics, &pb.Metric{
+			Name:  "gpu.memory_used",
+			Type:  "gauge",
+			Value: float64(device.MemoryUsed),
+		})
+		report.Metrics = append(report.Metrics, &pb.Metric{
+			Name:  "gpu.memory_free",
+			Type:  "gauge",
+			Value: float64(device.MemoryFree),
+		})
+	}
+
+	// 添加存储指标
+	if len(metricsInfo.Storages) > 0 {
+		// 只报告重要的存储设备（最多3个）
+		maxDevicesToReport := 3
+		devicesToReport := len(metricsInfo.Storages)
+		if devicesToReport > maxDevicesToReport {
+			devicesToReport = maxDevicesToReport
+		}
+
+		for i := 0; i < devicesToReport; i++ {
+			device := metricsInfo.Storages[i]
+
+			// 确保设备有路径和容量
+			if device.Path == "" || device.Capacity == 0 {
+				continue
+			}
+
+			prefix := fmt.Sprintf("storage.%d", i)
+			report.Metrics = append(report.Metrics, &pb.Metric{
+				Name:  prefix + ".usage",
+				Type:  "gauge",
+				Value: device.Usage,
+			})
+			report.Metrics = append(report.Metrics, &pb.Metric{
+				Name:  prefix + ".used",
+				Type:  "gauge",
+				Value: float64(device.Used),
+			})
+			report.Metrics = append(report.Metrics, &pb.Metric{
+				Name:  prefix + ".free",
+				Type:  "gauge",
+				Value: float64(device.Free),
+			})
+			report.Metrics = append(report.Metrics, &pb.Metric{
+				Name:  prefix + ".capacity",
+				Type:  "gauge",
+				Value: float64(device.Capacity),
+			})
+
+			// 添加可选的路径标识
+			if device.Path != "" {
+				report.Metrics = append(report.Metrics, &pb.Metric{
+					Name:   prefix + ".path",
+					Type:   "label",
+					Value:  0,
+					Labels: map[string]string{"path": device.Path},
+				})
+			}
+
+			// 添加可选的类型标识
+			if device.Type != "" {
+				report.Metrics = append(report.Metrics, &pb.Metric{
+					Name:   prefix + ".type",
+					Type:   "label",
+					Value:  0,
+					Labels: map[string]string{"type": device.Type},
+				})
+			}
+		}
+	}
+
+	// 添加网络指标
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "network.inbound",
+		Type:  "gauge",
+		Value: metricsInfo.Network.InboundTraffic,
+	})
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "network.outbound",
+		Type:  "gauge",
+		Value: metricsInfo.Network.OutboundTraffic,
+	})
+	report.Metrics = append(report.Metrics, &pb.Metric{
+		Name:  "network.connections",
+		Type:  "gauge",
+		Value: float64(metricsInfo.Network.Connections),
+	})
+
+	// 发送指标报告
+	_, err := a.client.ReportMetrics(ctx, report)
+	if err != nil {
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "warn", fmt.Sprintf("发送指标报告失败: %v", err)))
 	}
 }
 
-// handleContainerEvent 处理容器事件
-func (a *GameNodeAgent) handleContainerEvent(event *pb.Event) {
-	// TODO: 实现容器事件处理逻辑
-}
-
-// handlePipelineEvent 处理流水线事件
-func (a *GameNodeAgent) handlePipelineEvent(event *pb.Event) {
-	// TODO: 实现流水线事件处理逻辑
-}
-
-// handleNodeEvent 处理节点事件
-func (a *GameNodeAgent) handleNodeEvent(event *pb.Event) {
-	// TODO: 实现节点事件处理逻辑
-}
-
-// StreamLogs 流式获取日志
-func (a *GameNodeAgent) StreamLogs(ctx context.Context, pipelineID string) (<-chan *pb.LogEntry, error) {
-	return a.logManager.StreamLogs(ctx, pipelineID, time.Now().Add(-24*time.Hour)), nil
-}
-
-// StartContainer 启动容器
-func (a *GameNodeAgent) StartContainer(ctx context.Context, containerID string) error {
-	// 发布容器启动事件
-	a.eventManager.Publish(event.NewContainerEvent(a.id, containerID, "started", "Container started"))
-	return nil
-}
-
-// StopContainer 停止容器
-func (a *GameNodeAgent) StopContainer(ctx context.Context, containerID string) error {
-	// 发布容器停止事件
-	a.eventManager.Publish(event.NewContainerEvent(a.id, containerID, "stopped", "Container stopped"))
-	return nil
-}
-
-// StreamNodeLogs 流式获取节点日志
-func (a *GameNodeAgent) StreamNodeLogs(ctx context.Context) (<-chan *pb.LogEntry, error) {
-	return a.logManager.StreamLogs(ctx, a.id, time.Now().Add(-24*time.Hour)), nil
-}
-
-// StreamContainerLogs 流式获取容器日志
-func (a *GameNodeAgent) StreamContainerLogs(ctx context.Context, containerID string) (<-chan *pb.LogEntry, error) {
-	// 从过去24小时开始获取日志
-	return a.logManager.StreamLogs(ctx, containerID, time.Now().Add(-24*time.Hour)), nil
-}
-
-// NewDefaultAgentConfig 创建默认配置
-func NewDefaultAgentConfig() *AgentConfig {
-	return &AgentConfig{
+// NewDefaultAgentConfig 创建默认代理配置 - 兼容旧代码，保留以备将来使用
+func NewDefaultAgentConfig() *Options {
+	return &Options{
 		HeartbeatPeriod: 30 * time.Second,
-		RetryCount:      3,
-		RetryDelay:      5 * time.Second,
 		MetricsInterval: 60 * time.Second,
 		Labels:          make(map[string]string),
 	}
 }
 
-// Stop 停止代理并清理资源
-func (a *GameNodeAgent) Stop() error {
+// Stop 停止代理，关闭连接和释放资源
+func (a *GameNodeAgent) Stop() {
 	// 关闭gRPC连接
 	if a.conn != nil {
-		if err := a.conn.Close(); err != nil {
-			return fmt.Errorf("failed to close gRPC connection: %v", err)
-		}
+		a.eventManager.Publish(event.NewNodeEvent(a.id, "info", "关闭与服务器的连接"))
+		a.conn.Close()
+		a.conn = nil
+		a.client = nil
 	}
 
-	// 发布节点关闭事件
-	a.eventManager.Publish(event.NewNodeEvent(a.id, "info", "节点代理正在关闭"))
-
-	// 更新状态
+	// 更新状态为离线
 	a.mu.Lock()
-	a.status.State = models.GameNodeStateOffline
 	a.status.Online = false
+	a.status.State = models.GameNodeStateOffline
 	a.status.UpdatedAt = time.Now()
 	a.mu.Unlock()
+
+	a.eventManager.Publish(event.NewNodeEvent(a.id, "info", "代理已停止"))
+}
+
+// SendHeartbeat 发送心跳信息
+func (a *GameNodeAgent) SendHeartbeat(ctx context.Context) error {
+	// 获取和更新状态
+	nodeStatus := a.collectProtobufNodeStatus()
+
+	// 发送心跳请求
+	req := &pb.HeartbeatRequest{
+		Id:        a.id,
+		SessionId: a.id, // 使用节点ID作为会话ID
+		Timestamp: time.Now().Unix(),
+		Status:    nodeStatus,
+	}
+
+	_, err := a.client.Heartbeat(ctx, req)
+	if err != nil {
+		return fmt.Errorf("发送心跳失败: %v", err)
+	}
 
 	return nil
 }
 
-// getStorageDeviceType 识别存储设备类型
-func getStorageDeviceType(deviceName, deviceModel string) string {
-	deviceName = strings.ToLower(deviceName)
-	deviceModel = strings.ToLower(deviceModel)
+// collectMetricsFromHardware 从硬件信息中收集监控数据
+// 只收集status.hardware中有的设备的指标
+func (a *GameNodeAgent) collectMetricsFromHardware() error {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 
-	// 检查是否为NVMe设备
-	if strings.Contains(deviceName, "nvme") || strings.Contains(deviceModel, "nvme") {
-		return "NVMe"
+	// 检查硬件信息是否已初始化
+	if a.status == nil {
+		return fmt.Errorf("硬件信息尚未初始化")
 	}
 
-	// 检查是否为SSD设备
-	if strings.Contains(deviceName, "ssd") || strings.Contains(deviceModel, "ssd") {
-		return "SSD"
+	// 获取实时采集的指标
+	metricsInfo, err := a.metricsCollector.GetMetricsInfo()
+	if err != nil {
+		return fmt.Errorf("获取实时指标失败: %v", err)
 	}
 
-	// 尝试使用lsblk获取设备旋转属性来判断是SSD还是HDD
-	if out, err := exec.Command("lsblk", "-d", "-o", "NAME,ROTA", "-n", "/dev/"+deviceName).Output(); err == nil {
-		lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-		for _, line := range lines {
-			fields := strings.Fields(line)
-			if len(fields) >= 2 && fields[1] == "0" {
-				return "SSD"
-			} else if len(fields) >= 2 && fields[1] == "1" {
-				return "HDD"
+	// 创建一个新的指标信息
+	var metrics models.MetricsInfo
+
+	// 1. 只收集hardware.cpus中的CPU设备指标
+	if len(a.status.Hardware.CPUs) > 0 {
+		// 如果有硬件CPU信息，就只收集这些设备的指标
+		for _, device := range a.status.Hardware.CPUs {
+			cpuMetric := models.CPUMetrics{
+				Model:   device.Model,
+				Cores:   device.Cores,
+				Threads: device.Threads,
 			}
+
+			// 从采集到的指标中找到使用率
+			if len(metricsInfo.CPUs) > 0 {
+				cpuMetric.Usage = metricsInfo.CPUs[0].Usage
+			}
+
+			metrics.CPUs = append(metrics.CPUs, cpuMetric)
 		}
+	} else if len(metricsInfo.CPUs) > 0 {
+		// 如果没有硬件CPU信息，但有采集到的CPU指标，就使用采集到的
+		metrics.CPUs = metricsInfo.CPUs
 	}
 
-	// 默认为普通硬盘
-	return "HDD"
-}
+	// 2. 只收集hardware.gpus中的GPU设备指标
+	if len(a.status.Hardware.GPUs) > 0 {
+		// 如果有硬件GPU信息，就只收集这些设备的指标
+		for _, device := range a.status.Hardware.GPUs {
+			gpuMetric := models.GPUMetrics{
+				Model:       device.Model,
+				MemoryTotal: device.MemoryTotal,
+			}
 
-// estimateGPUTDP 估算GPU TDP值（瓦特）
-func estimateGPUTDP(model string) int32 {
-	modelLower := strings.ToLower(model)
+			// 从采集到的指标中找到匹配的GPU
+			for _, gpu := range metricsInfo.GPUs {
+				// 尝试匹配GPU型号（不区分大小写）
+				if strings.Contains(strings.ToLower(gpu.Model), strings.ToLower(device.Model)) ||
+					strings.Contains(strings.ToLower(device.Model), strings.ToLower(gpu.Model)) {
+					gpuMetric.Usage = gpu.Usage
+					gpuMetric.MemoryUsed = gpu.MemoryUsed
+					gpuMetric.MemoryFree = gpu.MemoryFree
+					gpuMetric.MemoryUsage = gpu.MemoryUsage
+					break
+				}
+			}
 
-	// RTX 40系列
-	if strings.Contains(modelLower, "rtx 4090") {
-		return 450
-	} else if strings.Contains(modelLower, "rtx 4080") {
-		return 320
-	} else if strings.Contains(modelLower, "rtx 4070 ti") {
-		return 285
-	} else if strings.Contains(modelLower, "rtx 4070") {
-		return 200
-	} else if strings.Contains(modelLower, "rtx 4060 ti") {
-		return 160
-	} else if strings.Contains(modelLower, "rtx 4060") {
-		return 115
-	}
-
-	// RTX 30系列
-	if strings.Contains(modelLower, "rtx 3090 ti") {
-		return 450
-	} else if strings.Contains(modelLower, "rtx 3090") {
-		return 350
-	} else if strings.Contains(modelLower, "rtx 3080 ti") {
-		return 350
-	} else if strings.Contains(modelLower, "rtx 3080") {
-		return 320
-	} else if strings.Contains(modelLower, "rtx 3070 ti") {
-		return 290
-	} else if strings.Contains(modelLower, "rtx 3070") {
-		return 220
-	} else if strings.Contains(modelLower, "rtx 3060 ti") {
-		return 200
-	} else if strings.Contains(modelLower, "rtx 3060") {
-		return 170
-	} else if strings.Contains(modelLower, "rtx 3050") {
-		return 130
-	}
-
-	// RTX 20系列
-	if strings.Contains(modelLower, "rtx 2080 ti") {
-		return 250
-	} else if strings.Contains(modelLower, "rtx 2080 super") {
-		return 250
-	} else if strings.Contains(modelLower, "rtx 2080") {
-		return 215
-	} else if strings.Contains(modelLower, "rtx 2070 super") {
-		return 215
-	} else if strings.Contains(modelLower, "rtx 2070") {
-		return 175
-	} else if strings.Contains(modelLower, "rtx 2060 super") {
-		return 175
-	} else if strings.Contains(modelLower, "rtx 2060") {
-		return 160
-	}
-
-	// GTX 16系列
-	if strings.Contains(modelLower, "gtx 1660 ti") {
-		return 120
-	} else if strings.Contains(modelLower, "gtx 1660 super") {
-		return 125
-	} else if strings.Contains(modelLower, "gtx 1660") {
-		return 120
-	} else if strings.Contains(modelLower, "gtx 1650 super") {
-		return 100
-	} else if strings.Contains(modelLower, "gtx 1650") {
-		return 75
-	}
-
-	// GTX 10系列
-	if strings.Contains(modelLower, "gtx 1080 ti") {
-		return 250
-	} else if strings.Contains(modelLower, "gtx 1080") {
-		return 180
-	} else if strings.Contains(modelLower, "gtx 1070 ti") {
-		return 180
-	} else if strings.Contains(modelLower, "gtx 1070") {
-		return 150
-	} else if strings.Contains(modelLower, "gtx 1060") {
-		return 120
-	} else if strings.Contains(modelLower, "gtx 1050 ti") {
-		return 75
-	} else if strings.Contains(modelLower, "gtx 1050") {
-		return 75
-	}
-
-	// 专业卡
-	if strings.Contains(modelLower, "tesla") {
-		if strings.Contains(modelLower, "v100") {
-			return 300
-		} else if strings.Contains(modelLower, "p100") {
-			return 250
-		} else if strings.Contains(modelLower, "t4") {
-			return 70
-		} else if strings.Contains(modelLower, "k80") {
-			return 300
-		} else if strings.Contains(modelLower, "a100") {
-			return 400
+			metrics.GPUs = append(metrics.GPUs, gpuMetric)
 		}
-	} else if strings.Contains(modelLower, "quadro") {
-		if strings.Contains(modelLower, "rtx") {
-			return 295
+	} else if len(metricsInfo.GPUs) > 0 {
+		// 如果没有硬件GPU信息，但有采集到的GPU指标，就使用采集到的
+		metrics.GPUs = metricsInfo.GPUs
+	}
+
+	// 3. 只收集hardware.storages中的存储设备指标
+	if len(a.status.Hardware.Storages) > 0 {
+		// 如果有硬件Storage信息，就只收集这些设备的指标
+		for _, device := range a.status.Hardware.Storages {
+			storageMetric := models.StorageMetrics{
+				Path:     device.Path,
+				Type:     device.Type,
+				Model:    device.Model,
+				Capacity: device.Capacity,
+			}
+
+			// 从采集到的指标中找到匹配的存储设备
+			for _, storage := range metricsInfo.Storages {
+				// 尝试匹配路径或设备名称
+				if storage.Path == device.Path ||
+					(storage.Path != "" && device.Path != "" &&
+						(strings.HasSuffix(storage.Path, device.Path) ||
+							strings.HasSuffix(device.Path, storage.Path))) {
+					storageMetric.Used = storage.Used
+					storageMetric.Free = storage.Free
+					storageMetric.Usage = storage.Usage
+					break
+				}
+			}
+
+			metrics.Storages = append(metrics.Storages, storageMetric)
+		}
+	} else if len(metricsInfo.Storages) > 0 {
+		// 如果没有硬件Storage信息，但有采集到的存储指标，就使用采集到的
+		metrics.Storages = metricsInfo.Storages
+	}
+
+	// 4. 内存指标（假设一台机器只有一组内存）
+	if len(a.status.Hardware.Memories) > 0 {
+		// 计算总内存容量
+		totalMemory := int64(0)
+		for _, mem := range a.status.Hardware.Memories {
+			totalMemory += mem.Size
+		}
+
+		// 使用采集到的内存使用情况
+		if metricsInfo.Memory.Total > 0 {
+			metrics.Memory = metricsInfo.Memory
+			// 确保Total与硬件信息一致
+			if totalMemory > 0 {
+				metrics.Memory.Total = totalMemory
+			}
 		} else {
-			return 185
+			// 如果没有采集到内存使用情况，至少设置总量
+			metrics.Memory.Total = totalMemory
 		}
-	} else if strings.Contains(modelLower, "titan") {
-		return 280
+	} else if metricsInfo.Memory.Total > 0 {
+		// 如果没有硬件内存信息，但有采集到的内存指标，就使用采集到的
+		metrics.Memory = metricsInfo.Memory
 	}
 
-	// 默认值，如果无法识别
-	return 150
-}
+	// 5. 网络指标直接使用采集到的
+	metrics.Network = metricsInfo.Network
 
-// 简化CPU型号显示格式
-func simpleCPUModel(fullModel string) string {
-	// 移除常见的前缀和多余信息
-	simplifiedModel := fullModel
+	// 更新状态
+	a.mu.Lock()
+	a.status.Metrics = metrics
+	a.mu.Unlock()
 
-	// 确定制造商
-	var manufacturer string
-	if strings.Contains(strings.ToLower(simplifiedModel), "intel") {
-		manufacturer = "Intel "
-	} else if strings.Contains(strings.ToLower(simplifiedModel), "amd") {
-		manufacturer = "AMD "
-	} else {
-		manufacturer = ""
-	}
-
-	// 移除型号前的多余信息
-	prefixes := []string{
-		"Intel(R) Core(TM) ",
-		"Intel(R) Core(TM)2 ",
-		"Intel(R) ",
-		"AMD ",
-		"Genuine ",
-		"Authentic ",
-	}
-
-	for _, prefix := range prefixes {
-		if strings.Contains(simplifiedModel, prefix) {
-			simplifiedModel = strings.Replace(simplifiedModel, prefix, "", 1)
-		}
-	}
-
-	// 提取核心型号信息
-	re := regexp.MustCompile(`(i[3579]-\d{4,5}[A-Z]*|Ryzen \d+ \d{4}[A-Z]*|Xeon [A-Z]?-?\d{4,5}[A-Z]*|A\d+-\d{4,5}[A-Z]*)`)
-	matches := re.FindStringSubmatch(simplifiedModel)
-	if len(matches) > 0 {
-		return manufacturer + matches[0]
-	}
-
-	return manufacturer + simplifiedModel
+	return nil
 }

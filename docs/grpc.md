@@ -148,6 +148,104 @@
    - 健康检查
    - 故障转移
 
+3. **客户端连接最佳实践**
+
+   - **使用 `grpc.NewClient` 而非过时的方法**
+
+     从 gRPC v1.50.0 开始，官方推荐使用 `grpc.NewClient` 替代过时的 `grpc.Dial` 和 `grpc.DialContext` 方法。
+
+     ```go
+     // 过时的方式 - 不推荐
+     conn, err := grpc.Dial(target, opts...)
+     // 或
+     conn, err := grpc.DialContext(ctx, target, opts...)
+
+     // 推荐的方式
+     conn, err := grpc.NewClient(target, opts...)
+     ```
+
+     **优势：**
+
+     - 使用"DNS"作为默认名称解析器，而不是"passthrough"
+     - 更好的连接延迟初始化
+     - 更清晰的错误处理模型
+     - 移除了过时的连接选项，如 `WithBlock()`
+
+   - **正确使用连接状态管理**
+
+     ```go
+     // 推荐的连接状态检查方式
+     state := conn.GetState()
+     if state == connectivity.Ready {
+       // 连接就绪，可以使用
+     } else if state == connectivity.TransientFailure || state == connectivity.Shutdown {
+       // 连接状态异常，需要处理
+     }
+
+     // 等待连接状态变化
+     if !conn.WaitForStateChange(ctx, state) {
+       // 超时或上下文取消
+     }
+     ```
+
+   - **优雅的重试策略**
+
+     实现指数退避算法进行重试：
+
+     ```go
+     maxRetries := 5
+     initialBackoff := 500 * time.Millisecond
+     maxBackoff := 10 * time.Second
+
+     for i := 0; i < maxRetries; i++ {
+       if i > 0 {
+         backoff := initialBackoff * time.Duration(1<<uint(i-1))
+         if backoff > maxBackoff {
+           backoff = maxBackoff
+         }
+         time.Sleep(backoff)
+       }
+
+       // 尝试连接
+       conn, err := grpc.NewClient(target, opts...)
+       if err == nil {
+         // 连接成功
+         return conn, nil
+       }
+     }
+     ```
+
+   - **资源清理**
+
+     确保在不再需要连接时关闭它：
+
+     ```go
+     defer conn.Close()
+     ```
+
+4. **与服务集成的最佳实践**
+
+   - **使用服务特定的客户端**
+
+     在建立连接后，使用生成的服务客户端而不是直接使用连接：
+
+     ```go
+     conn, err := grpc.NewClient(target, opts...)
+     if err != nil {
+       return err
+     }
+
+     // 创建服务特定的客户端
+     client := pb.NewMyServiceClient(conn)
+
+     // 使用客户端调用方法
+     response, err := client.MyMethod(ctx, request)
+     ```
+
+   - **连接和客户端生命周期管理**
+
+     注意连接和客户端的生命周期管理，避免过早关闭或资源泄漏。
+
 ### 4.2 资源管理
 
 1. **内存管理**
@@ -253,3 +351,83 @@
    - 代码可运行
    - 注释完整
    - 最佳实践
+
+## 8. gRPC 版本兼容性指南
+
+### 8.1 Go gRPC 客户端 API 变更
+
+gRPC Go 客户端 API 在 1.50.0 版本中引入了几项重要变更：
+
+1. **`grpc.NewClient` 的引入**
+
+   - 在 gRPC v1.50.0+ 中，`grpc.NewClient` 被引入作为创建 gRPC 客户端连接的推荐方式
+   - `grpc.Dial` 和 `grpc.DialContext` 被标记为过时，但会在整个 1.x 版本中继续支持
+   - 项目应该迁移到 `grpc.NewClient` 以获得更好的默认行为和未来兼容性
+
+2. **已弃用的选项和 API**
+
+   - `WithBlock()` 选项已弃用，应使用 `Connect()` 和 `WaitForStateChange()` 代替
+   - `DialOption` 中的 `WithTimeout` 和 `WithReturnConnectionError` 在 `NewClient` 中会被忽略
+
+3. **行为差异**
+
+   | 功能       | `grpc.Dial`         | `grpc.NewClient`                    |
+   | ---------- | ------------------- | ----------------------------------- |
+   | 默认解析器 | passthrough         | dns                                 |
+   | 连接启动   | 立即启动            | 延迟到首次 RPC 调用或显式 Connect() |
+   | 错误处理   | 混合模式            | 更清晰的错误模型                    |
+   | 阻塞行为   | 通过 WithBlock 选项 | 通过 Connect 和 WaitForStateChange  |
+
+4. **迁移指南**
+
+   - 对于使用 `WithBlock(true)` 的代码：
+
+     ```go
+     // 旧代码
+     conn, err := grpc.Dial(target, grpc.WithInsecure(), grpc.WithBlock())
+
+     // 新代码
+     conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+     if err != nil {
+       return err
+     }
+     state := conn.GetState()
+     if state != connectivity.Ready {
+       conn.Connect()
+       if !conn.WaitForStateChange(ctx, state) {
+         return ctx.Err()
+       }
+     }
+     ```
+
+   - 对于简单连接的代码：
+
+     ```go
+     // 旧代码
+     conn, err := grpc.Dial(target, grpc.WithInsecure())
+
+     // 新代码
+     conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+     ```
+
+### 8.2 版本检查与兼容性保证
+
+在项目中实施 gRPC 客户端更改时，应注意以下事项：
+
+1. **检查当前环境的 gRPC 版本**
+
+   通过 `go list -m google.golang.org/grpc` 命令确定项目中使用的 gRPC 版本。
+
+2. **测试兼容性**
+
+   在迁移到 `grpc.NewClient` 前，应在测试环境中验证新 API 是否可用及其行为。
+
+3. **渐进式迁移**
+
+   - 在新代码中使用 `NewClient`
+   - 分阶段更新现有代码
+   - 确保有适当的回滚机制
+
+4. **监控与审计**
+
+   迁移后监控连接成功率、延迟和错误率，以确保新 API 按预期工作。

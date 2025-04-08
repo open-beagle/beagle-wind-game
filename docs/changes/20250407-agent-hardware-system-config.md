@@ -148,14 +148,14 @@ GetSystemConfig() {
 
 4. CPU 和 GPU 插槽信息完善
 
-   - 当前问题：CPU和GPU信息中缺少插槽编号，多CPU/GPU系统无法准确识别每个组件位置
+   - 当前问题：CPU 和 GPU 信息中缺少插槽编号，多 CPU/GPU 系统无法准确识别每个组件位置
    - 优化方案：在静态硬件配置中添加插槽编号，格式为 "{插槽编号},{硬件详情}"
    - 具体改进：
-     - CPU信息：添加插槽编号，格式化为"0,Intel i7-9700K 8核心 3.6GHz 95W; 1,Intel i7-9700K 8核心 3.6GHz 95W"
-     - GPU信息：添加插槽编号，格式化为"0,NVIDIA GeForce RTX 4090 24GB 450W; 1,NVIDIA GeForce RTX 4090 24GB 450W"
+     - CPU 信息：添加插槽编号，格式化为"0,Intel i7-9700K 2Core 3.6GHz 95W; 1,Intel i7-9700K 2Core 3.6GHz 95W"
+     - GPU 信息：添加插槽编号，格式化为"0,NVIDIA GeForce RTX 4090 24GB 450W; 1,NVIDIA GeForce RTX 4090 24GB 450W"
    - 改进效果：
-     - 修改前（CPU）：`"CPU": "Intel i7-9700K 8核心 3.6GHz 95W"`
-     - 修改后（CPU）：`"CPU": "0,Intel i7-9700K 8核心 3.6GHz 95W; 1,Intel i7-9700K 8核心 3.6GHz 95W"`
+     - 修改前（CPU）：`"CPU": "Intel i7-9700K 2Core 3.6GHz 95W"`
+     - 修改后（CPU）：`"CPU": "0,Intel i7-9700K 2Core 3.6GHz 95W; 1,Intel i7-9700K 2Core 3.6GHz 95W"`
      - 修改前（GPU）：`"GPU": "NVIDIA GeForce RTX 4090 24GB"`
      - 修改后（GPU）：`"GPU": "0,NVIDIA GeForce RTX 4090 24GB 450W; 1,NVIDIA GeForce RTX 4090 24GB 450W"`
    - 修改位置：`internal/gamenode/gamenode_agent.go` 中的 `GetHardwareConfig()` 函数
@@ -166,12 +166,12 @@ GetSystemConfig() {
 
 5. GPU 功耗(TDP)信息添加
 
-   - 当前问题：GPU信息中缺少功耗数据，无法准确评估电源需求和散热需求
-   - 优化方案：在GPU信息中添加TDP数据，格式为"{型号} {显存}GB {TDP}W"
+   - 当前问题：GPU 信息中缺少功耗数据，无法准确评估电源需求和散热需求
+   - 优化方案：在 GPU 信息中添加 TDP 数据，格式为"{型号} {显存}GB {TDP}W"
    - 具体改进：
-     - 添加根据GPU型号估算TDP值的函数
-     - 在GPU信息字符串和硬件信息结构中都添加TDP值
-     - GPU信息格式："{插槽号},{型号} {显存大小} {TDP值}W"
+     - 添加根据 GPU 型号估算 TDP 值的函数
+     - 在 GPU 信息字符串和硬件信息结构中都添加 TDP 值
+     - GPU 信息格式："{插槽号},{型号} {显存大小} {TDP 值}W"
    - 改进效果：
      - 修改前：`"GPU": "0,NVIDIA GeForce RTX 4090 24GB"`
      - 修改后：`"GPU": "0,NVIDIA GeForce RTX 4090 24GB 450W"`
@@ -184,12 +184,12 @@ GetSystemConfig() {
 
 6. Storage 信息修复
 
-   - 当前问题：Storage信息有时无法正确显示，导致节点没有存储设备信息
-   - 优化方案：确保Storage信息始终包含至少一个默认项，修复格式错误
+   - 当前问题：Storage 信息有时无法正确显示，导致节点没有存储设备信息
+   - 优化方案：确保 Storage 信息始终包含至少一个默认项，修复格式错误
    - 具体改进：
-     - 添加验证逻辑确保Storage信息正确存在
+     - 添加验证逻辑确保 Storage 信息正确存在
      - 对于缺失的情况，提供默认的根目录存储信息
-     - 修复可能导致Storage信息未正确设置的逻辑
+     - 修复可能导致 Storage 信息未正确设置的逻辑
    - 改进效果：
      - 修改前：可能出现 `"Storage": ""` 或完全缺失
      - 修改后：至少包含根目录存储信息，如 `"Storage": "/,HDD 500GB"`
@@ -204,26 +204,28 @@ GetSystemConfig() {
    - 存储位置：作为静态信息直接存储在 GameNode 结构中，而非状态中
    - 存储形式：使用键值对（map[string]string）简化表示，便于管理员查看和修改
    - 信息类型：
-     - CPU：字符串形式，例如"0,Intel i9 13900k 4.2Ghz 16核心 125W; 1,Intel i9 13900k 4.2Ghz 16核心 125W"
+
+     - CPU：字符串形式，例如"0,Intel i9 13900k 4.2Ghz 16 核心 125W; 1,Intel i9 13900k 4.2Ghz 16 核心 125W"
      - 内存：字符串形式，例如"64 GB DDR5-4800"
      - GPU：字符串形式，例如"0,NVIDIA GeForce RTX 4090 24GB; 1,NVIDIA GeForce RTX 4090 24GB"
      - 存储：字符串形式，例如"Samsung 980 Pro 2TB NVMe SSD;WD Black 4TB HDD"
 
-   4.2 静态系统配置信息（GameNode.System）
+     4.2 静态系统配置信息（GameNode.System）
 
    - 职责定位：反映节点的操作系统和驱动等信息，以简化、标准化形式呈现
    - 采集时机：Agent 启动时自动采集，注册时传递给服务器，后续由管理员维护修改
    - 存储位置：作为静态信息直接存储在 GameNode 结构中，而非状态中
    - 存储形式：使用键值对（map[string]string）简化表示，便于管理员查看和修改
    - 信息类型：
+
      - os_distribution: 操作系统发行版，例如"Ubuntu"
      - os_version: 操作系统版本，例如"22.04 LTS"
      - os_architecture: 操作系统架构，例如"x86_64"
      - kernel_version: 内核版本，例如"5.15.0-58-generic"
-     - gpu_driver_version: GPU驱动版本，例如"NVIDIA Driver 535.129.03"
-     - cuda_version: CUDA版本，例如"12.2"
+     - gpu_driver_version: GPU 驱动版本，例如"NVIDIA Driver 535.129.03"
+     - cuda_version: CUDA 版本，例如"12.2"
 
-   4.3 动态硬件配置信息（GameNodeStatus.Hardware）
+     4.3 动态硬件配置信息（GameNodeStatus.Hardware）
 
    - 职责定位：提供详细的硬件设备信息，以专业、结构化的形式呈现
    - 采集时机：Agent 启动时采集，与静态硬件配置同步采集，但存储路径不同
@@ -231,7 +233,7 @@ GetSystemConfig() {
    - 存储形式：使用结构化的 HardwareInfo 类型，包含详细的硬件参数
    - 信息类型：详细的 CPU、内存、GPU、存储设备列表，每个设备包含完整的技术参数
 
-   4.4 动态系统配置信息（GameNodeStatus.System）
+     4.4 动态系统配置信息（GameNodeStatus.System）
 
    - 职责定位：提供详细的系统软件信息，以专业、结构化的形式呈现
    - 采集时机：Agent 启动时采集，与静态系统配置同步采集，但存储路径不同
@@ -239,7 +241,7 @@ GetSystemConfig() {
    - 存储形式：使用结构化的 SystemInfo 类型，包含详细的系统参数
    - 信息类型：详细的操作系统信息、驱动版本、容器运行时版本等
 
-   4.5 监控指标信息（GameNodeStatus.Metrics）
+     4.5 监控指标信息（GameNodeStatus.Metrics）
 
    - 职责定位：反映节点的实时运行状态及相关硬件参数
    - 采集时机：定期采集更新（如每 30 秒）
@@ -255,11 +257,13 @@ GetSystemConfig() {
 这种结构优化将使节点信息组织更加合理：
 
 1. 静态硬件配置(GameNode.Hardware)和系统配置(GameNode.System)：
+
    - 简化为键值对形式，便于管理员查看和编辑
    - 强调人类可读性，使用标准化、简洁的表述
    - 注册后由管理员维护，不再自动更新
 
 2. 动态硬件信息(GameNodeStatus.Hardware)和系统信息(GameNodeStatus.System)：
+
    - 使用结构化的详细数据，体现专业性
    - 包含完整的技术参数，支持深入分析和监控
    - 仍保持自动采集，但不作为主要展示内容
