@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.29.4
-// source: internal/proto/gamenode.proto
+// source: gamenode.proto
 
 package proto
 
@@ -19,15 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GameNodeGRPCService_Register_FullMethodName             = "/gamenode.GameNodeGRPCService/Register"
-	GameNodeGRPCService_Heartbeat_FullMethodName            = "/gamenode.GameNodeGRPCService/Heartbeat"
-	GameNodeGRPCService_ReportMetrics_FullMethodName        = "/gamenode.GameNodeGRPCService/ReportMetrics"
-	GameNodeGRPCService_UpdateResourceInfo_FullMethodName   = "/gamenode.GameNodeGRPCService/UpdateResourceInfo"
-	GameNodeGRPCService_ExecutePipeline_FullMethodName      = "/gamenode.GameNodeGRPCService/ExecutePipeline"
-	GameNodeGRPCService_UpdatePipelineStatus_FullMethodName = "/gamenode.GameNodeGRPCService/UpdatePipelineStatus"
-	GameNodeGRPCService_UpdateStepStatus_FullMethodName     = "/gamenode.GameNodeGRPCService/UpdateStepStatus"
-	GameNodeGRPCService_CancelPipeline_FullMethodName       = "/gamenode.GameNodeGRPCService/CancelPipeline"
-	GameNodeGRPCService_StreamLogs_FullMethodName           = "/gamenode.GameNodeGRPCService/StreamLogs"
+	GameNodeGRPCService_Register_FullMethodName        = "/gamenode.GameNodeGRPCService/Register"
+	GameNodeGRPCService_Heartbeat_FullMethodName       = "/gamenode.GameNodeGRPCService/Heartbeat"
+	GameNodeGRPCService_ReportMetrics_FullMethodName   = "/gamenode.GameNodeGRPCService/ReportMetrics"
+	GameNodeGRPCService_ReportResource_FullMethodName  = "/gamenode.GameNodeGRPCService/ReportResource"
+	GameNodeGRPCService_UpdateNodeState_FullMethodName = "/gamenode.GameNodeGRPCService/UpdateNodeState"
+	GameNodeGRPCService_Log_FullMethodName             = "/gamenode.GameNodeGRPCService/Log"
+	GameNodeGRPCService_Execute_FullMethodName         = "/gamenode.GameNodeGRPCService/Execute"
 )
 
 // GameNodeGRPCServiceClient is the client API for GameNodeGRPCService service.
@@ -39,15 +37,11 @@ type GameNodeGRPCServiceClient interface {
 	// 节点管理
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
-	ReportMetrics(ctx context.Context, in *MetricsReport, opts ...grpc.CallOption) (*ReportResponse, error)
-	UpdateResourceInfo(ctx context.Context, in *ResourceInfo, opts ...grpc.CallOption) (*UpdateResponse, error)
-	// Pipeline管理
-	ExecutePipeline(ctx context.Context, in *ExecutePipelineRequest, opts ...grpc.CallOption) (*ExecutePipelineResponse, error)
-	UpdatePipelineStatus(ctx context.Context, in *PipelineStatusUpdate, opts ...grpc.CallOption) (*UpdateResponse, error)
-	UpdateStepStatus(ctx context.Context, in *StepStatusUpdate, opts ...grpc.CallOption) (*UpdateResponse, error)
-	CancelPipeline(ctx context.Context, in *PipelineCancelRequest, opts ...grpc.CallOption) (*CancelResponse, error)
-	// 日志流
-	StreamLogs(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogEntry], error)
+	ReportMetrics(ctx context.Context, in *MetricsRequest, opts ...grpc.CallOption) (*MetricsResponse, error)
+	ReportResource(ctx context.Context, in *ResourceRequest, opts ...grpc.CallOption) (*ResourceResponse, error)
+	UpdateNodeState(ctx context.Context, in *StateChangeRequest, opts ...grpc.CallOption) (*StateChangeResponse, error)
+	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error)
+	Execute(ctx context.Context, in *ExecuteRequest, opts ...grpc.CallOption) (*ExecuteResponse, error)
 }
 
 type gameNodeGRPCServiceClient struct {
@@ -78,9 +72,9 @@ func (c *gameNodeGRPCServiceClient) Heartbeat(ctx context.Context, in *Heartbeat
 	return out, nil
 }
 
-func (c *gameNodeGRPCServiceClient) ReportMetrics(ctx context.Context, in *MetricsReport, opts ...grpc.CallOption) (*ReportResponse, error) {
+func (c *gameNodeGRPCServiceClient) ReportMetrics(ctx context.Context, in *MetricsRequest, opts ...grpc.CallOption) (*MetricsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ReportResponse)
+	out := new(MetricsResponse)
 	err := c.cc.Invoke(ctx, GameNodeGRPCService_ReportMetrics_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -88,74 +82,45 @@ func (c *gameNodeGRPCServiceClient) ReportMetrics(ctx context.Context, in *Metri
 	return out, nil
 }
 
-func (c *gameNodeGRPCServiceClient) UpdateResourceInfo(ctx context.Context, in *ResourceInfo, opts ...grpc.CallOption) (*UpdateResponse, error) {
+func (c *gameNodeGRPCServiceClient) ReportResource(ctx context.Context, in *ResourceRequest, opts ...grpc.CallOption) (*ResourceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateResponse)
-	err := c.cc.Invoke(ctx, GameNodeGRPCService_UpdateResourceInfo_FullMethodName, in, out, cOpts...)
+	out := new(ResourceResponse)
+	err := c.cc.Invoke(ctx, GameNodeGRPCService_ReportResource_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *gameNodeGRPCServiceClient) ExecutePipeline(ctx context.Context, in *ExecutePipelineRequest, opts ...grpc.CallOption) (*ExecutePipelineResponse, error) {
+func (c *gameNodeGRPCServiceClient) UpdateNodeState(ctx context.Context, in *StateChangeRequest, opts ...grpc.CallOption) (*StateChangeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ExecutePipelineResponse)
-	err := c.cc.Invoke(ctx, GameNodeGRPCService_ExecutePipeline_FullMethodName, in, out, cOpts...)
+	out := new(StateChangeResponse)
+	err := c.cc.Invoke(ctx, GameNodeGRPCService_UpdateNodeState_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *gameNodeGRPCServiceClient) UpdatePipelineStatus(ctx context.Context, in *PipelineStatusUpdate, opts ...grpc.CallOption) (*UpdateResponse, error) {
+func (c *gameNodeGRPCServiceClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateResponse)
-	err := c.cc.Invoke(ctx, GameNodeGRPCService_UpdatePipelineStatus_FullMethodName, in, out, cOpts...)
+	out := new(LogResponse)
+	err := c.cc.Invoke(ctx, GameNodeGRPCService_Log_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *gameNodeGRPCServiceClient) UpdateStepStatus(ctx context.Context, in *StepStatusUpdate, opts ...grpc.CallOption) (*UpdateResponse, error) {
+func (c *gameNodeGRPCServiceClient) Execute(ctx context.Context, in *ExecuteRequest, opts ...grpc.CallOption) (*ExecuteResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateResponse)
-	err := c.cc.Invoke(ctx, GameNodeGRPCService_UpdateStepStatus_FullMethodName, in, out, cOpts...)
+	out := new(ExecuteResponse)
+	err := c.cc.Invoke(ctx, GameNodeGRPCService_Execute_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
-
-func (c *gameNodeGRPCServiceClient) CancelPipeline(ctx context.Context, in *PipelineCancelRequest, opts ...grpc.CallOption) (*CancelResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CancelResponse)
-	err := c.cc.Invoke(ctx, GameNodeGRPCService_CancelPipeline_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *gameNodeGRPCServiceClient) StreamLogs(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogEntry], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &GameNodeGRPCService_ServiceDesc.Streams[0], GameNodeGRPCService_StreamLogs_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[LogRequest, LogEntry]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GameNodeGRPCService_StreamLogsClient = grpc.ServerStreamingClient[LogEntry]
 
 // GameNodeGRPCServiceServer is the server API for GameNodeGRPCService service.
 // All implementations must embed UnimplementedGameNodeGRPCServiceServer
@@ -166,15 +131,11 @@ type GameNodeGRPCServiceServer interface {
 	// 节点管理
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
-	ReportMetrics(context.Context, *MetricsReport) (*ReportResponse, error)
-	UpdateResourceInfo(context.Context, *ResourceInfo) (*UpdateResponse, error)
-	// Pipeline管理
-	ExecutePipeline(context.Context, *ExecutePipelineRequest) (*ExecutePipelineResponse, error)
-	UpdatePipelineStatus(context.Context, *PipelineStatusUpdate) (*UpdateResponse, error)
-	UpdateStepStatus(context.Context, *StepStatusUpdate) (*UpdateResponse, error)
-	CancelPipeline(context.Context, *PipelineCancelRequest) (*CancelResponse, error)
-	// 日志流
-	StreamLogs(*LogRequest, grpc.ServerStreamingServer[LogEntry]) error
+	ReportMetrics(context.Context, *MetricsRequest) (*MetricsResponse, error)
+	ReportResource(context.Context, *ResourceRequest) (*ResourceResponse, error)
+	UpdateNodeState(context.Context, *StateChangeRequest) (*StateChangeResponse, error)
+	Log(context.Context, *LogRequest) (*LogResponse, error)
+	Execute(context.Context, *ExecuteRequest) (*ExecuteResponse, error)
 	mustEmbedUnimplementedGameNodeGRPCServiceServer()
 }
 
@@ -191,26 +152,20 @@ func (UnimplementedGameNodeGRPCServiceServer) Register(context.Context, *Registe
 func (UnimplementedGameNodeGRPCServiceServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
 }
-func (UnimplementedGameNodeGRPCServiceServer) ReportMetrics(context.Context, *MetricsReport) (*ReportResponse, error) {
+func (UnimplementedGameNodeGRPCServiceServer) ReportMetrics(context.Context, *MetricsRequest) (*MetricsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReportMetrics not implemented")
 }
-func (UnimplementedGameNodeGRPCServiceServer) UpdateResourceInfo(context.Context, *ResourceInfo) (*UpdateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateResourceInfo not implemented")
+func (UnimplementedGameNodeGRPCServiceServer) ReportResource(context.Context, *ResourceRequest) (*ResourceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReportResource not implemented")
 }
-func (UnimplementedGameNodeGRPCServiceServer) ExecutePipeline(context.Context, *ExecutePipelineRequest) (*ExecutePipelineResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ExecutePipeline not implemented")
+func (UnimplementedGameNodeGRPCServiceServer) UpdateNodeState(context.Context, *StateChangeRequest) (*StateChangeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateNodeState not implemented")
 }
-func (UnimplementedGameNodeGRPCServiceServer) UpdatePipelineStatus(context.Context, *PipelineStatusUpdate) (*UpdateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdatePipelineStatus not implemented")
+func (UnimplementedGameNodeGRPCServiceServer) Log(context.Context, *LogRequest) (*LogResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Log not implemented")
 }
-func (UnimplementedGameNodeGRPCServiceServer) UpdateStepStatus(context.Context, *StepStatusUpdate) (*UpdateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateStepStatus not implemented")
-}
-func (UnimplementedGameNodeGRPCServiceServer) CancelPipeline(context.Context, *PipelineCancelRequest) (*CancelResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CancelPipeline not implemented")
-}
-func (UnimplementedGameNodeGRPCServiceServer) StreamLogs(*LogRequest, grpc.ServerStreamingServer[LogEntry]) error {
-	return status.Errorf(codes.Unimplemented, "method StreamLogs not implemented")
+func (UnimplementedGameNodeGRPCServiceServer) Execute(context.Context, *ExecuteRequest) (*ExecuteResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
 }
 func (UnimplementedGameNodeGRPCServiceServer) mustEmbedUnimplementedGameNodeGRPCServiceServer() {}
 func (UnimplementedGameNodeGRPCServiceServer) testEmbeddedByValue()                             {}
@@ -270,7 +225,7 @@ func _GameNodeGRPCService_Heartbeat_Handler(srv interface{}, ctx context.Context
 }
 
 func _GameNodeGRPCService_ReportMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(MetricsReport)
+	in := new(MetricsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -282,111 +237,82 @@ func _GameNodeGRPCService_ReportMetrics_Handler(srv interface{}, ctx context.Con
 		FullMethod: GameNodeGRPCService_ReportMetrics_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GameNodeGRPCServiceServer).ReportMetrics(ctx, req.(*MetricsReport))
+		return srv.(GameNodeGRPCServiceServer).ReportMetrics(ctx, req.(*MetricsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GameNodeGRPCService_UpdateResourceInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResourceInfo)
+func _GameNodeGRPCService_ReportResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GameNodeGRPCServiceServer).UpdateResourceInfo(ctx, in)
+		return srv.(GameNodeGRPCServiceServer).ReportResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GameNodeGRPCService_UpdateResourceInfo_FullMethodName,
+		FullMethod: GameNodeGRPCService_ReportResource_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GameNodeGRPCServiceServer).UpdateResourceInfo(ctx, req.(*ResourceInfo))
+		return srv.(GameNodeGRPCServiceServer).ReportResource(ctx, req.(*ResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GameNodeGRPCService_ExecutePipeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExecutePipelineRequest)
+func _GameNodeGRPCService_UpdateNodeState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StateChangeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GameNodeGRPCServiceServer).ExecutePipeline(ctx, in)
+		return srv.(GameNodeGRPCServiceServer).UpdateNodeState(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GameNodeGRPCService_ExecutePipeline_FullMethodName,
+		FullMethod: GameNodeGRPCService_UpdateNodeState_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GameNodeGRPCServiceServer).ExecutePipeline(ctx, req.(*ExecutePipelineRequest))
+		return srv.(GameNodeGRPCServiceServer).UpdateNodeState(ctx, req.(*StateChangeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GameNodeGRPCService_UpdatePipelineStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PipelineStatusUpdate)
+func _GameNodeGRPCService_Log_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GameNodeGRPCServiceServer).UpdatePipelineStatus(ctx, in)
+		return srv.(GameNodeGRPCServiceServer).Log(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GameNodeGRPCService_UpdatePipelineStatus_FullMethodName,
+		FullMethod: GameNodeGRPCService_Log_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GameNodeGRPCServiceServer).UpdatePipelineStatus(ctx, req.(*PipelineStatusUpdate))
+		return srv.(GameNodeGRPCServiceServer).Log(ctx, req.(*LogRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GameNodeGRPCService_UpdateStepStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StepStatusUpdate)
+func _GameNodeGRPCService_Execute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecuteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GameNodeGRPCServiceServer).UpdateStepStatus(ctx, in)
+		return srv.(GameNodeGRPCServiceServer).Execute(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: GameNodeGRPCService_UpdateStepStatus_FullMethodName,
+		FullMethod: GameNodeGRPCService_Execute_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GameNodeGRPCServiceServer).UpdateStepStatus(ctx, req.(*StepStatusUpdate))
+		return srv.(GameNodeGRPCServiceServer).Execute(ctx, req.(*ExecuteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
-
-func _GameNodeGRPCService_CancelPipeline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PipelineCancelRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GameNodeGRPCServiceServer).CancelPipeline(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GameNodeGRPCService_CancelPipeline_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GameNodeGRPCServiceServer).CancelPipeline(ctx, req.(*PipelineCancelRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GameNodeGRPCService_StreamLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(LogRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(GameNodeGRPCServiceServer).StreamLogs(m, &grpc.GenericServerStream[LogRequest, LogEntry]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GameNodeGRPCService_StreamLogsServer = grpc.ServerStreamingServer[LogEntry]
 
 // GameNodeGRPCService_ServiceDesc is the grpc.ServiceDesc for GameNodeGRPCService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -408,32 +334,22 @@ var GameNodeGRPCService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GameNodeGRPCService_ReportMetrics_Handler,
 		},
 		{
-			MethodName: "UpdateResourceInfo",
-			Handler:    _GameNodeGRPCService_UpdateResourceInfo_Handler,
+			MethodName: "ReportResource",
+			Handler:    _GameNodeGRPCService_ReportResource_Handler,
 		},
 		{
-			MethodName: "ExecutePipeline",
-			Handler:    _GameNodeGRPCService_ExecutePipeline_Handler,
+			MethodName: "UpdateNodeState",
+			Handler:    _GameNodeGRPCService_UpdateNodeState_Handler,
 		},
 		{
-			MethodName: "UpdatePipelineStatus",
-			Handler:    _GameNodeGRPCService_UpdatePipelineStatus_Handler,
+			MethodName: "Log",
+			Handler:    _GameNodeGRPCService_Log_Handler,
 		},
 		{
-			MethodName: "UpdateStepStatus",
-			Handler:    _GameNodeGRPCService_UpdateStepStatus_Handler,
-		},
-		{
-			MethodName: "CancelPipeline",
-			Handler:    _GameNodeGRPCService_CancelPipeline_Handler,
+			MethodName: "Execute",
+			Handler:    _GameNodeGRPCService_Execute_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "StreamLogs",
-			Handler:       _GameNodeGRPCService_StreamLogs_Handler,
-			ServerStreams: true,
-		},
-	},
-	Metadata: "internal/proto/gamenode.proto",
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "gamenode.proto",
 }

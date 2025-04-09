@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/open-beagle/beagle-wind-game/internal/models"
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 )
@@ -50,7 +51,7 @@ func (h *GameInstanceHandler) List(c *gin.Context) {
 		params.PageSize = 20
 	}
 
-	result, err := h.service.List(params)
+	result, err := h.service.List(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -75,7 +76,7 @@ func (h *GameInstanceHandler) Get(c *gin.Context) {
 		return
 	}
 
-	instance, err := h.service.Get(id)
+	instance, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -105,7 +106,7 @@ func (h *GameInstanceHandler) Create(c *gin.Context) {
 		return
 	}
 
-	id, err := h.service.Create(params)
+	id, err := h.service.Create(c, params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -132,7 +133,7 @@ func (h *GameInstanceHandler) Update(c *gin.Context) {
 	}
 
 	// 验证实例是否存在
-	instance, err := h.service.Get(id)
+	instance, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -160,7 +161,7 @@ func (h *GameInstanceHandler) Update(c *gin.Context) {
 		Backup:      params.Backup,
 	}
 
-	err = h.service.Update(id, instance)
+	err = h.service.Update(c, instance)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -186,7 +187,7 @@ func (h *GameInstanceHandler) Delete(c *gin.Context) {
 	}
 
 	// 验证实例是否存在
-	instance, err := h.service.Get(id)
+	instance, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -197,7 +198,7 @@ func (h *GameInstanceHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	err = h.service.Delete(id)
+	err = h.service.Delete(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -223,7 +224,7 @@ func (h *GameInstanceHandler) Start(c *gin.Context) {
 	}
 
 	// 验证实例是否存在
-	instance, err := h.service.Get(id)
+	instance, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -234,7 +235,7 @@ func (h *GameInstanceHandler) Start(c *gin.Context) {
 		return
 	}
 
-	err = h.service.Start(id)
+	err = h.service.Start(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -260,7 +261,7 @@ func (h *GameInstanceHandler) Stop(c *gin.Context) {
 	}
 
 	// 验证实例是否存在
-	instance, err := h.service.Get(id)
+	instance, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -271,7 +272,7 @@ func (h *GameInstanceHandler) Stop(c *gin.Context) {
 		return
 	}
 
-	err = h.service.Stop(id)
+	err = h.service.Stop(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

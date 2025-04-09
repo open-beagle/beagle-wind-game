@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 )
 
@@ -81,10 +82,10 @@ func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeServi
 		// 游戏节点流水线管理
 		pipelines := v1.Group("/pipelines")
 		{
-			pipelines.GET("", gamenodePipelineHandler.ListPipelines)
-			pipelines.GET("/:id", gamenodePipelineHandler.GetPipeline)
-			pipelines.POST("/:id/cancel", gamenodePipelineHandler.CancelPipeline)
-			pipelines.POST("/:id/delete", gamenodePipelineHandler.DeletePipeline)
+			pipelines.GET("", gamenodePipelineHandler.List)
+			pipelines.GET("/:id", gamenodePipelineHandler.Get)
+			pipelines.POST("/:id/cancel", gamenodePipelineHandler.Cancel)
+			pipelines.POST("/:id/delete", gamenodePipelineHandler.Delete)
 		}
 	}
 

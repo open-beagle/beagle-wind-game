@@ -30,12 +30,22 @@ type GameNode struct {
     Type      GameNodeType      `json:"type" yaml:"type"`             // 节点类型
     Location  string            `json:"location" yaml:"location"`     // 节点位置
     Labels    map[string]string `json:"labels" yaml:"labels"`         // 标签
-    Hardware  map[string]string `json:"hardware" yaml:"hardware"`     // 硬件配置
-    System    map[string]string `json:"system" yaml:"system"`         // 系统配置
+    State     GameNodeStaticState `json:"state" yaml:"state"`         // 节点静态状态
+    Hardware  map[string]string `json:"hardware" yaml:"hardware"`     // 硬件配置(简化版)
+    System    map[string]string `json:"system" yaml:"system"`         // 系统配置(简化版)
     Status    GameNodeStatus    `json:"status" yaml:"status"`         // 节点状态信息
     CreatedAt time.Time         `json:"created_at" yaml:"created_at"` // 创建时间
     UpdatedAt time.Time         `json:"updated_at" yaml:"updated_at"` // 更新时间
 }
+
+// GameNodeStaticState 节点静态状态
+type GameNodeStaticState string
+
+const (
+    GameNodeStaticStateNormal    GameNodeStaticState = "normal"     // 正常状态
+    GameNodeStaticStateMaintenance GameNodeStaticState = "maintenance" // 维护状态
+    GameNodeStaticStateDisabled   GameNodeStaticState = "disabled"   // 禁用状态
+)
 ```
 
 #### 2.1.1 静态属性
@@ -43,17 +53,84 @@ type GameNode struct {
 - ID：节点唯一标识
 - Alias：节点别名（用于显示）
 - Model：节点型号（如 Beagle-Wind-2024）
-- Type：节点类型（物理机/虚拟机）
+- Type：节点类型（物理机/虚拟机/容器）
 - Location：节点地理位置
 - Labels：节点标签（用于分类和筛选）
-- Hardware：硬件配置（CPU、内存、GPU、硬盘）
-- System：系统配置（操作系统、内核版本、IP）
+- State：节点静态状态
+  - normal：正常状态，节点可以正常处理所有业务
+  - maintenance：维护状态，节点不处理业务，但保持心跳和状态报告
+  - disabled：禁用状态，节点只响应心跳，不处理其他请求
+- Hardware：硬件配置（简化版，键值对形式）
+- System：系统配置（简化版，键值对形式）
 - CreatedAt：创建时间
 - UpdatedAt：更新时间
 
-#### 2.1.2 动态状态（GameNodeStatus）
+#### 2.1.2 静态状态说明
+
+1. 正常状态（normal）：
+
+   - 节点可以正常处理所有业务请求
+   - 保持正常的心跳和状态报告
+   - 可以接收和执行 Pipeline 任务
+   - 可以响应资源查询和指标采集请求
+
+2. 维护状态（maintenance）：
+
+   - 节点不处理任何业务请求
+   - 保持正常的心跳和状态报告
+   - 不接收新的 Pipeline 任务
+   - 可以响应资源查询和指标采集请求
+   - 已运行的任务可以继续执行
+   - 管理员可以执行维护操作
+
+3. 禁用状态（disabled）：
+   - 节点只响应心跳请求
+   - 不处理任何业务请求
+   - 不接收新的 Pipeline 任务
+   - 不响应资源查询和指标采集请求
+   - 已运行的任务会被终止
+   - 管理员可以执行恢复操作
+
+#### 2.1.3 状态转换规则
+
+1. 正常状态转换：
+
+   - normal -> maintenance：管理员手动设置
+   - normal -> disabled：管理员手动设置
+   - maintenance -> normal：管理员手动设置
+   - maintenance -> disabled：管理员手动设置
+   - disabled -> normal：管理员手动设置
+   - disabled -> maintenance：不允许转换
+
+2. 状态转换影响：
+   - 转换为 maintenance：
+     - 停止接收新的业务请求
+     - 保持现有任务运行
+     - 继续报告状态和指标
+   - 转换为 disabled：
+     - 停止所有业务处理
+     - 终止正在运行的任务
+     - 只保持心跳连接
+   - 转换为 normal：
+     - 恢复所有业务处理
+     - 可以接收新的任务
+     - 正常报告状态和指标
+
+#### 2.1.4 动态状态（GameNodeStatus）
 
 动态状态包含节点的实时运行状态和资源使用情况：
+
+```go
+type GameNodeStatus struct {
+    State      GameNodeState `json:"state" yaml:"state"`             // 节点状态
+    Online     bool          `json:"online" yaml:"online"`           // 是否在线
+    LastOnline time.Time     `json:"last_online" yaml:"last_online"` // 最后在线时间
+    UpdatedAt  time.Time     `json:"updated_at" yaml:"updated_at"`   // 状态更新时间
+    Hardware   HardwareInfo  `json:"hardware" yaml:"hardware"`       // 硬件配置
+    System     SystemInfo    `json:"system" yaml:"system"`           // 系统配置
+    Metrics    MetricsInfo   `json:"metrics" yaml:"metrics"`         // 监控指标
+}
+```
 
 1. 基本状态信息：
 
@@ -62,18 +139,81 @@ type GameNode struct {
    - LastOnline：最后在线时间
    - UpdatedAt：状态更新时间
 
-2. 资源信息（ResourceInfo）：
+2. 详细硬件信息（HardwareInfo）：
 
-   - 硬件信息（CPU、内存、GPU、磁盘）
-   - 软件信息（操作系统、驱动等）
-   - 网络信息（带宽、延迟等）
+   - CPUs：CPU 设备列表
+     - Model：CPU 型号
+     - Cores：物理核心数
+     - Threads：线程数
+     - Frequency：基准频率
+     - Cache：缓存大小
+     - Architecture：架构
+   - Memories：内存设备列表
+     - Size：内存条容量
+     - Type：内存类型
+     - Frequency：频率
+   - GPUs：GPU 设备列表
+     - Model：显卡型号
+     - MemoryTotal：显存总量
+     - Architecture：GPU 架构
+     - DriverVersion：驱动版本
+     - ComputeCapability：计算能力
+     - TDP：功耗指标
+   - Storages：存储设备列表
+     - Type：存储类型(SSD/HDD/NVMe)
+     - Model：设备型号
+     - Capacity：总容量
+     - Path：挂载路径
+   - Networks：网络设备列表
+     - Name：网卡名称
+     - MacAddress：MAC 地址
+     - IpAddress：IP 地址
+     - Speed：网卡速率
 
-3. 指标报告（MetricsReport）：
-   - 系统指标（CPU、内存、GPU、磁盘使用率）
-   - 网络指标（带宽使用、连接数等）
-   - 自定义指标
+3. 详细系统信息（SystemInfo）：
 
-#### 2.1.3 数据采集
+   - OSDistribution：操作系统发行版
+   - OSVersion：操作系统版本
+   - OSArchitecture：操作系统架构
+   - KernelVersion：内核版本
+   - GPUDriverVersion：GPU 驱动版本
+   - GPUComputeAPIVersion：GPU 计算框架版本
+   - DockerVersion：Docker 版本
+   - ContainerdVersion：Containerd 版本
+   - RuncVersion：Runc 版本
+
+4. 监控指标（MetricsInfo）：
+   - CPUs：CPU 指标列表
+     - Model：CPU 型号
+     - Cores：物理核心数
+     - Threads：线程数
+     - Usage：CPU 使用率
+   - Memory：内存指标
+     - Total：总容量
+     - Available：可用内存
+     - Used：已用内存
+     - Usage：使用率
+   - GPUs：GPU 指标列表
+     - Model：GPU 型号
+     - MemoryTotal：显存总量
+     - Usage：GPU 使用率
+     - MemoryUsed：已用显存
+     - MemoryFree：可用显存
+     - MemoryUsage：显存使用率
+   - Storages：存储指标列表
+     - Path：挂载路径
+     - Type：存储类型
+     - Model：设备型号
+     - Capacity：总容量
+     - Used：已用空间
+     - Free：可用空间
+     - Usage：使用率
+   - Network：网络指标
+     - InboundTraffic：流入流量
+     - OutboundTraffic：流出流量
+     - Connections：连接数
+
+#### 2.1.5 数据采集
 
 1. 静态属性：
 
@@ -89,7 +229,6 @@ type GameNode struct {
    - 历史数据保留 30 天
 
 3. 指标数据：
-
    - 支持多种采集方式（Prometheus、自定义采集器）
    - 支持自定义指标定义
    - 支持告警阈值设置
@@ -112,37 +251,6 @@ GameNodeHandler 是系统的 HTTP API 服务实体，负责处理前端交互。
 4. 容器管理：暂缓实现
 5. 日志管理：暂缓实现
 6. 事件流管理：由 Event Handler 负责，详见 [Event Handler 设计文档](event_handler.md)
-
-#### 2.2.3 接口设计原则
-
-1. RESTful 规范
-
-   - 使用 HTTP 方法表示操作
-   - 使用 URL 表示资源
-   - 使用状态码表示结果
-
-2. 安全性
-
-   - 所有接口必须认证
-   - 敏感数据加密传输
-   - 防止 CSRF 攻击
-
-3. 可用性
-
-   - 接口幂等性
-   - 合理的超时设置
-   - 优雅的错误处理
-
-4. 可维护性
-
-   - 清晰的接口命名
-   - 统一的响应格式
-   - 完整的接口文档
-
-5. 性能
-   - 合理的缓存策略
-   - 分页查询支持
-   - 流式响应支持
 
 ### 2.3 GameNodeService
 
@@ -210,14 +318,15 @@ GameNodeHandler 是系统的 HTTP API 服务实体，负责处理前端交互。
 - GameNodeAgent 启动时通过 gRPC 向 GameNodeServer 注册
 - 提供完整的节点信息：
   - 硬件信息（Hardware）：
-    - CPU：型号、核心数、线程数、频率、缓存
-    - 内存：总量、类型、频率、通道数
-    - GPU：型号、显存大小、CUDA 核心数
-    - 硬盘：型号、容量、类型、接口
+    - CPU：型号、核心数、线程数、频率、缓存、架构
+    - 内存：总量、类型、频率
+    - GPU：型号、显存大小、架构、驱动版本、计算能力、功耗
+    - 硬盘：型号、容量、类型、路径
+    - 网络：网卡名称、MAC 地址、IP 地址、速率
   - 系统信息（System）：
     - 操作系统：发行版、版本号、架构
     - 内核版本：主版本、次版本、修订号
-    - 显卡驱动：驱动版本、CUDA 版本
+    - 显卡驱动：驱动版本、计算框架版本
     - 运行时环境：Docker 版本、Containerd 版本、Runc 版本
 
 #### 3.1.2 数据存储
@@ -247,13 +356,13 @@ GameNodeHandler 是系统的 HTTP API 服务实体，负责处理前端交互。
 
 #### 3.3.1 状态维护
 
-- 心跳检测：定期发送心跳包
+- 心跳检测：定期发送心跳包，支持重试机制
 - 资源监控：
-  - CPU 使用率、温度
+  - CPU 使用率
   - 内存使用情况
-  - GPU 状态
+  - GPU 状态和使用率
   - 磁盘使用情况
-  - 网络状态
+  - 网络状态和流量
 
 #### 3.3.2 任务执行
 

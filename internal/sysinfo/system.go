@@ -8,12 +8,15 @@ import (
 	"strings"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
+	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
 // SystemCollector 系统信息采集器
 type SystemCollector struct {
 	// 可能的配置选项
 	options map[string]string
+	// 日志框架
+	logger utils.Logger
 }
 
 // NewSystemCollector 创建新的系统信息采集器
@@ -21,8 +24,11 @@ func NewSystemCollector(options map[string]string) *SystemCollector {
 	if options == nil {
 		options = make(map[string]string)
 	}
+	// 创建日志器
+	logger := utils.New("SystemCollector")
 	return &SystemCollector{
 		options: options,
+		logger:  logger,
 	}
 }
 
@@ -32,22 +38,22 @@ func (c *SystemCollector) GetSystemInfo() (models.SystemInfo, error) {
 
 	// 采集操作系统信息
 	if err := c.collectOSInfo(&systemInfo); err != nil {
-		fmt.Printf("采集操作系统信息失败: %v\n", err)
+		c.logger.Warn("采集操作系统信息失败: %v", err)
 	}
 
 	// 采集GPU驱动信息
 	if err := c.collectGPUDriverInfo(&systemInfo); err != nil {
-		fmt.Printf("采集GPU驱动信息失败: %v\n", err)
+		c.logger.Warn("采集GPU驱动信息失败: %v", err)
 	}
 
 	// 采集CUDA版本信息
 	if err := c.collectCUDAInfo(&systemInfo); err != nil {
-		fmt.Printf("采集CUDA版本信息失败: %v\n", err)
+		c.logger.Warn("采集CUDA版本信息失败: %v", err)
 	}
 
 	// 采集容器运行时信息
 	if err := c.collectContainerRuntimeInfo(&systemInfo); err != nil {
-		fmt.Printf("采集容器运行时信息失败: %v\n", err)
+		c.logger.Warn("采集容器运行时信息失败: %v", err)
 	}
 
 	// 确保关键字段有默认值，不会为空
@@ -64,7 +70,7 @@ func (c *SystemCollector) ensureDefaultValues(systemInfo *models.SystemInfo) {
 		if err == nil {
 			systemInfo.OSDistribution = strings.TrimSpace(string(out))
 		} else {
-			fmt.Printf("警告: 无法获取操作系统分发版信息: %v\n", err)
+			c.logger.Warn("警告: 无法获取操作系统分发版信息: %v", err)
 		}
 	}
 
@@ -73,7 +79,7 @@ func (c *SystemCollector) ensureDefaultValues(systemInfo *models.SystemInfo) {
 		if err == nil {
 			systemInfo.OSVersion = strings.TrimSpace(string(out))
 		} else {
-			fmt.Printf("警告: 无法获取操作系统版本信息: %v\n", err)
+			c.logger.Warn("警告: 无法获取操作系统版本信息: %v", err)
 		}
 	}
 
@@ -82,7 +88,7 @@ func (c *SystemCollector) ensureDefaultValues(systemInfo *models.SystemInfo) {
 		if err == nil {
 			systemInfo.OSArchitecture = strings.TrimSpace(string(out))
 		} else {
-			fmt.Printf("警告: 无法获取操作系统架构信息: %v\n", err)
+			c.logger.Warn("警告: 无法获取操作系统架构信息: %v", err)
 		}
 	}
 
@@ -91,7 +97,7 @@ func (c *SystemCollector) ensureDefaultValues(systemInfo *models.SystemInfo) {
 		if err == nil {
 			systemInfo.KernelVersion = strings.TrimSpace(string(out))
 		} else {
-			fmt.Printf("警告: 无法获取内核版本信息: %v\n", err)
+			c.logger.Warn("警告: 无法获取内核版本信息: %v", err)
 		}
 	}
 
@@ -101,20 +107,20 @@ func (c *SystemCollector) ensureDefaultValues(systemInfo *models.SystemInfo) {
 		out, err := exec.Command("lspci").Output()
 		if err == nil && strings.Contains(string(out), "VGA") {
 			if strings.Contains(string(out), "NVIDIA") {
-				fmt.Printf("警告: 检测到NVIDIA GPU，但无法获取驱动版本\n")
+				c.logger.Warn("警告: 检测到NVIDIA GPU，但无法获取驱动版本")
 			} else if strings.Contains(string(out), "AMD") {
-				fmt.Printf("警告: 检测到AMD GPU，但无法获取驱动版本\n")
+				c.logger.Warn("警告: 检测到AMD GPU，但无法获取驱动版本")
 			} else if strings.Contains(string(out), "Intel") {
-				fmt.Printf("警告: 检测到Intel GPU，但无法获取驱动版本\n")
+				c.logger.Warn("警告: 检测到Intel GPU，但无法获取驱动版本")
 			} else {
-				fmt.Printf("警告: 检测到未知类型的GPU，但无法获取驱动版本\n")
+				c.logger.Warn("警告: 检测到未知类型的GPU，但无法获取驱动版本")
 			}
 		}
 	}
 
 	// 记录CUDA版本缺失的日志
 	if systemInfo.GPUComputeAPIVersion == "" && strings.Contains(systemInfo.GPUDriverVersion, "NVIDIA") {
-		fmt.Printf("警告: 检测到NVIDIA驱动，但无法获取CUDA版本\n")
+		c.logger.Warn("警告: 检测到NVIDIA驱动，但无法获取CUDA版本")
 	}
 }
 
@@ -271,27 +277,27 @@ func (c *SystemCollector) collectGPUDriverInfo(systemInfo *models.SystemInfo) er
 
 	// 尝试NVIDIA GPU驱动
 	if err := c.collectNvidiaDriverInfo(systemInfo); err != nil {
-		fmt.Printf("采集NVIDIA驱动信息失败: %v\n", err)
+		c.logger.Warn("采集NVIDIA驱动信息失败: %v", err)
 	}
 
 	// 如果没有找到NVIDIA驱动，尝试AMD GPU驱动
 	if systemInfo.GPUDriverVersion == "" {
 		if err := c.collectAMDDriverInfo(systemInfo); err != nil {
-			fmt.Printf("采集AMD驱动信息失败: %v\n", err)
+			c.logger.Warn("采集AMD驱动信息失败: %v", err)
 		}
 	}
 
 	// 如果仍未找到驱动，尝试Intel GPU驱动
 	if systemInfo.GPUDriverVersion == "" {
 		if err := c.collectIntelDriverInfo(systemInfo); err != nil {
-			fmt.Printf("采集Intel驱动信息失败: %v\n", err)
+			c.logger.Warn("采集Intel驱动信息失败: %v", err)
 		}
 	}
 
 	// 在WSL环境下，可以尝试从Windows获取GPU驱动信息
 	if systemInfo.GPUDriverVersion == "" && c.isWSLEnvironment() {
 		if err := c.collectWSLGPUDriverInfo(systemInfo); err != nil {
-			fmt.Printf("采集WSL GPU驱动信息失败: %v\n", err)
+			c.logger.Warn("采集WSL GPU驱动信息失败: %v", err)
 		}
 	}
 

@@ -4,3 +4,8 @@ vendor/
 tmp/
 
 /*.out
+
+/agent
+/server
+
+__debug_bin*

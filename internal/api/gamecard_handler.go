@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/open-beagle/beagle-wind-game/internal/models"
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 )
@@ -48,7 +49,7 @@ func (h *GameCardHandler) List(c *gin.Context) {
 		params.PageSize = 20
 	}
 
-	result, err := h.service.List(params)
+	result, err := h.service.List(c, params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -73,7 +74,7 @@ func (h *GameCardHandler) Get(c *gin.Context) {
 		return
 	}
 
-	card, err := h.service.Get(id)
+	card, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -103,7 +104,7 @@ func (h *GameCardHandler) Create(c *gin.Context) {
 		return
 	}
 
-	id, err := h.service.Create(card)
+	id, err := h.service.Create(c, card)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -130,7 +131,7 @@ func (h *GameCardHandler) Update(c *gin.Context) {
 	}
 
 	// 验证卡片是否存在
-	card, err := h.service.Get(id)
+	card, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -150,7 +151,7 @@ func (h *GameCardHandler) Update(c *gin.Context) {
 	// 确保ID一致
 	updatedCard.ID = id
 
-	err = h.service.Update(id, updatedCard)
+	err = h.service.Update(c, id, updatedCard)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -176,7 +177,7 @@ func (h *GameCardHandler) Delete(c *gin.Context) {
 	}
 
 	// 验证卡片是否存在
-	card, err := h.service.Get(id)
+	card, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -187,7 +188,7 @@ func (h *GameCardHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	err = h.service.Delete(id)
+	err = h.service.Delete(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

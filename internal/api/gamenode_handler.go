@@ -94,7 +94,7 @@ func (h *GameNodeHandler) ListNodes(c *gin.Context) {
 	}
 
 	// 调用服务层获取数据
-	result, err := h.svc.List(params)
+	result, err := h.svc.List(c, params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    http.StatusInternalServerError,
@@ -145,7 +145,7 @@ func (h *GameNodeHandler) GetNode(c *gin.Context) {
 	}
 
 	// 调用服务层获取数据
-	node, err := h.svc.Get(nodeID)
+	node, err := h.svc.Get(c, nodeID)
 	if err != nil {
 		if err.Error() == "节点不存在" {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -198,7 +198,8 @@ func (h *GameNodeHandler) UpdateNode(c *gin.Context) {
 		return
 	}
 
-	var req struct {
+	// 解析请求体
+	var nodeUpdate struct {
 		Name            string            `json:"name" binding:"required"`
 		Model           string            `json:"model" binding:"required"`
 		Type            string            `json:"type" binding:"required,oneof=physical virtual"`
@@ -206,8 +207,7 @@ func (h *GameNodeHandler) UpdateNode(c *gin.Context) {
 		Labels          map[string]string `json:"labels"`
 		MaintenanceMode bool              `json:"maintenance_mode,omitempty"`
 	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindJSON(&nodeUpdate); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    http.StatusBadRequest,
 			"message": "请求参数错误",
@@ -216,8 +216,8 @@ func (h *GameNodeHandler) UpdateNode(c *gin.Context) {
 		return
 	}
 
-	// 获取现有节点
-	node, err := h.svc.Get(nodeID)
+	// 获取原节点信息
+	node, err := h.svc.Get(c, nodeID)
 	if err != nil {
 		if err.Error() == "节点不存在" {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -229,28 +229,35 @@ func (h *GameNodeHandler) UpdateNode(c *gin.Context) {
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    http.StatusInternalServerError,
-			"message": "获取节点失败",
+			"message": "获取节点信息失败",
 			"error":   err.Error(),
 		})
 		return
 	}
 
 	// 更新节点信息
-	node.Alias = req.Name
-	node.Model = req.Model
-	node.Type = models.GameNodeType(req.Type)
-	node.Location = req.Location
-	node.Labels = req.Labels
-	if req.MaintenanceMode {
-		node.Status.State = models.GameNodeState("maintenance")
+	node.Alias = nodeUpdate.Name
+	node.Model = nodeUpdate.Model
+	node.Type = models.GameNodeType(nodeUpdate.Type)
+	node.Location = nodeUpdate.Location
+	node.Labels = nodeUpdate.Labels
+	if nodeUpdate.MaintenanceMode {
+		node.Status.State = "maintenance"
+	} else if node.Status.State == "maintenance" {
+		// 如果从维护模式恢复，根据在线状态决定新状态
+		if node.Status.Online {
+			node.Status.State = "online"
+		} else {
+			node.Status.State = "offline"
+		}
 	}
 
 	// 调用服务层更新数据
-	err = h.svc.Update(node)
+	err = h.svc.Update(c, node)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    http.StatusInternalServerError,
-			"message": "更新节点失败",
+			"message": "更新节点信息失败",
 			"error":   err.Error(),
 		})
 		return
@@ -271,10 +278,9 @@ func (h *GameNodeHandler) UpdateNode(c *gin.Context) {
 // @Produce json
 // @Param id path string true "节点ID"
 // @Param force query bool false "是否强制删除" default(false)
-// @Success 200 {object} map[string]interface{} "操作结果"
+// @Success 200 {object} map[string]interface{} "删除成功"
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 404 {object} map[string]interface{} "节点不存在"
-// @Failure 409 {object} map[string]interface{} "节点状态不允许删除"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /api/v1/nodes/{id}/delete [post]
 func (h *GameNodeHandler) DeleteNode(c *gin.Context) {
@@ -297,34 +303,35 @@ func (h *GameNodeHandler) DeleteNode(c *gin.Context) {
 		return
 	}
 
-	// 调用服务层删除节点
-	err = h.svc.Delete(nodeID, force)
+	// 调用服务层删除数据
+	err = h.svc.Delete(c, nodeID, force)
 	if err != nil {
-		switch err.Error() {
-		case "节点不存在":
+		if err.Error() == "节点不存在" {
 			c.JSON(http.StatusNotFound, gin.H{
 				"code":    http.StatusNotFound,
 				"message": "节点不存在",
 				"error":   err.Error(),
 			})
-		case "节点状态不允许删除":
-			c.JSON(http.StatusConflict, gin.H{
-				"code":    http.StatusConflict,
-				"message": "节点状态不允许删除",
-				"error":   err.Error(),
-			})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code":    http.StatusInternalServerError,
-				"message": "删除节点失败",
-				"error":   err.Error(),
-			})
+			return
 		}
+		if err.Error() == "节点状态不允许删除" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    http.StatusBadRequest,
+				"message": "节点状态不允许删除，可以使用 force=true 参数强制删除",
+				"error":   err.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    http.StatusInternalServerError,
+			"message": "删除节点失败",
+			"error":   err.Error(),
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    0,
-		"message": "success",
+		"message": "节点删除成功",
 	})
 }

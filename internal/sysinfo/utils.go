@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
 var (
@@ -22,13 +24,22 @@ var (
 		"/usr/local/cuda/bin", // CUDA路径
 		"/opt/rocm/bin",       // ROCm路径
 	}
+
+	// 共享的logger实例
+	sysLogger utils.Logger
 )
+
+// 初始化logger
+func init() {
+	sysLogger = utils.New("SysUtils")
+}
 
 // findCommand 在多个路径下查找命令
 func findCommand(name string) (string, error) {
 	// 首先尝试使用exec.LookPath（依赖环境变量PATH）
 	path, err := exec.LookPath(name)
 	if err == nil {
+		sysLogger.Debug("在PATH中找到命令: %s -> %s", name, path)
 		return path, nil
 	}
 
@@ -37,18 +48,22 @@ func findCommand(name string) (string, error) {
 		fullPath := filepath.Join(dir, name)
 		if _, err := os.Stat(fullPath); err == nil {
 			// 文件存在
+			sysLogger.Debug("在常见路径中找到命令: %s -> %s", name, fullPath)
 			return fullPath, nil
 		}
 	}
 
 	// 全局搜索一些关键命令（代价较高，仅用于关键命令）
 	if name == "nvidia-smi" || name == "rocm-smi" || name == "intel_gpu_top" {
+		sysLogger.Debug("开始全局搜索关键命令: %s", name)
 		foundPaths, _ := findCommandInSystem(name)
 		if len(foundPaths) > 0 {
+			sysLogger.Debug("在系统中找到命令: %s -> %s", name, foundPaths[0])
 			return foundPaths[0], nil
 		}
 	}
 
+	sysLogger.Warn("未找到命令: %s", name)
 	return "", fmt.Errorf("找不到命令: %s", name)
 }
 
@@ -63,6 +78,7 @@ func findCommandInSystem(name string) ([]string, error) {
 			continue
 		}
 
+		sysLogger.Debug("搜索目录: %s 查找命令: %s", dir, name)
 		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			// 跳过错误
 			if err != nil {
@@ -74,6 +90,7 @@ func findCommandInSystem(name string) ([]string, error) {
 				// 检查是否可执行
 				if info.Mode()&0111 != 0 {
 					results = append(results, path)
+					sysLogger.Debug("找到可执行命令: %s", path)
 				}
 			}
 
@@ -91,6 +108,7 @@ func findCommandInSystem(name string) ([]string, error) {
 	}
 
 	if len(results) == 0 {
+		sysLogger.Warn("在系统中找不到命令: %s", name)
 		return nil, fmt.Errorf("在系统中找不到命令: %s", name)
 	}
 
@@ -104,6 +122,7 @@ func execCommand(name string, args ...string) ([]byte, error) {
 		return nil, err
 	}
 
+	sysLogger.Debug("执行命令: %s %v", cmdPath, args)
 	return exec.Command(cmdPath, args...).Output()
 }
 
@@ -111,8 +130,10 @@ func execCommand(name string, args ...string) ([]byte, error) {
 func checkCommand(name string) error {
 	_, err := findCommand(name)
 	if err != nil {
+		sysLogger.Warn("命令不可用: %s, %v", name, err)
 		return err
 	}
+	sysLogger.Debug("命令可用: %s", name)
 	return nil
 }
 
@@ -121,6 +142,7 @@ func getScriptPath(scriptName string) (string, error) {
 	// 检查临时目录
 	tempDir := os.TempDir()
 	scriptPath := filepath.Join(tempDir, scriptName)
+	sysLogger.Debug("创建脚本: %s 在 %s", scriptName, scriptPath)
 
 	// 创建脚本
 	if scriptName == "gpu_detect.sh" {
@@ -142,6 +164,7 @@ exit 0
 `
 		err := os.WriteFile(scriptPath, []byte(script), 0755)
 		if err != nil {
+			sysLogger.Error("创建脚本失败: %v", err)
 			return "", err
 		}
 	}
@@ -169,6 +192,9 @@ func runWithEnvPath(name string, args ...string) ([]byte, error) {
 		newPath := path + ":" + strings.Join(additionalPaths, ":")
 		setEnvValue(env, "PATH", newPath)
 		cmd.Env = env
+		sysLogger.Debug("使用扩展PATH运行命令: %s %v", name, args)
+	} else {
+		sysLogger.Debug("使用默认PATH运行命令: %s %v", name, args)
 	}
 
 	return cmd.Output()

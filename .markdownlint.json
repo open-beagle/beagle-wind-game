@@ -2,10 +2,10 @@
   "MD010": false,
   "MD013": false,
   "MD025": false,
-  "MD024": {
-    "siblings_only": true
-  },
+  "MD024": false,
+  "MD029": false,
   "MD032": false,
+  "MD034": false,
   "line-length": false,
   "no-hard-tabs": false
 }

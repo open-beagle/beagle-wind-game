@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
+	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
 // IgnorePath 检查挂载点是否应该被忽略
@@ -31,6 +32,8 @@ func IgnorePath(path string) bool {
 type MetricsCollector struct {
 	// 可能的配置选项
 	options map[string]string
+	// 日志框架
+	logger utils.Logger
 }
 
 // NewMetricsCollector 创建新的指标信息采集器
@@ -38,6 +41,9 @@ func NewMetricsCollector(options map[string]string) *MetricsCollector {
 	if options == nil {
 		options = make(map[string]string)
 	}
+
+	// 创建日志器
+	logger := utils.New("MetricsCollector")
 
 	// 尝试查找常用GPU命令
 	for _, cmd := range []string{"nvidia-smi", "rocm-smi", "intel_gpu_top"} {
@@ -52,6 +58,7 @@ func NewMetricsCollector(options map[string]string) *MetricsCollector {
 
 	return &MetricsCollector{
 		options: options,
+		logger:  logger,
 	}
 }
 
@@ -61,27 +68,31 @@ func (c *MetricsCollector) GetMetricsInfo() (models.MetricsInfo, error) {
 
 	// 采集CPU使用情况
 	if err := c.collectCPUMetrics(&metricsInfo); err != nil {
+		c.logger.Error("采集CPU指标失败: %v", err)
 		return metricsInfo, fmt.Errorf("采集CPU指标失败: %v", err)
 	}
 
 	// 采集内存使用情况
 	if err := c.collectMemoryMetrics(&metricsInfo); err != nil {
+		c.logger.Error("采集内存指标失败: %v", err)
 		return metricsInfo, fmt.Errorf("采集内存指标失败: %v", err)
 	}
 
 	// 采集GPU使用情况
 	if err := c.collectGPUMetrics(&metricsInfo); err != nil {
 		// GPU可能不存在，这不是严重错误
-		fmt.Printf("采集GPU指标失败: %v\n", err)
+		c.logger.Warn("采集GPU指标失败: %v", err)
 	}
 
 	// 采集存储设备使用情况
 	if err := c.collectStorageMetrics(&metricsInfo); err != nil {
+		c.logger.Error("采集存储指标失败: %v", err)
 		return metricsInfo, fmt.Errorf("采集存储指标失败: %v", err)
 	}
 
 	// 采集网络使用情况
 	if err := c.collectNetworkMetrics(&metricsInfo); err != nil {
+		c.logger.Error("采集网络指标失败: %v", err)
 		return metricsInfo, fmt.Errorf("采集网络指标失败: %v", err)
 	}
 
@@ -93,6 +104,7 @@ func (c *MetricsCollector) collectCPUMetrics(metricsInfo *models.MetricsInfo) er
 	// 读取/proc/stat获取CPU使用情况
 	data, err := os.ReadFile("/proc/stat")
 	if err != nil {
+		c.logger.Error("读取CPU信息失败: %v", err)
 		return fmt.Errorf("读取CPU信息失败: %v", err)
 	}
 
@@ -102,6 +114,7 @@ func (c *MetricsCollector) collectCPUMetrics(metricsInfo *models.MetricsInfo) er
 	// 获取CPU信息
 	cpuInfo, err := getCPUInfo()
 	if err != nil {
+		c.logger.Error("获取CPU详细信息失败: %v", err)
 		return fmt.Errorf("获取CPU详细信息失败: %v", err)
 	}
 
@@ -475,6 +488,7 @@ func (c *MetricsCollector) getMemoryFromSysinfo() (*models.MemoryMetrics, error)
 	var info syscall.Sysinfo_t
 	err := syscall.Sysinfo(&info)
 	if err != nil {
+		c.logger.Error("调用syscall.Sysinfo失败: %v", err)
 		return nil, fmt.Errorf("调用syscall.Sysinfo失败: %v", err)
 	}
 
@@ -529,6 +543,7 @@ func (c *MetricsCollector) collectGPUMetrics(metricsInfo *models.MetricsInfo) er
 		if err := c.collectAMDGPUMetrics(metricsInfo); err != nil {
 			// 尝试Intel GPU
 			if err := c.collectIntelGPUMetrics(metricsInfo); err != nil {
+				c.logger.Warn("未检测到GPU或无法获取GPU指标: %v", err)
 				return fmt.Errorf("未检测到GPU或无法获取GPU指标: %v", err)
 			}
 		}
@@ -550,6 +565,7 @@ func (c *MetricsCollector) collectNvidiaGPUMetrics(metricsInfo *models.MetricsIn
 		// 使用通用的查找函数
 		nvidiaSmiPath, err = findCommand("nvidia-smi")
 		if err != nil {
+			c.logger.Debug("未找到nvidia-smi命令: %v", err)
 			return fmt.Errorf("未找到nvidia-smi命令: %v", err)
 		}
 	}
@@ -558,6 +574,7 @@ func (c *MetricsCollector) collectNvidiaGPUMetrics(metricsInfo *models.MetricsIn
 	cmd := fmt.Sprintf("%s --query-gpu=name,utilization.gpu,utilization.memory,memory.total,memory.used,memory.free --format=csv,noheader,nounits", nvidiaSmiPath)
 	out, err := execCommand("sh", "-c", cmd)
 	if err != nil {
+		c.logger.Error("执行nvidia-smi命令失败: %v", err)
 		return fmt.Errorf("执行nvidia-smi命令失败: %v", err)
 	}
 
@@ -636,6 +653,7 @@ func (c *MetricsCollector) collectAMDGPUMetrics(metricsInfo *models.MetricsInfo)
 		// 使用通用的查找函数
 		rocmSmiPath, err = findCommand("rocm-smi")
 		if err != nil {
+			c.logger.Debug("未找到rocm-smi命令: %v", err)
 			return fmt.Errorf("未找到rocm-smi命令，请确保AMD ROCm驱动已正确安装或在配置中指定rocm_smi_path: %v", err)
 		}
 	}
@@ -643,6 +661,7 @@ func (c *MetricsCollector) collectAMDGPUMetrics(metricsInfo *models.MetricsInfo)
 	// 执行rocm-smi命令获取GPU使用情况
 	_, err = execCommand(rocmSmiPath, "--showuse", "--showmemuse", "--showtemp")
 	if err != nil {
+		c.logger.Error("执行rocm-smi命令失败: %v", err)
 		return fmt.Errorf("执行rocm-smi命令失败: %v", err)
 	}
 
@@ -666,6 +685,7 @@ func (c *MetricsCollector) collectIntelGPUMetrics(metricsInfo *models.MetricsInf
 		// 使用通用的查找函数
 		intelGpuTopPath, err = findCommand("intel_gpu_top")
 		if err != nil {
+			c.logger.Debug("未找到intel_gpu_top命令: %v", err)
 			return fmt.Errorf("未找到intel_gpu_top命令，请确保Intel GPU工具已正确安装或在配置中指定intel_gpu_top_path: %v", err)
 		}
 	}
@@ -673,6 +693,7 @@ func (c *MetricsCollector) collectIntelGPUMetrics(metricsInfo *models.MetricsInf
 	// 执行intel_gpu_top命令获取GPU使用情况
 	_, err = execCommand(intelGpuTopPath, "-o", "-J")
 	if err != nil {
+		c.logger.Error("执行intel_gpu_top命令失败: %v", err)
 		return fmt.Errorf("执行intel_gpu_top命令失败: %v", err)
 	}
 
@@ -688,6 +709,7 @@ func (c *MetricsCollector) collectStorageMetrics(metricsInfo *models.MetricsInfo
 	// 使用df命令获取存储设备使用情况
 	out, err := exec.Command("df", "-B1", "--output=source,target,fstype,size,used,avail,pcent").Output()
 	if err != nil {
+		c.logger.Error("执行df命令失败: %v", err)
 		return fmt.Errorf("执行df命令失败: %v", err)
 	}
 
@@ -819,6 +841,7 @@ func (c *MetricsCollector) collectNetworkMetrics(metricsInfo *models.MetricsInfo
 	// 读取/proc/net/dev获取网络接口流量信息
 	data, err := os.ReadFile("/proc/net/dev")
 	if err != nil {
+		c.logger.Error("读取网络信息失败: %v", err)
 		return fmt.Errorf("读取网络信息失败: %v", err)
 	}
 
@@ -886,9 +909,13 @@ func (c *MetricsCollector) collectNetworkMetrics(metricsInfo *models.MetricsInfo
 func CollectStorageMetrics() ([]models.StorageMetrics, error) {
 	var storageMetrics []models.StorageMetrics
 
+	// 创建日志器
+	logger := utils.New("StorageMetrics")
+
 	// 使用更简单的方法获取分区信息，不依赖gopsutil
 	out, err := exec.Command("df", "-B1", "--output=source,target,fstype,size,used,avail,pcent").Output()
 	if err != nil {
+		logger.Error("执行df命令失败: %v", err)
 		return nil, fmt.Errorf("执行df命令失败: %v", err)
 	}
 

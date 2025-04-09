@@ -3,21 +3,18 @@ package gamenode
 import (
 	"context"
 	"fmt"
-	stdlog "log"
 	"net"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/open-beagle/beagle-wind-game/internal/event"
-	"github.com/open-beagle/beagle-wind-game/internal/log"
 	"github.com/open-beagle/beagle-wind-game/internal/models"
 	pb "github.com/open-beagle/beagle-wind-game/internal/proto"
+	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
 // GameNodeServerOptions 包含服务器配置选项
@@ -35,45 +32,57 @@ type GameNodeServer struct {
 	nodeService     NodeService
 	pipelineService PipelineService
 
-	// 事件管理
-	eventManager event.EventManager
-
-	// 日志管理
-	logManager log.LogManager
+	// 日志框架
+	logger utils.Logger
 
 	// 配置
 	config *ServerConfig
 
 	// 连接管理
-	connections     map[string]*AgentConnection
-	connectionMutex sync.RWMutex
+	mu          sync.RWMutex
+	connections map[string]*AgentConnection
+
+	// 服务器
+	server *grpc.Server
+	done   chan struct{}
 }
 
 // NodeService 节点服务接口
 type NodeService interface {
-	Create(node models.GameNode) error
-	Update(node models.GameNode) error
-	UpdateStatusOnlineStatus(id string, online bool) error
-	UpdateStatusMetrics(id string, metrics models.MetricsInfo) error
-	UpdateHardwareAndSystem(id string, hardware models.HardwareInfo, system models.SystemInfo) error
-	Get(id string) (models.GameNode, error)
+	// 创建节点
+	Create(ctx context.Context, node models.GameNode) error
+	// 更新节点
+	Update(ctx context.Context, node models.GameNode) error
+	// 获取节点
+	Get(ctx context.Context, id string) (models.GameNode, error)
+	// 更新节点在线状态
+	UpdateStatusOnlineStatus(ctx context.Context, id string, online bool) error
+	// 更新节点指标
+	UpdateStatusMetrics(ctx context.Context, id string, metrics models.MetricsInfo) error
+	// 更新节点硬件和系统信息
+	UpdateHardwareAndSystem(ctx context.Context, id string, hardware models.HardwareInfo, system models.SystemInfo) error
 }
 
 // PipelineService Pipeline服务接口
 type PipelineService interface {
-	CreatePipeline(ctx context.Context, pipeline *pb.ExecutePipelineRequest) error
-	ExecutePipeline(ctx context.Context, id string) error
-	UpdateStatus(ctx context.Context, id string, status models.PipelineState) error
-	UpdateStepStatus(ctx context.Context, pipelineID string, stepID string, status models.StepState) error
-	SaveStepLogs(ctx context.Context, pipelineID string, stepID string, logs []byte) error
-	CancelPipeline(ctx context.Context, id string) error
+	// 创建Pipeline
+	Create(ctx context.Context, pipeline *models.GameNodePipeline) error
+	// 更新Pipeline
+	Update(ctx context.Context, pipeline *models.GameNodePipeline) error
+	// 获取Pipeline
+	Get(ctx context.Context, id string) (*models.GameNodePipeline, error)
+	// 更新Pipeline状态
+	UpdateStatus(ctx context.Context, id string, status *models.PipelineStatus) error
+	// 更新Step状态
+	UpdateStepStatus(ctx context.Context, pipelineID string, stepID string, status *models.StepStatus) error
+	// 取消Pipeline
+	Cancel(ctx context.Context, id string) error
 }
 
 // AgentConnection Agent连接
 type AgentConnection struct {
-	client pb.GameNodeGRPCServiceClient
-	conn   *grpc.ClientConn
-	nodeID string
+	nodeID     string
+	lastActive time.Time
 }
 
 // ServerConfig 服务器配置
@@ -86,298 +95,166 @@ type ServerConfig struct {
 func NewGameNodeServer(
 	nodeService NodeService,
 	pipelineService PipelineService,
-	eventManager event.EventManager,
-	logManager log.LogManager,
+	logger utils.Logger,
 	config *ServerConfig,
-) (*GameNodeServer, error) {
-	if config == nil {
-		config = &ServerConfig{
-			MaxConnections:  100,
-			HeartbeatPeriod: 30 * time.Second,
-		}
-	}
-
-	server := &GameNodeServer{
+) *GameNodeServer {
+	return &GameNodeServer{
 		nodeService:     nodeService,
 		pipelineService: pipelineService,
-		eventManager:    eventManager,
-		logManager:      logManager,
+		logger:          logger,
 		connections:     make(map[string]*AgentConnection),
 		config:          config,
+		server:          grpc.NewServer(),
+		done:            make(chan struct{}),
 	}
-
-	return server, nil
 }
 
-// Register 注册节点
+// Register 处理节点注册请求
 func (s *GameNodeServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
-	// 检查连接数量限制
-	s.connectionMutex.RLock()
-	if len(s.connections) >= s.config.MaxConnections {
-		s.connectionMutex.RUnlock()
-		return &pb.RegisterResponse{
-			Success: false,
-			Message: "达到最大连接数限制",
-		}, nil
-	}
-	s.connectionMutex.RUnlock()
-
-	// 转换节点类型
-	nodeType := models.GameNodeType(req.Type)
-	if nodeType != models.GameNodeTypePhysical && nodeType != models.GameNodeTypeVirtual {
-		return &pb.RegisterResponse{
-			Success: false,
-			Message: "无效的节点类型",
-		}, nil
+	// 1. 验证请求参数
+	if req.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "node_id is required")
 	}
 
-	// 检查节点是否存在
-	node, err := s.nodeService.Get(req.Id)
-	if err != nil {
-		// 节点不存在，创建新节点
-		node = models.GameNode{
-			ID:       req.Id,
-			Alias:    req.Alias,
-			Model:    req.Model,
-			Type:     nodeType,
-			Location: req.Location,
-			Hardware: req.Hardware,
-			System:   req.System,
-			Labels:   req.Labels,
-			Status: models.GameNodeStatus{
-				State:      models.GameNodeStateOnline,
-				Online:     true,
-				LastOnline: time.Now(),
-				UpdatedAt:  time.Now(),
-			},
-			CreatedAt: time.Now(),
+	// 2. 构建节点信息
+	node := models.GameNode{
+		ID: req.Id,
+		Status: models.GameNodeStatus{
+			State:     models.GameNodeStateReady,
+			Online:    true,
 			UpdatedAt: time.Now(),
-		}
-		if err := s.nodeService.Create(node); err != nil {
-			return &pb.RegisterResponse{
-				Success: false,
-				Message: fmt.Sprintf("创建节点失败: %v", err),
-			}, nil
-		}
-	} else {
-		// 节点存在，更新状态
-		node.Status.State = models.GameNodeStateOnline
-		node.Status.Online = true
-		node.Status.LastOnline = time.Now()
-		node.UpdatedAt = time.Now()
-
-		// 更新节点信息
-		node.Alias = req.Alias
-		node.Model = req.Model
-		node.Type = nodeType
-		node.Location = req.Location
-		node.Hardware = req.Hardware
-		node.System = req.System
-		node.Labels = req.Labels
-
-		if err := s.nodeService.Update(node); err != nil {
-			return &pb.RegisterResponse{
-				Success: false,
-				Message: fmt.Sprintf("更新节点失败: %v", err),
-			}, nil
-		}
+		},
 	}
 
-	// 创建连接
-	conn := &AgentConnection{
-		nodeID: req.Id,
+	// 3. 通过 NodeService 处理注册
+	if err := s.nodeService.Create(ctx, node); err != nil {
+		s.logger.Error("Failed to create node", "error", err)
+		return nil, status.Error(codes.Internal, "failed to create node")
 	}
-	s.connectionMutex.Lock()
-	s.connections[req.Id] = conn
-	s.connectionMutex.Unlock()
 
-	// 发布节点注册事件
-	s.eventManager.Publish(event.NewNodeEvent(req.Id, "registered", "Node registered successfully"))
-
+	// 4. 返回成功响应
 	return &pb.RegisterResponse{
 		Success: true,
-		Message: "节点注册成功",
+		Message: fmt.Sprintf("Node %s registered successfully", req.Id),
 	}, nil
 }
 
 // Heartbeat 心跳检测
 func (s *GameNodeServer) Heartbeat(ctx context.Context, req *pb.HeartbeatRequest) (*pb.HeartbeatResponse, error) {
 	// 更新节点在线状态
-	err := s.nodeService.UpdateStatusOnlineStatus(req.Id, true)
+	err := s.nodeService.UpdateStatusOnlineStatus(ctx, req.Id, true)
 	if err != nil {
+		s.logger.Error("更新节点在线状态失败: %v", err)
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update node status: %v", err))
 	}
 
-	// 发布心跳事件
-	s.eventManager.Publish(event.NewNodeEvent(req.Id, "heartbeat", "Heartbeat received"))
+	s.logger.Debug("收到节点心跳: %s", req.Id)
 
 	return &pb.HeartbeatResponse{
 		Status:  "success",
-		Message: "Heartbeat received",
+		Message: "心跳接收成功",
 	}, nil
 }
 
-// ReportMetrics 报告节点指标
-func (s *GameNodeServer) ReportMetrics(ctx context.Context, req *pb.MetricsReport) (*pb.ReportResponse, error) {
-	// 验证请求
-	if req.Id == "" {
-		return nil, status.Error(codes.InvalidArgument, "node id is required")
-	}
+// ReportMetrics 处理指标报告请求
+func (s *GameNodeServer) ReportMetrics(ctx context.Context, req *pb.MetricsRequest) (*pb.MetricsResponse, error) {
+	s.logger.Debug("收到指标报告请求", "node_id", req.Id)
 
-	// 验证节点存在
-	_, err := s.nodeService.Get(req.Id)
+	// 获取节点
+	node, err := s.nodeService.Get(ctx, req.Id)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("node not found: %v", err))
-	}
-
-	// 更新最后在线时间
-	err = s.nodeService.UpdateStatusOnlineStatus(req.Id, true)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update online status: %v", err))
-	}
-
-	// 创建一个新的指标信息实例
-	metricsInfo := models.MetricsInfo{
-		CPUs:     []models.CPUMetrics{},
-		Memory:   models.MemoryMetrics{},
-		GPUs:     []models.GPUMetrics{},
-		Storages: []models.StorageMetrics{},
-		Network:  models.NetworkMetrics{},
-	}
-
-	// 遍历请求中的指标，并将其转换为我们的结构体
-	for _, metric := range req.Metrics {
-		// 基于指标名称分类
-		switch {
-		case strings.HasPrefix(metric.Name, "cpu."):
-			// 如果是CPU指标
-			if metric.Name == "cpu.usage" {
-				// 确保已有CPU设备，如果没有则创建
-				if len(metricsInfo.CPUs) == 0 {
-					metricsInfo.CPUs = append(metricsInfo.CPUs, models.CPUMetrics{})
-				}
-				// 更新使用率
-				metricsInfo.CPUs[0].Usage = metric.Value
-			} else if metric.Name == "cpu.temperature" {
-				// 注意：在新的模型中没有CPU温度字段，记录到日志
-				s.eventManager.Publish(event.NewNodeEvent(req.Id, "warn", "CPU temperature metric ignored - field not in model"))
-			}
-		case strings.HasPrefix(metric.Name, "memory."):
-			// 如果是内存指标
-			if metric.Name == "memory.usage" {
-				metricsInfo.Memory.Usage = metric.Value
-			} else if metric.Name == "memory.used" {
-				metricsInfo.Memory.Used = int64(metric.Value)
-			} else if metric.Name == "memory.available" {
-				metricsInfo.Memory.Available = int64(metric.Value)
-			} else if metric.Name == "memory.total" {
-				metricsInfo.Memory.Total = int64(metric.Value)
-			}
-		case strings.HasPrefix(metric.Name, "gpu."):
-			// 如果是GPU指标
-			if metric.Name == "gpu.usage" {
-				// 确保已有GPU设备，如果没有则创建
-				if len(metricsInfo.GPUs) == 0 {
-					metricsInfo.GPUs = append(metricsInfo.GPUs, models.GPUMetrics{})
-				}
-				// 更新使用率
-				metricsInfo.GPUs[0].Usage = metric.Value
-			} else if metric.Name == "gpu.memory_usage" {
-				// 确保已有GPU设备，如果没有则创建
-				if len(metricsInfo.GPUs) == 0 {
-					metricsInfo.GPUs = append(metricsInfo.GPUs, models.GPUMetrics{})
-				}
-				// 更新显存使用率
-				metricsInfo.GPUs[0].MemoryUsage = metric.Value
-			} else if metric.Name == "gpu.temperature" {
-				// 注意：在新的模型中没有GPU温度字段，记录到日志
-				s.eventManager.Publish(event.NewNodeEvent(req.Id, "warn", "GPU temperature metric ignored - field not in model"))
-			} else if metric.Name == "gpu.memory_used" {
-				// 确保已有GPU设备，如果没有则创建
-				if len(metricsInfo.GPUs) == 0 {
-					metricsInfo.GPUs = append(metricsInfo.GPUs, models.GPUMetrics{})
-				}
-				// 更新已用显存
-				metricsInfo.GPUs[0].MemoryUsed = int64(metric.Value)
-			} else if metric.Name == "gpu.memory_free" {
-				// 确保已有GPU设备，如果没有则创建
-				if len(metricsInfo.GPUs) == 0 {
-					metricsInfo.GPUs = append(metricsInfo.GPUs, models.GPUMetrics{})
-				}
-				// 更新可用显存
-				metricsInfo.GPUs[0].MemoryFree = int64(metric.Value)
-			} else if metric.Name == "gpu.power" {
-				// 注意：在新的模型中没有GPU功耗字段，记录到日志
-				s.eventManager.Publish(event.NewNodeEvent(req.Id, "warn", "GPU power metric ignored - field not in model"))
-			}
-		case strings.HasPrefix(metric.Name, "storage."):
-			// 如果是存储指标
-			parts := strings.Split(metric.Name, ".")
-			if len(parts) >= 3 {
-				index, err := strconv.Atoi(parts[1])
-				if err == nil {
-					// 确保存储列表有足够的容量
-					for len(metricsInfo.Storages) <= index {
-						metricsInfo.Storages = append(metricsInfo.Storages, models.StorageMetrics{})
-					}
-					// 更新对应索引的存储指标
-					if parts[2] == "usage" {
-						metricsInfo.Storages[index].Usage = metric.Value
-					} else if parts[2] == "used" {
-						metricsInfo.Storages[index].Used = int64(metric.Value)
-					} else if parts[2] == "free" {
-						metricsInfo.Storages[index].Free = int64(metric.Value)
-					} else if parts[2] == "capacity" {
-						metricsInfo.Storages[index].Capacity = int64(metric.Value)
-					}
-				}
-			}
-		case strings.HasPrefix(metric.Name, "network."):
-			// 如果是网络指标
-			if metric.Name == "network.inbound" {
-				metricsInfo.Network.InboundTraffic = metric.Value
-			} else if metric.Name == "network.outbound" {
-				metricsInfo.Network.OutboundTraffic = metric.Value
-			} else if metric.Name == "network.connections" {
-				metricsInfo.Network.Connections = int32(metric.Value)
-			}
-		}
-	}
-
-	// 如果没有存储设备，添加一个默认的
-	if len(metricsInfo.Storages) == 0 {
-		metricsInfo.Storages = append(metricsInfo.Storages, models.StorageMetrics{})
+		s.logger.Error("获取节点失败", "node_id", req.Id, "error", err)
+		return nil, status.Error(codes.NotFound, "节点不存在")
 	}
 
 	// 更新节点指标
-	err = s.nodeService.UpdateStatusMetrics(req.Id, metricsInfo)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update metrics: %v", err))
+	node.Status.Metrics = models.MetricsInfo{
+		CPUs:     make([]models.CPUMetrics, len(req.Metrics.Cpus)),
+		Memory:   models.MemoryMetrics{},
+		GPUs:     make([]models.GPUMetrics, len(req.Metrics.Gpus)),
+		Storages: make([]models.StorageMetrics, len(req.Metrics.Storages)),
+		Network:  models.NetworkMetrics{},
 	}
 
-	// 发布指标更新事件
-	s.eventManager.Publish(event.NewNodeEvent(req.Id, "metrics_updated", "Node metrics updated"))
+	// CPU指标
+	for i, metric := range req.Metrics.Cpus {
+		node.Status.Metrics.CPUs[i] = models.CPUMetrics{
+			Model:   metric.Model,
+			Cores:   metric.Cores,
+			Threads: metric.Threads,
+			Usage:   metric.Usage,
+		}
+	}
 
-	return &pb.ReportResponse{
-		Status:  "success",
-		Message: "Metrics reported successfully",
+	// 内存指标
+	node.Status.Metrics.Memory = models.MemoryMetrics{
+		Total:     req.Metrics.Memory.Total,
+		Available: req.Metrics.Memory.Available,
+		Used:      req.Metrics.Memory.Used,
+		Usage:     req.Metrics.Memory.Usage,
+	}
+
+	// GPU指标
+	for i, metric := range req.Metrics.Gpus {
+		node.Status.Metrics.GPUs[i] = models.GPUMetrics{
+			Model:       metric.Model,
+			MemoryTotal: metric.MemoryTotal,
+			Usage:       metric.Usage,
+			MemoryUsed:  metric.MemoryUsed,
+			MemoryFree:  metric.MemoryFree,
+			MemoryUsage: metric.MemoryUsage,
+		}
+	}
+
+	// 存储指标
+	for i, metric := range req.Metrics.Storages {
+		node.Status.Metrics.Storages[i] = models.StorageMetrics{
+			Path:     metric.Path,
+			Type:     metric.Type,
+			Model:    metric.Model,
+			Capacity: metric.Capacity,
+			Used:     metric.Used,
+			Free:     metric.Free,
+			Usage:    metric.Usage,
+		}
+	}
+
+	// 网络指标
+	node.Status.Metrics.Network = models.NetworkMetrics{
+		InboundTraffic:  req.Metrics.Network.InboundTraffic,
+		OutboundTraffic: req.Metrics.Network.OutboundTraffic,
+		Connections:     req.Metrics.Network.Connections,
+	}
+
+	// 更新节点状态
+	err = s.nodeService.UpdateStatusMetrics(ctx, req.Id, node.Status.Metrics)
+	if err != nil {
+		s.logger.Error("更新节点状态失败", "node_id", req.Id, "error", err)
+		return nil, status.Error(codes.Internal, "更新节点状态失败")
+	}
+
+	s.logger.Debug("节点指标更新成功: %s", req.Id)
+
+	return &pb.MetricsResponse{
+		Success: true,
+		Message: "指标更新成功",
 	}, nil
 }
 
-// UpdateResourceInfo 更新资源信息
-func (s *GameNodeServer) UpdateResourceInfo(ctx context.Context, req *pb.ResourceInfo) (*pb.UpdateResponse, error) {
-	// 转换为硬件信息 - 使用扁平结构
+// ReportResource 处理资源信息更新请求
+func (s *GameNodeServer) ReportResource(ctx context.Context, req *pb.ResourceRequest) (*pb.ResourceResponse, error) {
+	// 转换为硬件信息
 	hardwareInfo := models.HardwareInfo{
-		CPUs:     []models.CPUDevice{},
-		Memories: []models.MemoryDevice{},
-		GPUs:     []models.GPUDevice{},
-		Storages: []models.StorageDevice{},
-		Networks: []models.NetworkDevice{},
+		CPUs:     make([]models.CPUDevice, len(req.Hardware.Cpus)),
+		Memories: make([]models.MemoryDevice, len(req.Hardware.Memories)),
+		GPUs:     make([]models.GPUDevice, len(req.Hardware.Gpus)),
+		Storages: make([]models.StorageDevice, len(req.Hardware.Storages)),
+		Networks: make([]models.NetworkDevice, len(req.Hardware.Networks)),
 	}
 
-	// CPU信息 - 从扁平结构获取
-	for _, cpu := range req.Hardware.Cpus {
-		cpuDevice := models.CPUDevice{
+	// CPU信息
+	for i, cpu := range req.Hardware.Cpus {
+		hardwareInfo.CPUs[i] = models.CPUDevice{
 			Model:        cpu.Model,
 			Cores:        cpu.Cores,
 			Threads:      cpu.Threads,
@@ -385,22 +262,20 @@ func (s *GameNodeServer) UpdateResourceInfo(ctx context.Context, req *pb.Resourc
 			Cache:        cpu.Cache,
 			Architecture: cpu.Architecture,
 		}
-		hardwareInfo.CPUs = append(hardwareInfo.CPUs, cpuDevice)
 	}
 
-	// 内存信息 - 从扁平结构获取
-	for _, memory := range req.Hardware.Memories {
-		memoryDevice := models.MemoryDevice{
+	// 内存信息
+	for i, memory := range req.Hardware.Memories {
+		hardwareInfo.Memories[i] = models.MemoryDevice{
 			Size:      memory.Size,
 			Type:      memory.Type,
 			Frequency: memory.Frequency,
 		}
-		hardwareInfo.Memories = append(hardwareInfo.Memories, memoryDevice)
 	}
 
-	// GPU信息 - 从扁平结构获取
-	for _, gpu := range req.Hardware.Gpus {
-		gpuDevice := models.GPUDevice{
+	// GPU信息
+	for i, gpu := range req.Hardware.Gpus {
+		hardwareInfo.GPUs[i] = models.GPUDevice{
 			Model:             gpu.Model,
 			MemoryTotal:       gpu.MemoryTotal,
 			Architecture:      gpu.Architecture,
@@ -408,29 +283,26 @@ func (s *GameNodeServer) UpdateResourceInfo(ctx context.Context, req *pb.Resourc
 			ComputeCapability: gpu.ComputeCapability,
 			TDP:               gpu.Tdp,
 		}
-		hardwareInfo.GPUs = append(hardwareInfo.GPUs, gpuDevice)
 	}
 
-	// 存储设备信息 - 从扁平结构获取
-	for _, storage := range req.Hardware.Storages {
-		storageDevice := models.StorageDevice{
+	// 存储设备信息
+	for i, storage := range req.Hardware.Storages {
+		hardwareInfo.Storages[i] = models.StorageDevice{
 			Type:     storage.Type,
 			Model:    storage.Model,
 			Capacity: storage.Capacity,
 			Path:     storage.Path,
 		}
-		hardwareInfo.Storages = append(hardwareInfo.Storages, storageDevice)
 	}
 
-	// 网络设备信息 - 从扁平结构获取
-	for _, network := range req.Hardware.Networks {
-		networkDevice := models.NetworkDevice{
+	// 网络设备信息
+	for i, network := range req.Hardware.Networks {
+		hardwareInfo.Networks[i] = models.NetworkDevice{
 			Name:       network.Name,
 			MacAddress: network.MacAddress,
 			IpAddress:  network.IpAddress,
 			Speed:      network.Speed,
 		}
-		hardwareInfo.Networks = append(hardwareInfo.Networks, networkDevice)
 	}
 
 	// 创建系统信息
@@ -447,199 +319,101 @@ func (s *GameNodeServer) UpdateResourceInfo(ctx context.Context, req *pb.Resourc
 	}
 
 	// 更新节点硬件和系统信息
-	err := s.nodeService.UpdateHardwareAndSystem(req.NodeId, hardwareInfo, systemInfo)
+	err := s.nodeService.UpdateHardwareAndSystem(ctx, req.NodeId, hardwareInfo, systemInfo)
 	if err != nil {
+		s.logger.Error("更新节点硬件和系统信息失败: %v", err)
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update hardware and system info: %v", err))
 	}
 
-	// 发布资源更新事件
-	s.eventManager.Publish(event.NewNodeEvent(req.NodeId, "resource_updated", "Node hardware and system info updated"))
+	s.logger.Info("节点硬件和系统信息更新成功: %s", req.NodeId)
 
-	return &pb.UpdateResponse{
-		Status:  "success",
+	return &pb.ResourceResponse{
+		Success: true,
 		Message: "Hardware and system info updated successfully",
 	}, nil
 }
 
-// ExecutePipeline 执行流水线
-func (s *GameNodeServer) ExecutePipeline(ctx context.Context, req *pb.ExecutePipelineRequest) (*pb.ExecutePipelineResponse, error) {
-	// 创建流水线
-	err := s.pipelineService.CreatePipeline(ctx, req)
+// UpdateNodeState 处理节点状态变更请求
+func (s *GameNodeServer) UpdateNodeState(ctx context.Context, req *pb.StateChangeRequest) (*pb.StateChangeResponse, error) {
+	// 获取节点
+	node, err := s.nodeService.Get(ctx, req.NodeId)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to create pipeline: %v", err))
+		s.logger.Error("获取节点失败: %v", err)
+		return nil, status.Error(codes.NotFound, "节点不存在")
 	}
 
-	// 执行流水线
-	err = s.pipelineService.ExecutePipeline(ctx, req.PipelineId)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to execute pipeline: %v", err))
-	}
-
-	// 发布流水线执行事件
-	s.eventManager.Publish(event.NewPipelineEvent(req.Id, req.PipelineId, "started", "Pipeline execution started"))
-
-	return &pb.ExecutePipelineResponse{
-		Status:  "success",
-		Message: "Pipeline execution started",
-	}, nil
-}
-
-// UpdatePipelineStatus 更新流水线状态
-func (s *GameNodeServer) UpdatePipelineStatus(ctx context.Context, req *pb.PipelineStatusUpdate) (*pb.UpdateResponse, error) {
-	// 转换状态
-	var state models.PipelineState
-	switch req.Status {
-	case "pending":
-		state = models.PipelineStatePending
-	case "running":
-		state = models.PipelineStateRunning
-	case "completed":
-		state = models.PipelineStateCompleted
-	case "failed":
-		state = models.PipelineStateFailed
-	case "canceled":
-		state = models.PipelineStateCanceled
+	// 将 proto 的 GameNodeStaticState 转换为 models.GameNodeState
+	var targetState models.GameNodeState
+	switch req.TargetState {
+	case pb.GameNodeStaticState_NODE_STATE_NORMAL:
+		targetState = models.GameNodeStateOnline
+	case pb.GameNodeStaticState_NODE_STATE_MAINTENANCE:
+		targetState = models.GameNodeStateMaintenance
+	case pb.GameNodeStaticState_NODE_STATE_DISABLED:
+		targetState = models.GameNodeStateOffline
 	default:
-		return nil, status.Error(codes.InvalidArgument, "invalid pipeline status")
+		s.logger.Error("无效的目标状态: %v", req.TargetState)
+		return nil, status.Error(codes.InvalidArgument, "无效的目标状态")
 	}
 
-	// 更新流水线状态
-	err := s.pipelineService.UpdateStatus(ctx, req.PipelineId, state)
+	// 更新节点状态
+	node.Status.State = targetState
+	err = s.nodeService.Update(ctx, node)
 	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update pipeline status: %v", err))
+		s.logger.Error("更新节点状态失败: %v", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update node state: %v", err))
 	}
 
-	// 发布流水线状态更新事件
-	s.eventManager.Publish(event.NewPipelineEvent(req.Id, req.PipelineId, string(state), req.ErrorMessage))
+	s.logger.Info("节点状态更新成功: %s, 新状态=%s", req.NodeId, targetState)
 
-	return &pb.UpdateResponse{
-		Status:  "success",
-		Message: "Pipeline status updated successfully",
+	return &pb.StateChangeResponse{
+		Success:      true,
+		ErrorMessage: "",
+		ConfirmTime:  timestamppb.Now(),
 	}, nil
-}
-
-// UpdateStepStatus 更新步骤状态
-func (s *GameNodeServer) UpdateStepStatus(ctx context.Context, req *pb.StepStatusUpdate) (*pb.UpdateResponse, error) {
-	// 转换状态
-	var state models.StepState
-	switch req.Status {
-	case pb.StepStatus_PENDING:
-		state = models.StepStatePending
-	case pb.StepStatus_RUNNING:
-		state = models.StepStateRunning
-	case pb.StepStatus_COMPLETED:
-		state = models.StepStateCompleted
-	case pb.StepStatus_FAILED:
-		state = models.StepStateFailed
-	case pb.StepStatus_CANCELLED:
-		state = models.StepStateSkipped
-	default:
-		return nil, status.Error(codes.InvalidArgument, "invalid step status")
-	}
-
-	// 更新步骤状态
-	err := s.pipelineService.UpdateStepStatus(ctx, req.PipelineId, req.StepId, state)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to update step status: %v", err))
-	}
-
-	// 保存步骤日志
-	if len(req.Logs) > 0 {
-		err = s.pipelineService.SaveStepLogs(ctx, req.PipelineId, req.StepId, req.Logs)
-		if err != nil {
-			stdlog.Printf("failed to save step logs: %v", err)
-		}
-	}
-
-	// 发布步骤状态更新事件
-	s.eventManager.Publish(event.NewContainerEvent("", req.StepId, string(state), req.ErrorMessage))
-
-	return &pb.UpdateResponse{
-		Status:  "success",
-		Message: "Step status updated successfully",
-	}, nil
-}
-
-// CancelPipeline 取消流水线
-func (s *GameNodeServer) CancelPipeline(ctx context.Context, req *pb.PipelineCancelRequest) (*pb.CancelResponse, error) {
-	// 取消流水线
-	err := s.pipelineService.CancelPipeline(ctx, req.PipelineId)
-	if err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to cancel pipeline: %v", err))
-	}
-
-	// 发布流水线取消事件
-	s.eventManager.Publish(event.NewPipelineEvent("", req.PipelineId, "canceled", req.Reason))
-
-	return &pb.CancelResponse{
-		Status:  "success",
-		Message: "Pipeline canceled successfully",
-	}, nil
-}
-
-// StreamLogs 流式获取日志
-func (s *GameNodeServer) StreamLogs(req *pb.LogRequest, stream pb.GameNodeGRPCService_StreamLogsServer) error {
-	// 获取日志流
-	logCh := s.logManager.StreamLogs(stream.Context(), req.PipelineId, time.Unix(req.StartTime, 0))
-
-	// 发送日志
-	for logEntry := range logCh {
-		err := stream.Send(&pb.LogEntry{
-			PipelineId: logEntry.PipelineId,
-			StepId:     logEntry.StepId,
-			Level:      logEntry.Level,
-			Message:    logEntry.Message,
-			Timestamp:  logEntry.Timestamp,
-		})
-		if err != nil {
-			return status.Error(codes.Internal, fmt.Sprintf("failed to send log entry: %v", err))
-		}
-	}
-
-	return nil
 }
 
 // Stop 停止服务器
-func (s *GameNodeServer) Stop() {
-	// 关闭所有连接
-	s.connectionMutex.Lock()
-	defer s.connectionMutex.Unlock()
+func (s *GameNodeServer) Stop() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	for _, conn := range s.connections {
-		if conn.conn != nil {
-			conn.conn.Close()
-		}
-	}
-	s.connections = make(map[string]*AgentConnection)
+	close(s.done)
+	s.server.GracefulStop()
+
+	return nil
 }
 
 // Start 启动服务器
 func (s *GameNodeServer) Start(ctx context.Context, opts *GameNodeServerOptions) error {
 	// 创建 gRPC 服务器
-	grpcServer := grpc.NewServer()
-	pb.RegisterGameNodeGRPCServiceServer(grpcServer, s)
+	pb.RegisterGameNodeGRPCServiceServer(s.server, s)
 
 	// 创建监听器
 	listener, err := net.Listen("tcp", opts.ListenAddr)
 	if err != nil {
+		s.logger.Error("监听地址失败: %v", err)
 		return fmt.Errorf("failed to listen: %v", err)
 	}
+
+	s.logger.Info("服务器开始监听地址: %s", opts.ListenAddr)
 
 	// 启动心跳检查
 	go s.startHeartbeatCheck(ctx)
 
 	// 启动服务器
 	go func() {
-		if err := grpcServer.Serve(listener); err != nil {
-			stdlog.Printf("failed to serve: %v", err)
+		if err := s.server.Serve(listener); err != nil {
+			s.logger.Error("gRPC服务器运行失败: %v", err)
 		}
 	}()
 
 	// 等待上下文取消
 	<-ctx.Done()
+	s.logger.Info("收到停止信号，正在关闭服务器")
 
 	// 优雅关闭
-	grpcServer.GracefulStop()
+	s.server.GracefulStop()
 	return nil
 }
 
@@ -648,45 +422,84 @@ func (s *GameNodeServer) startHeartbeatCheck(ctx context.Context) {
 	ticker := time.NewTicker(s.config.HeartbeatPeriod)
 	defer ticker.Stop()
 
+	s.logger.Info("心跳检查服务启动，周期: %v", s.config.HeartbeatPeriod)
+
 	for {
 		select {
 		case <-ctx.Done():
+			s.logger.Info("心跳检查服务停止")
 			return
 		case <-ticker.C:
-			s.checkHeartbeats()
+			s.checkHeartbeats(ctx)
 		}
 	}
 }
 
 // checkHeartbeats 检查心跳
-func (s *GameNodeServer) checkHeartbeats() {
-	s.connectionMutex.RLock()
-	defer s.connectionMutex.RUnlock()
+func (s *GameNodeServer) checkHeartbeats(ctx context.Context) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	now := time.Now()
-	for nodeID, conn := range s.connections {
+	for nodeID := range s.connections {
 		// 获取节点状态
-		node, err := s.nodeService.Get(nodeID)
+		node, err := s.nodeService.Get(ctx, nodeID)
 		if err != nil {
-			stdlog.Printf("failed to get node status: %v", err)
+			s.logger.Error("获取节点状态失败: %v", err)
 			continue
 		}
 
 		// 检查最后在线时间
 		if now.Sub(node.Status.LastOnline) > s.config.HeartbeatPeriod*2 {
 			// 更新节点状态为离线
-			if err := s.nodeService.UpdateStatusOnlineStatus(nodeID, false); err != nil {
-				stdlog.Printf("failed to update node status: %v", err)
+			if err := s.nodeService.UpdateStatusOnlineStatus(ctx, nodeID, false); err != nil {
+				s.logger.Error("更新节点状态失败: %v", err)
 				continue
 			}
 
-			// 发布节点离线事件
-			s.eventManager.Publish(event.NewNodeEvent(nodeID, "offline", "Node heartbeat timeout"))
+			s.logger.Warn("节点心跳超时，标记为离线: %s", nodeID)
 
-			// 关闭连接
-			if conn.conn != nil {
-				conn.conn.Close()
-			}
+			// 从连接池中移除
+			delete(s.connections, nodeID)
 		}
 	}
+}
+
+// Execute 执行Pipeline
+func (s *GameNodeServer) Execute(ctx context.Context, req *pb.ExecuteRequest) (*pb.ExecuteResponse, error) {
+	// 获取节点
+	node, err := s.nodeService.Get(ctx, req.NodeId)
+	if err != nil {
+		s.logger.Error("获取节点失败: %v", err)
+		return nil, status.Error(codes.NotFound, "节点不存在")
+	}
+
+	// 检查节点状态
+	if !node.Status.Online {
+		s.logger.Error("节点离线: %s", req.NodeId)
+		return nil, status.Error(codes.Unavailable, "节点离线")
+	}
+
+	// 获取Pipeline
+	pipeline, err := s.pipelineService.Get(ctx, req.PipelineId)
+	if err != nil {
+		s.logger.Error("获取Pipeline失败: %v", err)
+		return nil, status.Error(codes.NotFound, "Pipeline不存在")
+	}
+
+	// 更新Pipeline状态
+	pipeline.Status.State = models.PipelineStateRunning
+	pipeline.Status.StartTime = time.Now()
+	pipeline.Status.NodeID = req.NodeId
+	if err := s.pipelineService.Update(ctx, pipeline); err != nil {
+		s.logger.Error("更新Pipeline状态失败: %v", err)
+		return nil, status.Error(codes.Internal, "更新Pipeline状态失败")
+	}
+
+	s.logger.Info("开始执行Pipeline: ID=%s, 节点=%s", req.PipelineId, req.NodeId)
+
+	return &pb.ExecuteResponse{
+		Success: true,
+		Message: "Pipeline开始执行",
+	}, nil
 }

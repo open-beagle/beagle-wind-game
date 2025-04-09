@@ -16,7 +16,7 @@
   - [x] HeartbeatRequest 消息
   - [x] MetricsReport 消息
   - [x] ResourceInfo 消息
-  - [x] ExecutePipelineRequest 消息
+  - [x] ExecuteRequest 消息
   - [x] PipelineStatusUpdate 消息
   - [x] Event 消息
 - [x] 重新生成 proto 文件
@@ -68,7 +68,7 @@
 
 1. Proto 文件修改
 
-   - 修改了 RegisterRequest、HeartbeatRequest、MetricsReport、ResourceInfo、ExecutePipelineRequest、PipelineStatusUpdate 和 Event 消息中的字段名称
+   - 修改了 RegisterRequest、HeartbeatRequest、MetricsReport、ResourceInfo、ExecuteRequest、PipelineStatusUpdate 和 Event 消息中的字段名称
    - 重新生成了 proto 文件并验证了生成的代码
 
 2. 模型文件修改

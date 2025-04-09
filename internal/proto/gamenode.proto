@@ -11,17 +11,9 @@ service GameNodeGRPCService {
   // 节点管理
   rpc Register(RegisterRequest) returns (RegisterResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
-  rpc ReportMetrics(MetricsReport) returns (ReportResponse);
-  rpc UpdateResourceInfo(ResourceInfo) returns (UpdateResponse);
-  
-  // Pipeline管理
-  rpc ExecutePipeline(ExecutePipelineRequest) returns (ExecutePipelineResponse);
-  rpc UpdatePipelineStatus(PipelineStatusUpdate) returns (UpdateResponse);
-  rpc UpdateStepStatus(StepStatusUpdate) returns (UpdateResponse);
-  rpc CancelPipeline(PipelineCancelRequest) returns (CancelResponse);
-  
-  // 日志流
-  rpc StreamLogs(LogRequest) returns (stream LogEntry);
+  rpc ReportMetrics(MetricsRequest) returns (MetricsResponse);
+  rpc ReportResource(ResourceRequest) returns (ResourceResponse);
+  rpc UpdateNodeState(StateChangeRequest) returns (StateChangeResponse);
 }
 
 // 节点注册
@@ -34,13 +26,12 @@ message RegisterRequest {
   map<string, string> hardware = 6;
   map<string, string> system = 7;
   map<string, string> labels = 8;
-  HardwareInfo hardware_info = 9;  // 新增详细硬件信息
-  SystemInfo system_info = 10;     // 新增详细系统信息
 }
 
 message RegisterResponse {
   bool success = 1;
   string message = 2;
+  GameNodeStaticState state = 3;  // 节点静态状态
 }
 
 // 心跳
@@ -48,7 +39,6 @@ message HeartbeatRequest {
   string id = 1;
   string session_id = 2;
   int64 timestamp = 3;
-  GameNodeStatus status = 4;   // 修改resource_info为status
 }
 
 message HeartbeatResponse {
@@ -57,31 +47,98 @@ message HeartbeatResponse {
 }
 
 // 节点指标报告
-message MetricsReport {
+message MetricsRequest {
   string id = 1;
   int64 timestamp = 2;
-  repeated Metric metrics = 3;
+  MetricsInfo metrics = 3;
 }
 
-message Metric {
-  string name = 1;
+message MetricsInfo {
+  repeated CPUMetrics cpus = 1;
+  MemoryMetrics memory = 2;
+  repeated GPUMetrics gpus = 3;
+  repeated StorageMetrics storages = 4;
+  NetworkMetrics network = 5;
+}
+
+message CPUMetrics {
+  string model = 1;
+  int32 cores = 2;
+  int32 threads = 3;
+  double usage = 4;
+}
+
+message MemoryMetrics {
+  int64 total = 1;
+  int64 available = 2;
+  int64 used = 3;
+  double usage = 4;
+}
+
+message GPUMetrics {
+  string model = 1;
+  int64 memory_total = 2;
+  double usage = 3;
+  int64 memory_used = 4;
+  int64 memory_free = 5;
+  double memory_usage = 6;
+}
+
+message StorageMetrics {
+  string path = 1;
   string type = 2;
-  double value = 3;
-  map<string, string> labels = 4;
+  string model = 3;
+  int64 capacity = 4;
+  int64 used = 5;
+  int64 free = 6;
+  double usage = 7;
+}
+
+message NetworkMetrics {
+  double inbound_traffic = 1;
+  double outbound_traffic = 2;
+  int32 connections = 3;
+}
+
+message MetricsResponse {
+  bool success = 1;
+  string message = 2;
 }
 
 // 资源信息更新
-message ResourceInfo {
+message ResourceRequest {
   string node_id = 1;
-  string node_name = 2;
-  GameNodeState node_state = 3;  // 修改node_status为node_state并使用枚举类型
-  NodeType node_type = 4;        // 修改字段编号
-  HardwareInfo hardware = 5;     // 修改字段编号
-  SystemInfo system = 6;         // 修改字段编号
-  MetricsInfo metrics = 7;       // 修改字段编号
+  int64 timestamp = 2;
+  HardwareInfo hardware = 3;
+  SystemInfo system = 4;
 }
 
-// 硬件信息 - 重构为扁平结构
+message ResourceResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// 状态变更请求
+message StateChangeRequest {
+  string node_id = 1;
+  GameNodeStaticState target_state = 2;
+  google.protobuf.Timestamp change_time = 3;
+}
+
+message StateChangeResponse {
+  bool success = 1;
+  string error_message = 2;
+  google.protobuf.Timestamp confirm_time = 3;
+}
+
+// 节点静态状态
+enum GameNodeStaticState {
+  NODE_STATE_NORMAL = 0;      // 正常状态
+  NODE_STATE_MAINTENANCE = 1; // 维护状态
+  NODE_STATE_DISABLED = 2;    // 禁用状态
+}
+
+// 硬件信息
 message HardwareInfo {
   repeated CPUHardware cpus = 1;
   repeated MemoryHardware memories = 2;
@@ -96,243 +153,47 @@ message CPUHardware {
   int32 threads = 3;
   double frequency = 4;
   int64 cache = 5;
-  string architecture = 6;  // 新增架构字段
+  string architecture = 6;
 }
 
 message MemoryHardware {
-  int64 size = 1;           // 改名: total -> size
+  int64 size = 1;
   string type = 2;
   double frequency = 3;
-  // 移除 channels 字段
 }
 
 message GPUHardware {
   string model = 1;
   int64 memory_total = 2;
-  string architecture = 3;          // 新增架构字段
-  string driver_version = 4;        // 新增驱动版本字段
-  string compute_capability = 5;    // 新增计算能力字段
-  int32 tdp = 6;                    // 新增功耗指标字段
-  // 移除 cuda_cores 字段
+  string architecture = 3;
+  string driver_version = 4;
+  string compute_capability = 5;
+  int32 tdp = 6;
 }
-
-// 移除 StorageHardware 消息体，直接使用 StorageDevice 数组
 
 message StorageDevice {
   string type = 1;
-  string model = 2;         // 新增型号字段
+  string model = 2;
   int64 capacity = 3;
-  string path = 4;          // 新增挂载路径字段
+  string path = 4;
 }
 
-// 添加 NetworkDevice 消息体
 message NetworkDevice {
-  string name = 1;          // 网卡名称
-  string mac_address = 2;   // MAC地址
-  string ip_address = 3;    // IP地址
-  int64 speed = 4;          // 网卡速率(Mbps)
+  string name = 1;
+  string mac_address = 2;
+  string ip_address = 3;
+  int64 speed = 4;
 }
 
-// 添加MetricsInfo消息体 - 重构为扁平结构
-message MetricsInfo {
-  repeated CPUMetrics cpus = 1;     // 改为CPU指标数组
-  MemoryMetrics memory = 2;
-  repeated GPUMetrics gpus = 3;     // 改为GPU指标数组
-  repeated StorageMetrics storages = 4;
-  NetworkMetrics network = 5;
-}
-
-message CPUMetrics {
-  string model = 1;         // 新增型号字段
-  int32 cores = 2;          // 新增核心数字段
-  int32 threads = 3;        // 新增线程数字段
-  double usage = 4;         // CPU使用率
-  // 移除 temperature 和 core_count 字段
-}
-
-message MemoryMetrics {
-  int64 total = 1;          // 总内存大小
-  int64 available = 2;      // 可用内存大小
-  int64 used = 3;           // 新增已用内存字段
-  double usage = 4;         // 新增使用率字段
-}
-
-message GPUMetrics {
-  string model = 1;         // 新增GPU型号字段
-  int64 memory_total = 2;   // 显存总量
-  double usage = 3;         // GPU使用率
-  int64 memory_used = 4;    // 已用显存
-  int64 memory_free = 5;    // 新增可用显存字段
-  double memory_usage = 6;  // 新增显存使用率字段
-  // 移除 temperature 字段
-}
-
-message StorageMetrics {
-  string path = 1;          // 新增挂载路径字段
-  string type = 2;          // 新增存储类型字段
-  string model = 3;         // 新增设备型号字段
-  int64 capacity = 4;       // 新增总容量字段
-  int64 used = 5;           // 新增已用空间字段
-  int64 free = 6;           // 新增可用空间字段
-  double usage = 7;         // 存储使用率
-  // 修改字段: device -> path, total -> capacity, available -> free
-}
-
-message NetworkMetrics {
-  double inbound_traffic = 1;   // 改名: rx_rate -> inbound_traffic
-  double outbound_traffic = 2;  // 改名: tx_rate -> outbound_traffic
-  int32 connections = 3;        // 连接数
-}
-
-// Pipeline 执行请求
-message ExecutePipelineRequest {
-  string id = 1;
-  string pipeline_id = 2;
-  bytes pipeline_data = 3;
-  map<string, string> envs = 4;
-  map<string, string> args = 5;
-}
-
-message ExecutePipelineResponse {
-  string status = 1;
-  string message = 2;
-}
-
-// Pipeline 状态更新
-message PipelineStatusUpdate {
-  string id = 1;
-  string pipeline_id = 2;
-  string status = 3;
-  int32 current_step = 4;
-  float progress = 5;
-  string error_message = 6;
-  google.protobuf.Timestamp update_time = 7;
-}
-
-// Step 状态更新
-message StepStatusUpdate {
-  string pipeline_id = 1;
-  string step_id = 2;
-  StepStatus status = 3;
-  int64 start_time = 4;
-  int64 end_time = 5;
-  string error_message = 6;
-  bytes logs = 7;
-}
-
-// Step 状态枚举
-enum StepStatus {
-  PENDING = 0;
-  RUNNING = 1;
-  COMPLETED = 2;
-  FAILED = 3;
-  CANCELLED = 4;
-}
-
-// Pipeline 取消请求
-message PipelineCancelRequest {
-  string pipeline_id = 1;
-  string reason = 2;
-}
-
-message CancelResponse {
-  string status = 1;
-  string message = 2;
-}
-
-// 日志请求
-message LogRequest {
-  string pipeline_id = 1;
-  string step_id = 2;
-  string level = 3;
-  int64 start_time = 4;
-  int64 end_time = 5;
-}
-
-// 日志条目
-message LogEntry {
-  string pipeline_id = 1;
-  string step_id = 2;
-  string level = 3;
-  string message = 4;
-  google.protobuf.Timestamp timestamp = 5;
-}
-
-// 通用响应
-message UpdateResponse {
-  string status = 1;
-  string message = 2;
-}
-
-message ReportResponse {
-  string status = 1;
-  string message = 2;
-}
-
-// 节点类型枚举
-enum NodeType {
-  NODE_TYPE_UNKNOWN = 0;    // 未知类型
-  NODE_TYPE_PHYSICAL = 1;   // 物理节点
-  NODE_TYPE_VIRTUAL = 2;    // 虚拟节点
-  NODE_TYPE_CONTAINER = 3;  // 容器节点
-}
-
-// 节点状态枚举
-enum GameNodeState {
-  NODE_STATE_OFFLINE = 0;     // 离线
-  NODE_STATE_ONLINE = 1;      // 在线
-  NODE_STATE_MAINTENANCE = 2; // 维护
-  NODE_STATE_READY = 3;       // 就绪
-  NODE_STATE_BUSY = 4;        // 忙碌
-  NODE_STATE_ERROR = 5;       // 错误
-}
-
-// 事件
-message Event {
-  string type = 1;
-  string id = 2;
-  string entity_id = 3;
-  string status = 4;
-  string message = 5;
-  google.protobuf.Timestamp timestamp = 6;
-  map<string, string> data = 7;
-}
-
-// 添加SystemInfo消息体
+// 系统信息
 message SystemInfo {
-  string os_distribution = 1;        // 操作系统发行版
-  string os_version = 2;             // 操作系统版本
-  string os_architecture = 3;        // 操作系统架构
-  string kernel_version = 4;         // 内核版本
-  string gpu_driver_version = 5;     // GPU驱动版本
-  string gpu_compute_api_version = 6;  // GPU计算框架版本(CUDA/ROCm/oneAPI/OpenCL)
-  string docker_version = 7;         // Docker版本
-  string containerd_version = 8;     // Containerd版本
-  string runc_version = 9;           // Runc版本
-}
-
-// 添加GameNodeStatus消息体
-message GameNodeStatus {
-  GameNodeState state = 1;           // 节点状态
-  bool online = 2;                   // 是否在线
-  google.protobuf.Timestamp last_online = 3;  // 最后在线时间
-  google.protobuf.Timestamp updated_at = 4;   // 状态更新时间
-  HardwareInfo hardware = 5;         // 硬件配置
-  SystemInfo system = 6;             // 系统配置
-  MetricsInfo metrics = 7;           // 监控指标
-}
-
-// 添加完整的GameNode消息体
-message GameNode {
-  string id = 1;                     // 节点ID
-  string alias = 2;                  // 节点别名
-  string model = 3;                  // 节点型号
-  string type = 4;                   // 节点类型
-  string location = 5;               // 节点位置
-  map<string, string> labels = 6;    // 标签
-  map<string, string> hardware = 7;  // 硬件配置(简化版)
-  map<string, string> system = 8;    // 系统配置(简化版)
-  GameNodeStatus status = 9;         // 节点状态信息
-  google.protobuf.Timestamp created_at = 10;  // 创建时间
-  google.protobuf.Timestamp updated_at = 11;  // 更新时间
+  string os_distribution = 1;
+  string os_version = 2;
+  string os_architecture = 3;
+  string kernel_version = 4;
+  string gpu_driver_version = 5;
+  string gpu_compute_api_version = 6;
+  string docker_version = 7;
+  string containerd_version = 8;
+  string runc_version = 9;
 } 

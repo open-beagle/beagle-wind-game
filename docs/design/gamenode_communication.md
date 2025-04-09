@@ -89,7 +89,7 @@ Pipeline 系统提供以下管理接口，详细设计请参考 [GameNodeServer 
 
 1. **注册(Register)**：Agent 启动时向服务器注册，获取 session_id
 2. **心跳(Heartbeat)**：Agent 定期发送心跳，附带基本状态信息
-3. **命令执行**：如启动容器(StartContainer)、执行 Pipeline(ExecutePipeline)等
+3. **命令执行**：如启动容器(StartContainer)、执行 Pipeline(Execute)等
 
 ### 3.2 服务器流模式
 
@@ -302,7 +302,7 @@ func NewAgent(opts AgentOptions, dockerClient *client.Client) *Agent {
 2. Pipeline 的创建：
 
 ```go
-func (a *Agent) executePipeline(req *proto.ExecutePipelineRequest) error {
+func (a *Agent) Execute(req *proto.ExecuteRequest) error {
     // 使用 Agent 的 dockerClient
     pipeline := NewPipeline(req, a.dockerClient)
 }

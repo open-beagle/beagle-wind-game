@@ -10,12 +10,15 @@ import (
 	"strings"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
+	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
 // HardwareCollector 硬件信息采集器
 type HardwareCollector struct {
 	// 可能的配置选项
 	options map[string]string
+	// 日志框架
+	logger utils.Logger
 }
 
 // NewHardwareCollector 创建新的硬件信息采集器
@@ -23,8 +26,11 @@ func NewHardwareCollector(options map[string]string) *HardwareCollector {
 	if options == nil {
 		options = make(map[string]string)
 	}
+	// 创建日志器
+	logger := utils.New("HardwareCollector")
 	return &HardwareCollector{
 		options: options,
+		logger:  logger,
 	}
 }
 
@@ -41,27 +47,27 @@ func (c *HardwareCollector) GetHardwareInfo() (models.HardwareInfo, error) {
 
 	// 采集CPU信息
 	if err := c.collectCPUInfo(&hardwareInfo); err != nil {
-		fmt.Printf("采集CPU信息失败: %v\n", err)
+		c.logger.Warn("采集CPU信息失败: %v", err)
 	}
 
 	// 采集内存信息
 	if err := c.collectMemoryInfo(&hardwareInfo); err != nil {
-		fmt.Printf("采集内存信息失败: %v\n", err)
+		c.logger.Warn("采集内存信息失败: %v", err)
 	}
 
 	// 采集GPU信息
 	if err := c.collectGPUInfo(&hardwareInfo); err != nil {
-		fmt.Printf("采集GPU信息失败: %v\n", err)
+		c.logger.Warn("采集GPU信息失败: %v", err)
 	}
 
 	// 采集存储设备信息
 	if err := c.collectStorageInfo(&hardwareInfo); err != nil {
-		fmt.Printf("采集存储设备信息失败: %v\n", err)
+		c.logger.Warn("采集存储设备信息失败: %v", err)
 	}
 
 	// 采集网络设备信息
 	if err := c.collectNetworkInfo(&hardwareInfo); err != nil {
-		fmt.Printf("采集网络设备信息失败: %v\n", err)
+		c.logger.Warn("采集网络设备信息失败: %v", err)
 	}
 
 	return hardwareInfo, nil
@@ -559,20 +565,20 @@ func (c *HardwareCollector) collectMemoryInfo(hardwareInfo *models.HardwareInfo)
 func (c *HardwareCollector) collectGPUInfo(hardwareInfo *models.HardwareInfo) error {
 	// 检查是否存在NVIDIA GPU
 	if err := c.collectNvidiaGPUInfo(hardwareInfo); err != nil {
-		fmt.Printf("采集NVIDIA GPU信息失败: %v\n", err)
+		c.logger.Warn("采集NVIDIA GPU信息失败: %v", err)
 	}
 
 	// 如果没有找到NVIDIA GPU，尝试AMD GPU
 	if len(hardwareInfo.GPUs) == 0 {
 		if err := c.collectAMDGPUInfo(hardwareInfo); err != nil {
-			fmt.Printf("采集AMD GPU信息失败: %v\n", err)
+			c.logger.Warn("采集AMD GPU信息失败: %v", err)
 		}
 	}
 
 	// 如果仍未找到GPU，尝试Intel GPU
 	if len(hardwareInfo.GPUs) == 0 {
 		if err := c.collectIntelGPUInfo(hardwareInfo); err != nil {
-			fmt.Printf("采集Intel GPU信息失败: %v\n", err)
+			c.logger.Warn("采集Intel GPU信息失败: %v", err)
 		}
 	}
 
@@ -618,7 +624,7 @@ func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareIn
 				if memory, err := strconv.ParseFloat(memoryStr, 64); err == nil {
 					gpu.MemoryTotal = int64(memory * 1024 * 1024) // 转换为字节
 				} else {
-					fmt.Printf("解析GPU显存大小失败: %v, 原始值: %s\n", err, memoryStr)
+					c.logger.Warn("解析GPU显存大小失败: %v, 原始值: %s", err, memoryStr)
 				}
 			}
 
@@ -627,19 +633,19 @@ func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareIn
 			if len(fields) >= 3 {
 				pciID = strings.TrimSpace(fields[2])
 				if pciID == "" {
-					fmt.Printf("警告: GPU的PCI ID为空\n")
+					c.logger.Warn("警告: GPU的PCI ID为空")
 				}
 			} else {
-				fmt.Printf("警告: 未能获取GPU的PCI ID\n")
+				c.logger.Warn("警告: 未能获取GPU的PCI ID")
 			}
 
 			// UUID和序列号（不再保存，因为模型中没有这个字段）
 			if len(fields) >= 4 {
 				uuid := strings.TrimSpace(fields[3])
 				if uuid == "" {
-					fmt.Printf("警告: GPU的UUID为空\n")
+					c.logger.Warn("警告: GPU的UUID为空")
 				} else if uuid == "N/A" {
-					fmt.Printf("警告: GPU的UUID不可用\n")
+					c.logger.Warn("警告: GPU的UUID不可用")
 				}
 			}
 
@@ -647,7 +653,7 @@ func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareIn
 			if len(fields) >= 5 {
 				serial := strings.TrimSpace(fields[4])
 				if serial == "" {
-					fmt.Printf("警告: GPU的序列号为空\n")
+					c.logger.Warn("警告: GPU的序列号为空")
 				}
 			}
 
@@ -655,7 +661,7 @@ func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareIn
 			if len(fields) >= 6 {
 				tdpStr := strings.TrimSpace(fields[5])
 				if tdpStr == "" {
-					fmt.Printf("警告: GPU的功耗信息为空\n")
+					c.logger.Warn("警告: GPU的功耗信息为空")
 				} else if tdpStr != "N/A" {
 					// 移除单位(通常是W)
 					tdpStr = strings.ReplaceAll(tdpStr, "W", "")
@@ -664,7 +670,7 @@ func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareIn
 					if err == nil {
 						gpu.TDP = int32(tdp)
 					} else {
-						fmt.Printf("解析GPU功耗失败: %v, 原始值: %s\n", err, tdpStr)
+						c.logger.Warn("解析GPU功耗失败: %v, 原始值: %s", err, tdpStr)
 					}
 				}
 			}
@@ -672,7 +678,7 @@ func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareIn
 			// 设置架构
 			gpu.Architecture = c.determineNvidiaArchitecture(fields[0])
 			if gpu.Architecture == "Unknown" {
-				fmt.Printf("警告: 无法确定GPU %s 的架构\n", fields[0])
+				c.logger.Warn("警告: 无法确定GPU %s 的架构", fields[0])
 			}
 
 			// 设置驱动版本
@@ -693,14 +699,14 @@ func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareIn
 		// 	fmt.Printf("通过lspci增强GPU信息失败: %v\n", err)
 		// }
 	} else {
-		fmt.Printf("警告: nvidia-smi未返回任何GPU信息\n")
+		c.logger.Warn("警告: nvidia-smi未返回任何GPU信息")
 
 		// 尝试使用lspci检测是否存在NVIDIA GPU
 		lspciPath, err := findCommand("lspci")
 		if err == nil {
 			out, err := exec.Command(lspciPath).Output()
 			if err == nil && strings.Contains(string(out), "NVIDIA") {
-				fmt.Printf("检测到NVIDIA GPU设备，但nvidia-smi未返回信息，可能是驱动问题\n")
+				c.logger.Warn("检测到NVIDIA GPU设备，但nvidia-smi未返回信息，可能是驱动问题")
 
 				// 尝试只从lspci获取基本信息
 				out, err := exec.Command(lspciPath, "-v").Output()
@@ -728,7 +734,7 @@ func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareIn
 								}
 
 								hardwareInfo.GPUs = append(hardwareInfo.GPUs, gpu)
-								fmt.Printf("从lspci中检测到NVIDIA GPU: %s\n", model)
+								c.logger.Info("从lspci中检测到NVIDIA GPU: %s", model)
 							}
 						}
 					}

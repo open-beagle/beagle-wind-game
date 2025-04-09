@@ -1,22 +1,27 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
 	"github.com/open-beagle/beagle-wind-game/internal/store"
+	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
 // GamePlatformService 游戏平台服务
 type GamePlatformService struct {
 	platformStore store.GamePlatformStore
+	logger        utils.Logger
 }
 
 // NewGamePlatformService 创建游戏平台服务
 func NewGamePlatformService(platformStore store.GamePlatformStore) *GamePlatformService {
+	logger := utils.New("GamePlatformService")
 	return &GamePlatformService{
 		platformStore: platformStore,
+		logger:        logger,
 	}
 }
 
@@ -35,9 +40,13 @@ type GamePlatformListResult struct {
 }
 
 // List 获取游戏平台列表
-func (s *GamePlatformService) List(params GamePlatformListParams) (*GamePlatformListResult, error) {
-	platforms, err := s.platformStore.List()
+func (s *GamePlatformService) List(ctx context.Context, params GamePlatformListParams) (*GamePlatformListResult, error) {
+	s.logger.Debug("获取游戏平台列表，参数: page=%d, size=%d, keyword=%s, status=%s",
+		params.Page, params.PageSize, params.Keyword, params.Status)
+
+	platforms, err := s.platformStore.List(ctx)
 	if err != nil {
+		s.logger.Error("获取平台列表失败: %v", err)
 		return nil, fmt.Errorf("存储层错误: %w", err)
 	}
 
@@ -74,6 +83,7 @@ func (s *GamePlatformService) List(params GamePlatformListParams) (*GamePlatform
 	start := (params.Page - 1) * params.PageSize
 	end := start + params.PageSize
 	if start >= total {
+		s.logger.Debug("分页超出范围，返回空列表: start=%d, total=%d", start, total)
 		return &GamePlatformListResult{
 			Total: total,
 			Items: []models.GamePlatform{},
@@ -83,6 +93,8 @@ func (s *GamePlatformService) List(params GamePlatformListParams) (*GamePlatform
 		end = total
 	}
 
+	s.logger.Debug("返回游戏平台列表: total=%d, filtered=%d, page=%d, size=%d",
+		len(platforms), total, params.Page, params.PageSize)
 	return &GamePlatformListResult{
 		Total: total,
 		Items: filteredPlatforms[start:end],
@@ -90,14 +102,20 @@ func (s *GamePlatformService) List(params GamePlatformListParams) (*GamePlatform
 }
 
 // Get 获取指定ID的平台
-func (s *GamePlatformService) Get(id string) (*models.GamePlatform, error) {
-	platform, err := s.platformStore.Get(id)
+func (s *GamePlatformService) Get(ctx context.Context, id string) (*models.GamePlatform, error) {
+	s.logger.Debug("获取游戏平台详情: %s", id)
+
+	platform, err := s.platformStore.Get(ctx, id)
 	if err != nil {
+		s.logger.Error("获取平台详情失败: %v", err)
 		return nil, fmt.Errorf("存储层错误: %w", err)
 	}
 	if platform.ID == "" {
+		s.logger.Error("平台不存在: %s", id)
 		return nil, fmt.Errorf("平台不存在: %s", id)
 	}
+
+	s.logger.Debug("成功获取游戏平台详情: %s", id)
 	return &platform, nil
 }
 
@@ -108,51 +126,69 @@ type GamePlatformAccessResult struct {
 }
 
 // GetAccess 获取平台远程访问链接
-func (s *GamePlatformService) GetAccess(id string) (GamePlatformAccessResult, error) {
+func (s *GamePlatformService) GetAccess(ctx context.Context, id string) (GamePlatformAccessResult, error) {
+	s.logger.Debug("获取游戏平台访问链接: %s", id)
+
 	// 检查平台是否存在
-	platform, err := s.platformStore.Get(id)
+	platform, err := s.platformStore.Get(ctx, id)
 	if err != nil {
+		s.logger.Error("获取平台详情失败: %v", err)
 		return GamePlatformAccessResult{}, fmt.Errorf("存储层错误: %w", err)
 	}
 	if platform.ID == "" {
+		s.logger.Error("平台不存在: %s", id)
 		return GamePlatformAccessResult{}, fmt.Errorf("平台不存在: %s", id)
 	}
 
 	// 生成访问链接
 	expiresAt := time.Now().Add(24 * time.Hour)
+	link := "https://vnc.example.com/platform/" + id
+
+	s.logger.Debug("成功生成平台访问链接: id=%s, link=%s, expires=%v", id, link, expiresAt)
 	return GamePlatformAccessResult{
-		Link:      "https://vnc.example.com/platform/" + id,
+		Link:      link,
 		ExpiresAt: expiresAt,
 	}, nil
 }
 
 // RefreshAccess 刷新平台远程访问链接
-func (s *GamePlatformService) RefreshAccess(id string) (GamePlatformAccessResult, error) {
+func (s *GamePlatformService) RefreshAccess(ctx context.Context, id string) (GamePlatformAccessResult, error) {
+	s.logger.Debug("刷新游戏平台访问链接: %s", id)
+
 	// 检查平台是否存在
-	platform, err := s.platformStore.Get(id)
+	platform, err := s.platformStore.Get(ctx, id)
 	if err != nil {
+		s.logger.Error("获取平台详情失败: %v", err)
 		return GamePlatformAccessResult{}, fmt.Errorf("存储层错误: %w", err)
 	}
 	if platform.ID == "" {
+		s.logger.Error("平台不存在: %s", id)
 		return GamePlatformAccessResult{}, fmt.Errorf("平台不存在: %s", id)
 	}
 
 	// 刷新访问链接
 	expiresAt := time.Now().Add(24 * time.Hour)
+	link := "https://vnc.example.com/platform/" + id + "?refresh=" + time.Now().String()
+
+	s.logger.Debug("成功刷新平台访问链接: id=%s, link=%s, expires=%v", id, link, expiresAt)
 	return GamePlatformAccessResult{
-		Link:      "https://vnc.example.com/platform/" + id + "?refresh=" + time.Now().String(),
+		Link:      link,
 		ExpiresAt: expiresAt,
 	}, nil
 }
 
 // Update 更新平台信息
-func (s *GamePlatformService) Update(id string, platformData models.GamePlatform) error {
+func (s *GamePlatformService) Update(ctx context.Context, id string, platformData models.GamePlatform) error {
+	s.logger.Debug("更新游戏平台: %s", id)
+
 	// 检查平台是否存在
-	existingPlatform, err := s.platformStore.Get(id)
+	existingPlatform, err := s.platformStore.Get(ctx, id)
 	if err != nil {
+		s.logger.Error("获取平台详情失败: %v", err)
 		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingPlatform.ID == "" {
+		s.logger.Error("平台不存在: %s", id)
 		return fmt.Errorf("平台不存在: %s", id)
 	}
 
@@ -166,21 +202,28 @@ func (s *GamePlatformService) Update(id string, platformData models.GamePlatform
 	platformData.CreatedAt = existingPlatform.CreatedAt
 
 	// 更新平台信息
-	err = s.platformStore.Update(platformData)
+	err = s.platformStore.Update(ctx, platformData)
 	if err != nil {
+		s.logger.Error("更新平台失败: %v", err)
 		return fmt.Errorf("存储层错误: %w", err)
 	}
+
+	s.logger.Info("成功更新游戏平台: %s", id)
 	return nil
 }
 
 // Create 创建新平台
-func (s *GamePlatformService) Create(platformData models.GamePlatform) (string, error) {
+func (s *GamePlatformService) Create(ctx context.Context, platformData models.GamePlatform) (string, error) {
+	s.logger.Debug("创建游戏平台: %s", platformData.ID)
+
 	// 检查平台是否已存在
-	existingPlatform, err := s.platformStore.Get(platformData.ID)
+	existingPlatform, err := s.platformStore.Get(ctx, platformData.ID)
 	if err != nil {
+		s.logger.Error("检查平台是否存在失败: %v", err)
 		return "", fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingPlatform.ID != "" {
+		s.logger.Error("平台ID已存在: %s", platformData.ID)
 		return "", fmt.Errorf("平台ID已存在: %s", platformData.ID)
 	}
 
@@ -190,29 +233,38 @@ func (s *GamePlatformService) Create(platformData models.GamePlatform) (string, 
 	platformData.UpdatedAt = now
 
 	// 添加到存储
-	err = s.platformStore.Add(platformData)
+	err = s.platformStore.Add(ctx, platformData)
 	if err != nil {
+		s.logger.Error("添加平台失败: %v", err)
 		return "", fmt.Errorf("存储层错误: %w", err)
 	}
 
+	s.logger.Info("成功创建游戏平台: %s", platformData.ID)
 	return platformData.ID, nil
 }
 
 // Delete 删除平台
-func (s *GamePlatformService) Delete(id string) error {
+func (s *GamePlatformService) Delete(ctx context.Context, id string) error {
+	s.logger.Debug("删除游戏平台: %s", id)
+
 	// 检查平台是否存在
-	existingPlatform, err := s.platformStore.Get(id)
+	existingPlatform, err := s.platformStore.Get(ctx, id)
 	if err != nil {
+		s.logger.Error("获取平台详情失败: %v", err)
 		return fmt.Errorf("存储层错误: %w", err)
 	}
 	if existingPlatform.ID == "" {
+		s.logger.Error("平台不存在: %s", id)
 		return fmt.Errorf("平台不存在: %s", id)
 	}
 
 	// 删除平台
-	err = s.platformStore.Delete(id)
+	err = s.platformStore.Delete(ctx, id)
 	if err != nil {
+		s.logger.Error("删除平台失败: %v", err)
 		return fmt.Errorf("存储层错误: %w", err)
 	}
+
+	s.logger.Info("成功删除游戏平台: %s", id)
 	return nil
 }

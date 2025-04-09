@@ -56,7 +56,7 @@ echo "====================================================="
 
 # 在后台启动后端服务器
 echo "Starting backend server on port $BACKEND_PORT..."
-./bin/server &
+./bin/server --log-file="logs/server.log" &
 BACKEND_PID=$!
 
 # 启动前端开发服务器

@@ -104,5 +104,3 @@ type GameNodePipelineStore interface {
 #### 4.2.2 数据模型
 
 Pipeline 数据模型使用 `models.GameNodePipeline`，定义在 [gamenode_pipeline.go](../../internal/models/gamenode_pipeline.go) 中：
-
-```

@@ -20,34 +20,34 @@
     last_online: 2024-03-21T10:00:00Z
     updated_at: 2024-03-21T10:00:00Z
     hardware:
-        cpus: []
-        memories: []
-        gpus: []
-        storages: []
-        networks: []
+      cpus: []
+      memories: []
+      gpus: []
+      storages: []
+      networks: []
     system:
-        os_distribution: Ubuntu
-        os_version: 22.04 LTS
-        os_architecture: x86_64
-        kernel_version: ""
-        gpu_driver_version: NVIDIA Driver 545.23.08
-        gpu_compute_api_version: ""
-        docker_version: ""
-        containerd_version: ""
-        runc_version: ""
+      os_distribution: Ubuntu
+      os_version: 22.04 LTS
+      os_architecture: x86_64
+      kernel_version: ""
+      gpu_driver_version: NVIDIA Driver 545.23.08
+      gpu_compute_api_version: ""
+      docker_version: ""
+      containerd_version: ""
+      runc_version: ""
     metrics:
-        cpus: []
-        memory:
-            total: 0
-            available: 120259084288
-            used: 17179869184
-            usage: 12.5
-        gpus: []
-        storages: []
-        network:
-            inbound_traffic: 10.5
-            outbound_traffic: 2.3
-            connections: 120
+      cpus: []
+      memory:
+        total: 0
+        available: 120259084288
+        used: 17179869184
+        usage: 12.5
+      gpus: []
+      storages: []
+      network:
+        inbound_traffic: 10.5
+        outbound_traffic: 2.3
+        connections: 120
   created_at: 2024-01-15T00:00:00Z
   updated_at: 2024-03-21T10:00:00Z
 - id: node-243
@@ -72,34 +72,34 @@
     last_online: 2024-03-21T10:00:00Z
     updated_at: 2024-03-21T10:00:00Z
     hardware:
-        cpus: []
-        memories: []
-        gpus: []
-        storages: []
-        networks: []
+      cpus: []
+      memories: []
+      gpus: []
+      storages: []
+      networks: []
     system:
-        os_distribution: Ubuntu
-        os_version: 22.04 LTS
-        os_architecture: x86_64
-        kernel_version: ""
-        gpu_driver_version: NVIDIA Driver 545.23.08
-        gpu_compute_api_version: ""
-        docker_version: ""
-        containerd_version: ""
-        runc_version: ""
+      os_distribution: Ubuntu
+      os_version: 22.04 LTS
+      os_architecture: x86_64
+      kernel_version: ""
+      gpu_driver_version: NVIDIA Driver 545.23.08
+      gpu_compute_api_version: ""
+      docker_version: ""
+      containerd_version: ""
+      runc_version: ""
     metrics:
-        cpus: []
-        memory:
-            total: 0
-            available: 123731517440
-            used: 13743895347
-            usage: 10
-        gpus: []
-        storages: []
-        network:
-            inbound_traffic: 8.2
-            outbound_traffic: 1.9
-            connections: 95
+      cpus: []
+      memory:
+        total: 0
+        available: 123731517440
+        used: 13743895347
+        usage: 10
+      gpus: []
+      storages: []
+      network:
+        inbound_traffic: 8.2
+        outbound_traffic: 1.9
+        connections: 95
   created_at: 2024-01-20T00:00:00Z
   updated_at: 2024-03-21T10:00:00Z
 - id: node-246
@@ -124,33 +124,33 @@
     last_online: 2024-03-21T10:00:00Z
     updated_at: 2024-03-21T10:00:00Z
     hardware:
-        cpus: []
-        memories: []
-        gpus: []
-        storages: []
-        networks: []
+      cpus: []
+      memories: []
+      gpus: []
+      storages: []
+      networks: []
     system:
-        os_distribution: Ubuntu
-        os_version: 22.04 LTS
-        os_architecture: x86_64
-        kernel_version: ""
-        gpu_driver_version: NVIDIA Driver 545.23.08
-        gpu_compute_api_version: ""
-        docker_version: ""
-        containerd_version: ""
-        runc_version: ""
+      os_distribution: Ubuntu
+      os_version: 22.04 LTS
+      os_architecture: x86_64
+      kernel_version: ""
+      gpu_driver_version: NVIDIA Driver 545.23.08
+      gpu_compute_api_version: ""
+      docker_version: ""
+      containerd_version: ""
+      runc_version: ""
     metrics:
-        cpus: []
-        memory:
-            total: 0
-            available: 123731517440
-            used: 13743895347
-            usage: 10
-        gpus: []
-        storages: []
-        network:
-            inbound_traffic: 7.5
-            outbound_traffic: 1.8
-            connections: 80
+      cpus: []
+      memory:
+        total: 0
+        available: 123731517440
+        used: 13743895347
+        usage: 10
+      gpus: []
+      storages: []
+      network:
+        inbound_traffic: 7.5
+        outbound_traffic: 1.8
+        connections: 80
   created_at: 2024-01-25T00:00:00Z
   updated_at: 2024-03-21T10:00:00Z

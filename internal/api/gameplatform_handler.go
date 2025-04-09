@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/open-beagle/beagle-wind-game/internal/models"
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 )
@@ -20,17 +21,16 @@ func NewGamePlatformHandler(service *service.GamePlatformService) *GamePlatformH
 	}
 }
 
-// List 获取平台列表
-// @Summary 获取平台列表
-// @Description 获取游戏平台列表，支持分页、搜索和状态筛选
+// List 获取游戏平台列表
+// @Summary 获取游戏平台列表
+// @Description 获取游戏平台列表，支持分页和筛选
 // @Tags 游戏平台
 // @Accept json
 // @Produce json
 // @Param page query int false "页码"
 // @Param size query int false "每页数量"
 // @Param keyword query string false "搜索关键词"
-// @Param status query string false "平台状态(active/maintenance/inactive)"
-// @Success 200 {object} service.PlatformListResult "平台列表"
+// @Success 200 {object} gin.H "游戏平台列表"
 // @Router /api/v1/platforms [get]
 func (h *GamePlatformHandler) List(c *gin.Context) {
 	var params service.GamePlatformListParams
@@ -47,7 +47,7 @@ func (h *GamePlatformHandler) List(c *gin.Context) {
 		params.PageSize = 20
 	}
 
-	result, err := h.service.List(params)
+	result, err := h.service.List(c, params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -72,7 +72,7 @@ func (h *GamePlatformHandler) Get(c *gin.Context) {
 		return
 	}
 
-	platform, err := h.service.Get(id)
+	platform, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -103,7 +103,7 @@ func (h *GamePlatformHandler) GetAccess(c *gin.Context) {
 	}
 
 	// 验证平台是否存在
-	platform, err := h.service.Get(id)
+	platform, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -114,7 +114,7 @@ func (h *GamePlatformHandler) GetAccess(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.GetAccess(id)
+	result, err := h.service.GetAccess(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -140,7 +140,7 @@ func (h *GamePlatformHandler) RefreshAccess(c *gin.Context) {
 	}
 
 	// 验证平台是否存在
-	platform, err := h.service.Get(id)
+	platform, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -151,7 +151,7 @@ func (h *GamePlatformHandler) RefreshAccess(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.RefreshAccess(id)
+	result, err := h.service.RefreshAccess(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -188,7 +188,7 @@ func (h *GamePlatformHandler) Create(c *gin.Context) {
 	}
 
 	// 创建平台
-	id, err := h.service.Create(platform)
+	id, err := h.service.Create(c, platform)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -215,7 +215,7 @@ func (h *GamePlatformHandler) Update(c *gin.Context) {
 	}
 
 	// 验证平台是否存在
-	_, err := h.service.Get(id)
+	_, err := h.service.Get(c, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -229,7 +229,7 @@ func (h *GamePlatformHandler) Update(c *gin.Context) {
 	}
 
 	// 更新平台
-	err = h.service.Update(id, platform)
+	err = h.service.Update(c, id, platform)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -254,8 +254,20 @@ func (h *GamePlatformHandler) Delete(c *gin.Context) {
 		return
 	}
 
+	// 验证平台是否存在
+	platform, err := h.service.Get(c, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if platform.ID == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "平台不存在"})
+		return
+	}
+
 	// 删除平台
-	err := h.service.Delete(id)
+	err = h.service.Delete(c, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

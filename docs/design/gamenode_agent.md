@@ -124,8 +124,8 @@ func (a *GameNodeAgent) Heartbeat(ctx context.Context) error
 // CollectMetrics 收集指标
 func (a *GameNodeAgent) CollectMetrics() (*MetricsReport, error)
 
-// ExecutePipeline 执行Pipeline
-func (a *GameNodeAgent) ExecutePipeline(ctx context.Context, pipeline *Pipeline) error
+// Execute 执行Pipeline
+func (a *GameNodeAgent) Execute(ctx context.Context, pipeline *Pipeline) error
 ```
 
 ### 2.3 状态管理
