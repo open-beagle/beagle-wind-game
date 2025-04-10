@@ -396,15 +396,15 @@ rocm-smi
 intel_gpu_top
 ```
 
-> 注意：对于不同厂商的 GPU，使用对应的工具获取信息。数据字段可能会有所不同，采取"能获取什么就收集什么"的原则。
->
 > `compute_capability` 字段说明:
 >
-> - 对于 NVIDIA GPU，表示 CUDA 计算能力版本，例如"8.6"(Ampere 架构)、"8.9"(Ada Lovelace 架构)
-> - 对于 AMD GPU，表示 GCN/RDNA 架构代号，例如"gfx1030"(RDNA2)、"gfx1100"(RDNA3)
-> - 对于 Intel GPU，表示 Xe 架构代号，例如"Xe-HPG"、"Xe-LP"
-> - 此字段提供 GPU 架构的细粒度标识，用于判断硬件特性和兼容性
-> - 比如 NVIDIA 的 8.6 和 8.9 虽然都支持 CUDA，但支持的指令集和优化有差异
+> - 对于 NVIDIA GPU，表示已安装的 CUDA 版本，例如"CUDA 12.8"
+> - 对于 AMD GPU，表示已安装的 ROCm 版本，例如"ROCm 5.7"
+> - 对于 Intel GPU，表示已安装的 oneAPI 版本，例如"oneAPI 2024.1"
+> - 如果未安装对应的计算框架，使用"Unknown"
+> - 此字段反映实际可用的 GPU 计算能力，用于判断应用兼容性
+> - 与硬件级的架构版本不同，此字段表示软件开发环境版本
+> - 如果系统安装了多个计算框架，优先记录主要使用的框架版本
 
 ##### 存储设备信息
 

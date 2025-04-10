@@ -15,7 +15,7 @@
         "--log-level",
         "DEBUG",
         "--log-file",
-        "./logs/agent.log"
+        "${workspaceFolder}/logs/agent.log"
       ],
       "env": {},
       "showLog": true,

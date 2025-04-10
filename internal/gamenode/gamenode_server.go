@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -111,32 +112,121 @@ func NewGameNodeServer(
 
 // Register 处理节点注册请求
 func (s *GameNodeServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
-	// 1. 验证请求参数
+	// 1. 验证节点信息完整性
 	if req.Id == "" {
-		return nil, status.Error(codes.InvalidArgument, "node_id is required")
+		return &pb.RegisterResponse{
+			Success: false,
+			Message: "节点ID不能为空",
+		}, nil
+	}
+	if req.Type == "" {
+		return &pb.RegisterResponse{
+			Success: false,
+			Message: "节点类型不能为空",
+		}, nil
 	}
 
-	// 2. 构建节点信息
+	// 2. 检查节点是否已存在
+	existingNode, err := s.nodeService.Get(ctx, req.Id)
+	if err != nil && !strings.Contains(err.Error(), "节点不存在") {
+		s.logger.Error("检查节点是否存在失败: %v", err)
+		return &pb.RegisterResponse{
+			Success: false,
+			Message: "检查节点是否存在失败",
+		}, nil
+	}
+
+	// 3. 获取节点维护状态
+	var nodeState models.GameNodeStaticState
+	if existingNode.ID != "" {
+		nodeState = existingNode.State
+	} else {
+		nodeState = models.GameNodeStaticStateNormal // 新节点默认为正常状态
+	}
+
+	// 4. 根据维护状态决定后续行为
+	switch nodeState {
+	case models.GameNodeStaticStateNormal, models.GameNodeStaticStateMaintenance, models.GameNodeStaticStateDisabled:
+		// 允许注册，继续处理
+	default:
+		s.logger.Error("无效的节点状态: %v", nodeState)
+		return &pb.RegisterResponse{
+			Success: false,
+			Message: "无效的节点状态",
+		}, nil
+	}
+
+	// 5. 构建或更新节点信息
 	node := models.GameNode{
-		ID: req.Id,
+		ID:       req.Id,
+		Alias:    req.Alias,
+		Model:    req.Model,
+		Type:     models.GameNodeType(req.Type),
+		Location: req.Location,
+		Labels:   req.Labels,
+		State:    nodeState,
+		Hardware: req.Hardware,
+		System:   req.System,
 		Status: models.GameNodeStatus{
-			State:     models.GameNodeStateReady,
-			Online:    true,
-			UpdatedAt: time.Now(),
+			State:      models.GameNodeStateOnline,
+			Online:     true,
+			LastOnline: time.Now(),
+			UpdatedAt:  time.Now(),
+			Hardware:   models.HardwareInfo{},
+			System:     models.SystemInfo{},
+			Metrics:    models.MetricsInfo{},
 		},
 	}
 
-	// 3. 通过 NodeService 处理注册
-	if err := s.nodeService.Create(ctx, node); err != nil {
-		s.logger.Error("Failed to create node", "error", err)
-		return nil, status.Error(codes.Internal, "failed to create node")
+	// 6. 创建或更新节点
+	if existingNode.ID == "" {
+		// 新节点
+		node.CreatedAt = time.Now()
+		node.UpdatedAt = time.Now()
+		if err := s.nodeService.Create(ctx, node); err != nil {
+			s.logger.Error("创建节点失败: %v", err)
+			return &pb.RegisterResponse{
+				Success: false,
+				Message: "创建节点失败",
+			}, nil
+		}
+		s.logger.Info("节点注册成功-新节点: %s", node.ID)
+	} else {
+		// 更新已有节点：只更新状态信息
+		existingNode.Status.State = models.GameNodeStateOnline
+		existingNode.Status.Online = true
+		existingNode.Status.LastOnline = time.Now()
+
+		if err := s.nodeService.Update(ctx, existingNode); err != nil {
+			s.logger.Error("更新节点状态失败: %v", err)
+			return &pb.RegisterResponse{
+				Success: false,
+				Message: "更新节点状态失败",
+			}, nil
+		}
+		s.logger.Info("节点注册成功-已知节点: %s", existingNode.ID)
 	}
 
-	// 4. 返回成功响应
+	// 7. 返回注册响应
 	return &pb.RegisterResponse{
 		Success: true,
-		Message: fmt.Sprintf("Node %s registered successfully", req.Id),
+		Message: "",
+		State:   convertToProtoStaticState(nodeState),
 	}, nil
+}
+
+// convertToProtoStaticState 将 models.GameNodeStaticState 转换为 proto.GameNodeStaticState
+func convertToProtoStaticState(state models.GameNodeStaticState) pb.GameNodeStaticState {
+	switch state {
+	case models.GameNodeStaticStateNormal:
+		return pb.GameNodeStaticState_NODE_STATE_NORMAL
+	case models.GameNodeStaticStateMaintenance:
+		return pb.GameNodeStaticState_NODE_STATE_MAINTENANCE
+	case models.GameNodeStaticStateDisabled:
+		return pb.GameNodeStaticState_NODE_STATE_DISABLED
+	default:
+		return pb.GameNodeStaticState_NODE_STATE_NORMAL
+	}
 }
 
 // Heartbeat 心跳检测
@@ -199,7 +289,7 @@ func (s *GameNodeServer) ReportMetrics(ctx context.Context, req *pb.MetricsReque
 		node.Status.Metrics.GPUs[i] = models.GPUMetrics{
 			Model:       metric.Model,
 			MemoryTotal: metric.MemoryTotal,
-			Usage:       metric.Usage,
+			GPUUsage:    metric.GpuUsage,
 			MemoryUsed:  metric.MemoryUsed,
 			MemoryFree:  metric.MemoryFree,
 			MemoryUsage: metric.MemoryUsage,
@@ -241,20 +331,19 @@ func (s *GameNodeServer) ReportMetrics(ctx context.Context, req *pb.MetricsReque
 	}, nil
 }
 
-// ReportResource 处理资源信息更新请求
-func (s *GameNodeServer) ReportResource(ctx context.Context, req *pb.ResourceRequest) (*pb.ResourceResponse, error) {
-	// 转换为硬件信息
-	hardwareInfo := models.HardwareInfo{
-		CPUs:     make([]models.CPUDevice, len(req.Hardware.Cpus)),
-		Memories: make([]models.MemoryDevice, len(req.Hardware.Memories)),
-		GPUs:     make([]models.GPUDevice, len(req.Hardware.Gpus)),
-		Storages: make([]models.StorageDevice, len(req.Hardware.Storages)),
-		Networks: make([]models.NetworkDevice, len(req.Hardware.Networks)),
+// convertToModelsHardwareInfo 将 proto.HardwareInfo 转换为 models.HardwareInfo
+func convertToModelsHardwareInfo(hardware *pb.HardwareInfo) models.HardwareInfo {
+	info := models.HardwareInfo{
+		CPUs:     make([]models.CPUDevice, len(hardware.Cpus)),
+		Memories: make([]models.MemoryDevice, len(hardware.Memories)),
+		GPUs:     make([]models.GPUDevice, len(hardware.Gpus)),
+		Storages: make([]models.StorageDevice, len(hardware.Storages)),
+		Networks: make([]models.NetworkDevice, len(hardware.Networks)),
 	}
 
 	// CPU信息
-	for i, cpu := range req.Hardware.Cpus {
-		hardwareInfo.CPUs[i] = models.CPUDevice{
+	for i, cpu := range hardware.Cpus {
+		info.CPUs[i] = models.CPUDevice{
 			Model:        cpu.Model,
 			Cores:        cpu.Cores,
 			Threads:      cpu.Threads,
@@ -265,8 +354,8 @@ func (s *GameNodeServer) ReportResource(ctx context.Context, req *pb.ResourceReq
 	}
 
 	// 内存信息
-	for i, memory := range req.Hardware.Memories {
-		hardwareInfo.Memories[i] = models.MemoryDevice{
+	for i, memory := range hardware.Memories {
+		info.Memories[i] = models.MemoryDevice{
 			Size:      memory.Size,
 			Type:      memory.Type,
 			Frequency: memory.Frequency,
@@ -274,8 +363,8 @@ func (s *GameNodeServer) ReportResource(ctx context.Context, req *pb.ResourceReq
 	}
 
 	// GPU信息
-	for i, gpu := range req.Hardware.Gpus {
-		hardwareInfo.GPUs[i] = models.GPUDevice{
+	for i, gpu := range hardware.Gpus {
+		info.GPUs[i] = models.GPUDevice{
 			Model:             gpu.Model,
 			MemoryTotal:       gpu.MemoryTotal,
 			Architecture:      gpu.Architecture,
@@ -286,8 +375,8 @@ func (s *GameNodeServer) ReportResource(ctx context.Context, req *pb.ResourceReq
 	}
 
 	// 存储设备信息
-	for i, storage := range req.Hardware.Storages {
-		hardwareInfo.Storages[i] = models.StorageDevice{
+	for i, storage := range hardware.Storages {
+		info.Storages[i] = models.StorageDevice{
 			Type:     storage.Type,
 			Model:    storage.Model,
 			Capacity: storage.Capacity,
@@ -296,8 +385,8 @@ func (s *GameNodeServer) ReportResource(ctx context.Context, req *pb.ResourceReq
 	}
 
 	// 网络设备信息
-	for i, network := range req.Hardware.Networks {
-		hardwareInfo.Networks[i] = models.NetworkDevice{
+	for i, network := range hardware.Networks {
+		info.Networks[i] = models.NetworkDevice{
 			Name:       network.Name,
 			MacAddress: network.MacAddress,
 			IpAddress:  network.IpAddress,
@@ -305,18 +394,29 @@ func (s *GameNodeServer) ReportResource(ctx context.Context, req *pb.ResourceReq
 		}
 	}
 
-	// 创建系统信息
-	systemInfo := models.SystemInfo{
-		OSDistribution:       req.System.OsDistribution,
-		OSVersion:            req.System.OsVersion,
-		OSArchitecture:       req.System.OsArchitecture,
-		KernelVersion:        req.System.KernelVersion,
-		GPUDriverVersion:     req.System.GpuDriverVersion,
-		GPUComputeAPIVersion: req.System.GpuComputeApiVersion,
-		DockerVersion:        req.System.DockerVersion,
-		ContainerdVersion:    req.System.ContainerdVersion,
-		RuncVersion:          req.System.RuncVersion,
+	return info
+}
+
+// convertToModelsSystemInfo 将 proto.SystemInfo 转换为 models.SystemInfo
+func convertToModelsSystemInfo(system *pb.SystemInfo) models.SystemInfo {
+	return models.SystemInfo{
+		OSDistribution:       system.OsDistribution,
+		OSVersion:            system.OsVersion,
+		OSArchitecture:       system.OsArchitecture,
+		KernelVersion:        system.KernelVersion,
+		GPUDriverVersion:     system.GpuDriverVersion,
+		GPUComputeAPIVersion: system.GpuComputeApiVersion,
+		DockerVersion:        system.DockerVersion,
+		ContainerdVersion:    system.ContainerdVersion,
+		RuncVersion:          system.RuncVersion,
 	}
+}
+
+// ReportResource 处理资源信息更新请求
+func (s *GameNodeServer) ReportResource(ctx context.Context, req *pb.ResourceRequest) (*pb.ResourceResponse, error) {
+	// 转换为硬件信息
+	hardwareInfo := convertToModelsHardwareInfo(req.Hardware)
+	systemInfo := convertToModelsSystemInfo(req.System)
 
 	// 更新节点硬件和系统信息
 	err := s.nodeService.UpdateHardwareAndSystem(ctx, req.NodeId, hardwareInfo, systemInfo)
@@ -463,43 +563,4 @@ func (s *GameNodeServer) checkHeartbeats(ctx context.Context) {
 			delete(s.connections, nodeID)
 		}
 	}
-}
-
-// Execute 执行Pipeline
-func (s *GameNodeServer) Execute(ctx context.Context, req *pb.ExecuteRequest) (*pb.ExecuteResponse, error) {
-	// 获取节点
-	node, err := s.nodeService.Get(ctx, req.NodeId)
-	if err != nil {
-		s.logger.Error("获取节点失败: %v", err)
-		return nil, status.Error(codes.NotFound, "节点不存在")
-	}
-
-	// 检查节点状态
-	if !node.Status.Online {
-		s.logger.Error("节点离线: %s", req.NodeId)
-		return nil, status.Error(codes.Unavailable, "节点离线")
-	}
-
-	// 获取Pipeline
-	pipeline, err := s.pipelineService.Get(ctx, req.PipelineId)
-	if err != nil {
-		s.logger.Error("获取Pipeline失败: %v", err)
-		return nil, status.Error(codes.NotFound, "Pipeline不存在")
-	}
-
-	// 更新Pipeline状态
-	pipeline.Status.State = models.PipelineStateRunning
-	pipeline.Status.StartTime = time.Now()
-	pipeline.Status.NodeID = req.NodeId
-	if err := s.pipelineService.Update(ctx, pipeline); err != nil {
-		s.logger.Error("更新Pipeline状态失败: %v", err)
-		return nil, status.Error(codes.Internal, "更新Pipeline状态失败")
-	}
-
-	s.logger.Info("开始执行Pipeline: ID=%s, 节点=%s", req.PipelineId, req.NodeId)
-
-	return &pb.ExecuteResponse{
-		Success: true,
-		Message: "Pipeline开始执行",
-	}, nil
 }

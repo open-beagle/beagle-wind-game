@@ -23,6 +23,7 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
    - 表名：使用小写下划线，如 `game_platforms`
 
 3. 游戏卡相关
+
    - 类型命名：以 `GameCard` 开头，如 `GameCard`、`GameCardType`
    - 常量命名：以 `GameCard` 开头，如 `GameCardTypeNormal`
    - 表名：使用小写下划线，如 `game_cards`
@@ -117,6 +118,7 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
    - Docker
 
 2. 前端
+
    - Vue3 + TypeScript
    - Element Plus
    - Pinia
@@ -141,6 +143,7 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
    - [x] 状态管理
 
 3. 数据模型设计
+
    - [x] 核心模型定义
    - [x] 数据关系设计
    - [x] 配置管理设计
@@ -177,6 +180,7 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
    - [ ] 更新管理
 
 3. 运行环境
+
    - [x] 节点管理
      - [x] 节点列表
      - [x] 节点配置
@@ -204,6 +208,7 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
    - [ ] 维护工具
 
 3. 文档完善
+
    - [x] 项目结构文档
    - [x] 前端开发文档
    - [x] 详情页开发文档
@@ -244,6 +249,7 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
      - [ ] **低优先级**: 任务管理 API（任务列表、状态）
 
 4. 性能优化
+
    - [ ] 前端构建优化
    - [ ] 组件懒加载
    - [ ] 数据缓存策略

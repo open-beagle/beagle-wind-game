@@ -31,7 +31,7 @@ message RegisterRequest {
 message RegisterResponse {
   bool success = 1;
   string message = 2;
-  GameNodeStaticState state = 3;  // 节点静态状态
+  GameNodeStaticState state = 3;  // 节点维护状态
 }
 
 // 心跳
@@ -78,7 +78,7 @@ message MemoryMetrics {
 message GPUMetrics {
   string model = 1;
   int64 memory_total = 2;
-  double usage = 3;
+  double gpu_usage = 3;
   int64 memory_used = 4;
   int64 memory_free = 5;
   double memory_usage = 6;
@@ -131,7 +131,7 @@ message StateChangeResponse {
   google.protobuf.Timestamp confirm_time = 3;
 }
 
-// 节点静态状态
+// 节点维护状态
 enum GameNodeStaticState {
   NODE_STATE_NORMAL = 0;      // 正常状态
   NODE_STATE_MAINTENANCE = 1; // 维护状态

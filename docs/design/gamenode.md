@@ -30,7 +30,7 @@ type GameNode struct {
     Type      GameNodeType      `json:"type" yaml:"type"`             // 节点类型
     Location  string            `json:"location" yaml:"location"`     // 节点位置
     Labels    map[string]string `json:"labels" yaml:"labels"`         // 标签
-    State     GameNodeStaticState `json:"state" yaml:"state"`         // 节点静态状态
+    State     GameNodeStaticState `json:"state" yaml:"state"`         // 节点维护状态
     Hardware  map[string]string `json:"hardware" yaml:"hardware"`     // 硬件配置(简化版)
     System    map[string]string `json:"system" yaml:"system"`         // 系统配置(简化版)
     Status    GameNodeStatus    `json:"status" yaml:"status"`         // 节点状态信息
@@ -38,7 +38,7 @@ type GameNode struct {
     UpdatedAt time.Time         `json:"updated_at" yaml:"updated_at"` // 更新时间
 }
 
-// GameNodeStaticState 节点静态状态
+// GameNodeStaticState 节点维护状态
 type GameNodeStaticState string
 
 const (
@@ -56,7 +56,7 @@ const (
 - Type：节点类型（物理机/虚拟机/容器）
 - Location：节点地理位置
 - Labels：节点标签（用于分类和筛选）
-- State：节点静态状态
+- State：节点维护状态
   - normal：正常状态，节点可以正常处理所有业务
   - maintenance：维护状态，节点不处理业务，但保持心跳和状态报告
   - disabled：禁用状态，节点只响应心跳，不处理其他请求
@@ -65,7 +65,7 @@ const (
 - CreatedAt：创建时间
 - UpdatedAt：更新时间
 
-#### 2.1.2 静态状态说明
+#### 2.1.2 维护状态说明
 
 1. 正常状态（normal）：
 
@@ -84,6 +84,7 @@ const (
    - 管理员可以执行维护操作
 
 3. 禁用状态（disabled）：
+
    - 节点只响应心跳请求
    - 不处理任何业务请求
    - 不接收新的 Pipeline 任务
@@ -103,6 +104,7 @@ const (
    - disabled -> maintenance：不允许转换
 
 2. 状态转换影响：
+
    - 转换为 maintenance：
      - 停止接收新的业务请求
      - 保持现有任务运行

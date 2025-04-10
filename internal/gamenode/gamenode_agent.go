@@ -33,6 +33,8 @@ type GameNodeOptions struct {
 type GameNodeAgent struct {
 	// 基本信息
 	id string
+	// 新增：节点状态
+	state models.GameNodeStaticState
 
 	// 连接信息
 	serverAddr string
@@ -40,8 +42,9 @@ type GameNodeAgent struct {
 	client     pb.GameNodeGRPCServiceClient
 
 	// 状态管理
-	mu        sync.RWMutex
-	status    *models.GameNodeStatus
+	mu     sync.RWMutex
+	status *models.GameNodeStatus
+
 	pipelines map[string]*models.GameNodePipeline
 
 	// 日志框架
@@ -148,10 +151,10 @@ func (a *GameNodeAgent) Register(ctx context.Context) error {
 
 	// 1. 参数验证
 	if a.id == "" {
-		return fmt.Errorf("节点ID不能为空")
+		a.logger.Fatal("节点ID不能为空")
 	}
 	if a.nodeInfo.nodeType == "" {
-		return fmt.Errorf("节点类型不能为空")
+		a.logger.Fatal("节点类型不能为空")
 	}
 
 	// 2. 收集硬件和系统信息（带超时控制）
@@ -159,15 +162,13 @@ func (a *GameNodeAgent) Register(ctx context.Context) error {
 	defer cancel()
 
 	if err := a.collectHardwareAndSystemInfo(collectCtx); err != nil {
-		a.logger.Error("收集硬件和系统信息失败: %v", err)
-		return fmt.Errorf("收集硬件和系统信息失败: %w", err)
+		a.logger.Fatal("收集硬件和系统信息失败: %v", err)
 	}
 
 	// 3. 获取标准化的硬件信息
 	hardware, err := a.hardwareCollector.GetSimplifiedHardwareInfo()
 	if err != nil {
-		a.logger.Error("获取标准化硬件信息失败: %v", err)
-		return fmt.Errorf("获取标准化硬件信息失败: %w", err)
+		a.logger.Fatal("获取标准化硬件信息失败: %v", err)
 	}
 
 	// 4. 准备注册请求
@@ -206,17 +207,22 @@ func (a *GameNodeAgent) Register(ctx context.Context) error {
 
 	resp, err := a.client.Register(rpcCtx, req)
 	if err != nil {
-		a.logger.Error("注册请求失败: %v", err)
-		return fmt.Errorf("注册请求失败: %w", err)
+		a.logger.Fatal("注册请求失败: %v", err)
 	}
 
 	if !resp.Success {
-		a.logger.Error("注册失败: %s", resp.Message)
-		return fmt.Errorf("注册失败: %s", resp.Message)
+		a.logger.Fatal("注册失败: %s", resp.Message)
 	}
 
-	a.logger.Info("节点注册成功")
+	// 7. 存储节点维护状态
+	a.state = convertFromProtoStaticState(resp.State)
+
 	return nil
+}
+
+// GetStaticState 获取节点维护状态
+func (a *GameNodeAgent) GetState() models.GameNodeStaticState {
+	return a.state
 }
 
 // SendHeartbeat 发送心跳
@@ -284,7 +290,7 @@ func convertToProtoMetricsInfo(info models.MetricsInfo) *pb.MetricsInfo {
 		protoInfo.Gpus = append(protoInfo.Gpus, &pb.GPUMetrics{
 			Model:       gpu.Model,
 			MemoryTotal: gpu.MemoryTotal,
-			Usage:       gpu.Usage,
+			GpuUsage:    gpu.GPUUsage,
 			MemoryUsed:  gpu.MemoryUsed,
 			MemoryFree:  gpu.MemoryFree,
 			MemoryUsage: gpu.MemoryUsage,
@@ -307,19 +313,34 @@ func convertToProtoMetricsInfo(info models.MetricsInfo) *pb.MetricsInfo {
 	return protoInfo
 }
 
-// UpdateMetrics 更新指标
-func (a *GameNodeAgent) UpdateMetrics(ctx context.Context) error {
+// ReportMetrics 发送指标报告
+func (a *GameNodeAgent) ReportMetrics(ctx context.Context) error {
+	// 获取硬件信息
+	hardwareInfo := a.status.Hardware
+
 	// 使用 MetricsCollector 收集指标
-	metricsInfo, err := a.metricsCollector.GetMetricsInfo()
+	metricsInfo, err := a.metricsCollector.GetMetricsInfo(&hardwareInfo)
 	if err != nil {
 		return fmt.Errorf("收集指标信息失败: %v", err)
 	}
 
 	// 更新本地状态
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	a.status.Metrics = metricsInfo
-	a.status.UpdatedAt = time.Now()
+	a.mu.Unlock()
+
+	// 准备请求
+	req := &pb.MetricsRequest{
+		Id:        a.id,
+		Timestamp: time.Now().Unix(),
+		Metrics:   convertToProtoMetricsInfo(metricsInfo),
+	}
+
+	// 发送请求
+	_, err = a.client.ReportMetrics(ctx, req)
+	if err != nil {
+		return fmt.Errorf("上报指标失败: %v", err)
+	}
 
 	return nil
 }
@@ -408,32 +429,13 @@ func (a *GameNodeAgent) Heartbeat(ctx context.Context) error {
 	return nil
 }
 
-// ReportMetrics 发送指标报告
-func (a *GameNodeAgent) ReportMetrics(ctx context.Context) error {
-	// 使用 MetricsCollector 收集指标
-	metricsInfo, err := a.metricsCollector.GetMetricsInfo()
-	if err != nil {
-		return fmt.Errorf("收集指标信息失败: %v", err)
-	}
-
-	// 准备请求
-	req := &pb.MetricsRequest{
-		Id:        a.id,
-		Timestamp: time.Now().Unix(),
-		Metrics:   convertToProtoMetricsInfo(metricsInfo),
-	}
-
-	// 发送请求
-	_, err = a.client.ReportMetrics(ctx, req)
-	if err != nil {
-		return fmt.Errorf("上报指标失败: %v", err)
-	}
-
-	return nil
-}
-
 // collectHardwareAndSystemInfo 收集硬件和系统信息
 func (a *GameNodeAgent) collectHardwareAndSystemInfo(ctx context.Context) error {
+	// 检查采集器是否初始化
+	if a.hardwareCollector == nil || a.systemCollector == nil {
+		return fmt.Errorf("系统信息采集器未初始化")
+	}
+
 	// 使用硬件采集器收集信息
 	hardwareInfo, err := a.hardwareCollector.GetHardwareInfo()
 	if err != nil {
@@ -446,13 +448,152 @@ func (a *GameNodeAgent) collectHardwareAndSystemInfo(ctx context.Context) error 
 		return fmt.Errorf("收集系统信息失败: %v", err)
 	}
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	// 确保状态对象已初始化
+	if a.status == nil {
+		a.status = &models.GameNodeStatus{
+			Hardware: hardwareInfo,
+			System:   systemInfo,
+		}
+	}
 
 	// 更新状态
+	a.mu.Lock()
 	a.status.Hardware = hardwareInfo
 	a.status.System = systemInfo
 	a.status.UpdatedAt = time.Now()
+	a.mu.Unlock()
 
 	return nil
+}
+
+// convertFromProtoStaticState 将 proto.GameNodeStaticState 转换为 models.GameNodeStaticState
+func convertFromProtoStaticState(state pb.GameNodeStaticState) models.GameNodeStaticState {
+	switch state {
+	case pb.GameNodeStaticState_NODE_STATE_NORMAL:
+		return models.GameNodeStaticStateNormal
+	case pb.GameNodeStaticState_NODE_STATE_MAINTENANCE:
+		return models.GameNodeStaticStateMaintenance
+	case pb.GameNodeStaticState_NODE_STATE_DISABLED:
+		return models.GameNodeStaticStateDisabled
+	default:
+		return models.GameNodeStaticStateNormal
+	}
+}
+
+// ReportResource 上报节点资源信息
+func (a *GameNodeAgent) ReportResource(ctx context.Context) error {
+	// 收集硬件和系统信息
+	hardwareInfo, err := a.hardwareCollector.GetHardwareInfo()
+	if err != nil {
+		return fmt.Errorf("收集硬件信息失败: %v", err)
+	}
+
+	systemInfo, err := a.systemCollector.GetSystemInfo()
+	if err != nil {
+		return fmt.Errorf("收集系统信息失败: %v", err)
+	}
+
+	// 准备请求
+	req := &pb.ResourceRequest{
+		NodeId: a.id,
+		Hardware: &pb.HardwareInfo{
+			Cpus:     convertToProtoCPUDevices(hardwareInfo.CPUs),
+			Memories: convertToProtoMemoryDevices(hardwareInfo.Memories),
+			Gpus:     convertToProtoGPUDevices(hardwareInfo.GPUs),
+			Storages: convertToProtoStorageDevices(hardwareInfo.Storages),
+			Networks: convertToProtoNetworkDevices(hardwareInfo.Networks),
+		},
+		System: &pb.SystemInfo{
+			OsDistribution:       systemInfo.OSDistribution,
+			OsVersion:            systemInfo.OSVersion,
+			OsArchitecture:       systemInfo.OSArchitecture,
+			KernelVersion:        systemInfo.KernelVersion,
+			GpuDriverVersion:     systemInfo.GPUDriverVersion,
+			GpuComputeApiVersion: systemInfo.GPUComputeAPIVersion,
+			DockerVersion:        systemInfo.DockerVersion,
+			ContainerdVersion:    systemInfo.ContainerdVersion,
+			RuncVersion:          systemInfo.RuncVersion,
+		},
+	}
+
+	// 发送请求
+	_, err = a.client.ReportResource(ctx, req)
+	if err != nil {
+		return fmt.Errorf("上报资源信息失败: %v", err)
+	}
+
+	return nil
+}
+
+// convertToProtoCPUDevices 将 models.CPUDevice 转换为 proto.CPUHardware
+func convertToProtoCPUDevices(devices []models.CPUDevice) []*pb.CPUHardware {
+	result := make([]*pb.CPUHardware, len(devices))
+	for i, device := range devices {
+		result[i] = &pb.CPUHardware{
+			Model:        device.Model,
+			Cores:        device.Cores,
+			Threads:      device.Threads,
+			Frequency:    device.Frequency,
+			Cache:        device.Cache,
+			Architecture: device.Architecture,
+		}
+	}
+	return result
+}
+
+// convertToProtoMemoryDevices 将 models.MemoryDevice 转换为 proto.MemoryHardware
+func convertToProtoMemoryDevices(devices []models.MemoryDevice) []*pb.MemoryHardware {
+	result := make([]*pb.MemoryHardware, len(devices))
+	for i, device := range devices {
+		result[i] = &pb.MemoryHardware{
+			Size:      device.Size,
+			Type:      device.Type,
+			Frequency: device.Frequency,
+		}
+	}
+	return result
+}
+
+// convertToProtoGPUDevices 将 models.GPUDevice 转换为 proto.GPUHardware
+func convertToProtoGPUDevices(devices []models.GPUDevice) []*pb.GPUHardware {
+	result := make([]*pb.GPUHardware, len(devices))
+	for i, device := range devices {
+		result[i] = &pb.GPUHardware{
+			Model:             device.Model,
+			MemoryTotal:       device.MemoryTotal,
+			Architecture:      device.Architecture,
+			DriverVersion:     device.DriverVersion,
+			ComputeCapability: device.ComputeCapability,
+			Tdp:               device.TDP,
+		}
+	}
+	return result
+}
+
+// convertToProtoStorageDevices 将 models.StorageDevice 转换为 proto.StorageDevice
+func convertToProtoStorageDevices(devices []models.StorageDevice) []*pb.StorageDevice {
+	result := make([]*pb.StorageDevice, len(devices))
+	for i, device := range devices {
+		result[i] = &pb.StorageDevice{
+			Type:     device.Type,
+			Model:    device.Model,
+			Capacity: device.Capacity,
+			Path:     device.Path,
+		}
+	}
+	return result
+}
+
+// convertToProtoNetworkDevices 将 models.NetworkDevice 转换为 proto.NetworkDevice
+func convertToProtoNetworkDevices(devices []models.NetworkDevice) []*pb.NetworkDevice {
+	result := make([]*pb.NetworkDevice, len(devices))
+	for i, device := range devices {
+		result[i] = &pb.NetworkDevice{
+			Name:       device.Name,
+			MacAddress: device.MacAddress,
+			IpAddress:  device.IpAddress,
+			Speed:      device.Speed,
+		}
+	}
+	return result
 }

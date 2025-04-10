@@ -25,6 +25,15 @@ const (
 	GameNodeStateError       GameNodeState = "error"       // 错误
 )
 
+// GameNodeStaticState 节点维护状态
+type GameNodeStaticState string
+
+const (
+	GameNodeStaticStateNormal      GameNodeStaticState = "normal"      // 正常状态
+	GameNodeStaticStateMaintenance GameNodeStaticState = "maintenance" // 维护状态
+	GameNodeStaticStateDisabled    GameNodeStaticState = "disabled"    // 禁用状态
+)
+
 // CPUDevice CPU设备信息
 type CPUDevice struct {
 	Model        string  `json:"model" yaml:"model"`               // CPU型号
@@ -88,7 +97,7 @@ type MemoryMetrics struct {
 type GPUMetrics struct {
 	Model       string  `json:"model" yaml:"model"`               // GPU型号
 	MemoryTotal int64   `json:"memory_total" yaml:"memory_total"` // 显存总量
-	Usage       float64 `json:"usage" yaml:"usage"`               // GPU使用率
+	GPUUsage    float64 `json:"gpu_usage" yaml:"gpu_usage"`       // GPU使用率
 	MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`   // 已用显存
 	MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`   // 可用显存
 	MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"` // 显存使用率
@@ -156,15 +165,16 @@ type GameNodeStatus struct {
 
 // GameNode 游戏节点
 type GameNode struct {
-	ID        string            `json:"id" yaml:"id"`                 // 节点ID
-	Alias     string            `json:"alias" yaml:"alias"`           // 节点别名
-	Model     string            `json:"model" yaml:"model"`           // 节点型号
-	Type      GameNodeType      `json:"type" yaml:"type"`             // 节点类型
-	Location  string            `json:"location" yaml:"location"`     // 节点位置
-	Labels    map[string]string `json:"labels" yaml:"labels"`         // 标签
-	Hardware  map[string]string `json:"hardware" yaml:"hardware"`     // 硬件配置(简化版)
-	System    map[string]string `json:"system" yaml:"system"`         // 系统配置(简化版)
-	Status    GameNodeStatus    `json:"status" yaml:"status"`         // 节点状态信息
-	CreatedAt time.Time         `json:"created_at" yaml:"created_at"` // 创建时间
-	UpdatedAt time.Time         `json:"updated_at" yaml:"updated_at"` // 更新时间
+	ID        string              `json:"id" yaml:"id"`                 // 节点ID
+	Alias     string              `json:"alias" yaml:"alias"`           // 节点别名
+	Model     string              `json:"model" yaml:"model"`           // 节点型号
+	Type      GameNodeType        `json:"type" yaml:"type"`             // 节点类型
+	Location  string              `json:"location" yaml:"location"`     // 节点位置
+	Labels    map[string]string   `json:"labels" yaml:"labels"`         // 标签
+	State     GameNodeStaticState `json:"state" yaml:"state"`           // 节点维护状态
+	Hardware  map[string]string   `json:"hardware" yaml:"hardware"`     // 硬件配置(简化版)
+	System    map[string]string   `json:"system" yaml:"system"`         // 系统配置(简化版)
+	Status    GameNodeStatus      `json:"status" yaml:"status"`         // 节点状态信息
+	CreatedAt time.Time           `json:"created_at" yaml:"created_at"` // 创建时间
+	UpdatedAt time.Time           `json:"updated_at" yaml:"updated_at"` // 更新时间
 }

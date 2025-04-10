@@ -23,6 +23,8 @@ var (
 		"/usr/lib/wsl/lib",    // WSL中的NVIDIA命令
 		"/usr/local/cuda/bin", // CUDA路径
 		"/opt/rocm/bin",       // ROCm路径
+		"/usr/lib/nvidia/bin", // NVIDIA驱动路径
+		"/opt/nvidia/bin",     // NVIDIA可选安装路径
 	}
 
 	// 共享的logger实例

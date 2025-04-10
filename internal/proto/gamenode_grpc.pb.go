@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.29.4
-// source: gamenode.proto
+// source: internal/proto/gamenode.proto
 
 package proto
 
@@ -24,8 +24,6 @@ const (
 	GameNodeGRPCService_ReportMetrics_FullMethodName   = "/gamenode.GameNodeGRPCService/ReportMetrics"
 	GameNodeGRPCService_ReportResource_FullMethodName  = "/gamenode.GameNodeGRPCService/ReportResource"
 	GameNodeGRPCService_UpdateNodeState_FullMethodName = "/gamenode.GameNodeGRPCService/UpdateNodeState"
-	GameNodeGRPCService_Log_FullMethodName             = "/gamenode.GameNodeGRPCService/Log"
-	GameNodeGRPCService_Execute_FullMethodName         = "/gamenode.GameNodeGRPCService/Execute"
 )
 
 // GameNodeGRPCServiceClient is the client API for GameNodeGRPCService service.
@@ -40,8 +38,6 @@ type GameNodeGRPCServiceClient interface {
 	ReportMetrics(ctx context.Context, in *MetricsRequest, opts ...grpc.CallOption) (*MetricsResponse, error)
 	ReportResource(ctx context.Context, in *ResourceRequest, opts ...grpc.CallOption) (*ResourceResponse, error)
 	UpdateNodeState(ctx context.Context, in *StateChangeRequest, opts ...grpc.CallOption) (*StateChangeResponse, error)
-	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error)
-	Execute(ctx context.Context, in *ExecuteRequest, opts ...grpc.CallOption) (*ExecuteResponse, error)
 }
 
 type gameNodeGRPCServiceClient struct {
@@ -102,26 +98,6 @@ func (c *gameNodeGRPCServiceClient) UpdateNodeState(ctx context.Context, in *Sta
 	return out, nil
 }
 
-func (c *gameNodeGRPCServiceClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(LogResponse)
-	err := c.cc.Invoke(ctx, GameNodeGRPCService_Log_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *gameNodeGRPCServiceClient) Execute(ctx context.Context, in *ExecuteRequest, opts ...grpc.CallOption) (*ExecuteResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ExecuteResponse)
-	err := c.cc.Invoke(ctx, GameNodeGRPCService_Execute_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // GameNodeGRPCServiceServer is the server API for GameNodeGRPCService service.
 // All implementations must embed UnimplementedGameNodeGRPCServiceServer
 // for forward compatibility.
@@ -134,8 +110,6 @@ type GameNodeGRPCServiceServer interface {
 	ReportMetrics(context.Context, *MetricsRequest) (*MetricsResponse, error)
 	ReportResource(context.Context, *ResourceRequest) (*ResourceResponse, error)
 	UpdateNodeState(context.Context, *StateChangeRequest) (*StateChangeResponse, error)
-	Log(context.Context, *LogRequest) (*LogResponse, error)
-	Execute(context.Context, *ExecuteRequest) (*ExecuteResponse, error)
 	mustEmbedUnimplementedGameNodeGRPCServiceServer()
 }
 
@@ -160,12 +134,6 @@ func (UnimplementedGameNodeGRPCServiceServer) ReportResource(context.Context, *R
 }
 func (UnimplementedGameNodeGRPCServiceServer) UpdateNodeState(context.Context, *StateChangeRequest) (*StateChangeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateNodeState not implemented")
-}
-func (UnimplementedGameNodeGRPCServiceServer) Log(context.Context, *LogRequest) (*LogResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Log not implemented")
-}
-func (UnimplementedGameNodeGRPCServiceServer) Execute(context.Context, *ExecuteRequest) (*ExecuteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Execute not implemented")
 }
 func (UnimplementedGameNodeGRPCServiceServer) mustEmbedUnimplementedGameNodeGRPCServiceServer() {}
 func (UnimplementedGameNodeGRPCServiceServer) testEmbeddedByValue()                             {}
@@ -278,42 +246,6 @@ func _GameNodeGRPCService_UpdateNodeState_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
-func _GameNodeGRPCService_Log_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LogRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GameNodeGRPCServiceServer).Log(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GameNodeGRPCService_Log_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GameNodeGRPCServiceServer).Log(ctx, req.(*LogRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GameNodeGRPCService_Execute_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExecuteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GameNodeGRPCServiceServer).Execute(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GameNodeGRPCService_Execute_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GameNodeGRPCServiceServer).Execute(ctx, req.(*ExecuteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // GameNodeGRPCService_ServiceDesc is the grpc.ServiceDesc for GameNodeGRPCService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -341,15 +273,7 @@ var GameNodeGRPCService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "UpdateNodeState",
 			Handler:    _GameNodeGRPCService_UpdateNodeState_Handler,
 		},
-		{
-			MethodName: "Log",
-			Handler:    _GameNodeGRPCService_Log_Handler,
-		},
-		{
-			MethodName: "Execute",
-			Handler:    _GameNodeGRPCService_Execute_Handler,
-		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "gamenode.proto",
+	Metadata: "internal/proto/gamenode.proto",
 }

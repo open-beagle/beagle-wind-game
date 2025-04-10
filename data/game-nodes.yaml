@@ -4,6 +4,7 @@
   type: physical
   location: 北京比格
   labels: {}
+  state: ""
   hardware:
     CPU: 0,Intel i9-13900K 24Core 5.8GHz 125W
     GPU: 0,NVIDIA RTX 4090 24GB 450W
@@ -20,34 +21,34 @@
     last_online: 2024-03-21T10:00:00Z
     updated_at: 2024-03-21T10:00:00Z
     hardware:
-      cpus: []
-      memories: []
-      gpus: []
-      storages: []
-      networks: []
+        cpus: []
+        memories: []
+        gpus: []
+        storages: []
+        networks: []
     system:
-      os_distribution: Ubuntu
-      os_version: 22.04 LTS
-      os_architecture: x86_64
-      kernel_version: ""
-      gpu_driver_version: NVIDIA Driver 545.23.08
-      gpu_compute_api_version: ""
-      docker_version: ""
-      containerd_version: ""
-      runc_version: ""
+        os_distribution: Ubuntu
+        os_version: 22.04 LTS
+        os_architecture: x86_64
+        kernel_version: ""
+        gpu_driver_version: NVIDIA Driver 545.23.08
+        gpu_compute_api_version: ""
+        docker_version: ""
+        containerd_version: ""
+        runc_version: ""
     metrics:
-      cpus: []
-      memory:
-        total: 0
-        available: 120259084288
-        used: 17179869184
-        usage: 12.5
-      gpus: []
-      storages: []
-      network:
-        inbound_traffic: 10.5
-        outbound_traffic: 2.3
-        connections: 120
+        cpus: []
+        memory:
+            total: 0
+            available: 120259084288
+            used: 17179869184
+            usage: 12.5
+        gpus: []
+        storages: []
+        network:
+            inbound_traffic: 10.5
+            outbound_traffic: 2.3
+            connections: 120
   created_at: 2024-01-15T00:00:00Z
   updated_at: 2024-03-21T10:00:00Z
 - id: node-243
@@ -56,6 +57,7 @@
   type: physical
   location: 北京比格
   labels: {}
+  state: ""
   hardware:
     CPU: 0,Intel i9-13900K 24Core 5.8GHz 125W
     GPU: 0,NVIDIA RTX 4090 24GB 450W
@@ -72,34 +74,34 @@
     last_online: 2024-03-21T10:00:00Z
     updated_at: 2024-03-21T10:00:00Z
     hardware:
-      cpus: []
-      memories: []
-      gpus: []
-      storages: []
-      networks: []
+        cpus: []
+        memories: []
+        gpus: []
+        storages: []
+        networks: []
     system:
-      os_distribution: Ubuntu
-      os_version: 22.04 LTS
-      os_architecture: x86_64
-      kernel_version: ""
-      gpu_driver_version: NVIDIA Driver 545.23.08
-      gpu_compute_api_version: ""
-      docker_version: ""
-      containerd_version: ""
-      runc_version: ""
+        os_distribution: Ubuntu
+        os_version: 22.04 LTS
+        os_architecture: x86_64
+        kernel_version: ""
+        gpu_driver_version: NVIDIA Driver 545.23.08
+        gpu_compute_api_version: ""
+        docker_version: ""
+        containerd_version: ""
+        runc_version: ""
     metrics:
-      cpus: []
-      memory:
-        total: 0
-        available: 123731517440
-        used: 13743895347
-        usage: 10
-      gpus: []
-      storages: []
-      network:
-        inbound_traffic: 8.2
-        outbound_traffic: 1.9
-        connections: 95
+        cpus: []
+        memory:
+            total: 0
+            available: 123731517440
+            used: 13743895347
+            usage: 10
+        gpus: []
+        storages: []
+        network:
+            inbound_traffic: 8.2
+            outbound_traffic: 1.9
+            connections: 95
   created_at: 2024-01-20T00:00:00Z
   updated_at: 2024-03-21T10:00:00Z
 - id: node-246
@@ -108,6 +110,7 @@
   type: physical
   location: 北京比格
   labels: {}
+  state: ""
   hardware:
     CPU: 0,Intel i9-13900K 24Core 5.8GHz 125W
     GPU: 0,NVIDIA RTX 4090 24GB 450W
@@ -124,33 +127,161 @@
     last_online: 2024-03-21T10:00:00Z
     updated_at: 2024-03-21T10:00:00Z
     hardware:
-      cpus: []
-      memories: []
-      gpus: []
-      storages: []
-      networks: []
+        cpus: []
+        memories: []
+        gpus: []
+        storages: []
+        networks: []
     system:
-      os_distribution: Ubuntu
-      os_version: 22.04 LTS
-      os_architecture: x86_64
-      kernel_version: ""
-      gpu_driver_version: NVIDIA Driver 545.23.08
-      gpu_compute_api_version: ""
-      docker_version: ""
-      containerd_version: ""
-      runc_version: ""
+        os_distribution: Ubuntu
+        os_version: 22.04 LTS
+        os_architecture: x86_64
+        kernel_version: ""
+        gpu_driver_version: NVIDIA Driver 545.23.08
+        gpu_compute_api_version: ""
+        docker_version: ""
+        containerd_version: ""
+        runc_version: ""
     metrics:
-      cpus: []
-      memory:
-        total: 0
-        available: 123731517440
-        used: 13743895347
-        usage: 10
-      gpus: []
-      storages: []
-      network:
-        inbound_traffic: 7.5
-        outbound_traffic: 1.8
-        connections: 80
+        cpus: []
+        memory:
+            total: 0
+            available: 123731517440
+            used: 13743895347
+            usage: 10
+        gpus: []
+        storages: []
+        network:
+            inbound_traffic: 7.5
+            outbound_traffic: 1.8
+            connections: 80
   created_at: 2024-01-25T00:00:00Z
   updated_at: 2024-03-21T10:00:00Z
+- id: node-BG-SHUCHENG-ROG
+  alias: node-BG-SHUCHENG-ROG
+  model: Beagle-Wind-2024
+  type: virtual
+  location: default
+  labels: {}
+  state: normal
+  hardware:
+    CPU: Intel i9-13900H 2core 3.0GHz 45W
+    GPU: 0,NVIDIA RTX 4070 Laptop 8GB 80W
+    RAM: 16 GB (WSL)
+    Storage: /,SSD Virtual Disk 1TB; /mnt/c,HDD Virtual Disk 4TB; /mnt/d,HDD Virtual Disk 1TB; /mnt/wsl/docker-desktop/docker-desktop-user-distro,HDD Virtual Disk 1TB
+  system:
+    gpu_compute_api_version: "12.6"
+    gpu_driver_version: NVIDIA Driver 572.83
+    kernel_version: 5.15.167.4-microsoft-standard-WSL2
+    os_architecture: x86_64
+    os_distribution: Debian (WSL)
+    os_version: "12"
+  status:
+    state: online
+    online: true
+    last_online: 2025-04-10T19:48:21.884809868+08:00
+    updated_at: 2025-04-10T19:48:22.701318096+08:00
+    hardware:
+        cpus:
+            - model: Intel i9-13900H
+              cores: 2
+              threads: 4
+              frequency: 2.995198
+              cache: 0
+              architecture: x86_64
+        memories:
+            - size: 16776024064
+              type: Unknown
+              frequency: 0
+        gpus:
+            - model: NVIDIA GeForce RTX 4070 Laptop GPU
+              memory_total: 8585740288
+              architecture: GeForce
+              driver_version: Nvidia Driver 572.83
+              compute_capability: CUDA 12.8
+              tdp: 140
+        storages:
+            - type: SSD
+              model: Virtual Disk
+              capacity: 1081258016768
+              path: /
+            - type: HDD
+              model: Virtual Disk
+              capacity: 4068193022771
+              path: /mnt/c
+            - type: HDD
+              model: Virtual Disk
+              capacity: 995358670848
+              path: /mnt/d
+            - type: HDD
+              model: Virtual Disk
+              capacity: 1081258016768
+              path: /mnt/wsl/docker-desktop/docker-desktop-user-distro
+        networks:
+            - name: eth0
+              mac_address: "00:00:00:00:00:00"
+              ip_address: 10.0.0.2
+              speed: 1000
+    system:
+        os_distribution: Debian (WSL)
+        os_version: "12"
+        os_architecture: x86_64
+        kernel_version: 5.15.167.4-microsoft-standard-WSL2
+        gpu_driver_version: NVIDIA Driver 572.83
+        gpu_compute_api_version: "12.6"
+        docker_version: 27.0.3
+        containerd_version: 1.7.18
+        runc_version: 1.7.18
+    metrics:
+        cpus:
+            - model: Intel i9-13900H
+              cores: 2
+              threads: 4
+              usage: 4.433497536955524
+        memory:
+            total: 16776024064
+            available: 14486466560
+            used: 1944608768
+            usage: 11.591595008336773
+        gpus:
+            - model: NVIDIA GeForce RTX 4070 Laptop GPU
+              memory_total: 8188
+              usage: 5
+              memory_used: 1384
+              memory_free: 6565
+              memory_usage: 16.90278456277479
+        storages:
+            - path: /
+              type: SSD
+              model: Virtual Disk
+              capacity: 1081101176832
+              used: 73729933312
+              free: 952378888192
+              usage: 6.81989205932179
+            - path: /mnt/c
+              type: HDD
+              model: Virtual Disk
+              capacity: 4067180933120
+              used: 2320623497216
+              free: 1746557435904
+              usage: 57.0572968199822
+            - path: /mnt/d
+              type: HDD
+              model: Virtual Disk
+              capacity: 994679525376
+              used: 98044231680
+              free: 896635293696
+              usage: 9.856866375422594
+            - path: /mnt/wsl/docker-desktop/docker-desktop-user-distro
+              type: HDD
+              model: Virtual Disk
+              capacity: 1081101176832
+              used: 58875904
+              free: 1026049945600
+              usage: 0.0054459198881391235
+        network:
+            inbound_traffic: 2.700334167480469
+            outbound_traffic: 1.4148422241210938
+            connections: 33
+  created_at: 2025-04-10T16:48:13.858358065+08:00
+  updated_at: 2025-04-10T19:48:22.701318182+08:00

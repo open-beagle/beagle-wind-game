@@ -40,16 +40,23 @@ type YAMLGameNodeStore struct {
 	mu        sync.RWMutex
 	logger    utils.Logger
 	yamlSaver *utils.YAMLSaver
+	ctx       context.Context    // 存储的独立上下文
+	cancel    context.CancelFunc // 用于取消存储的上下文
 }
 
 // NewGameNodeStore 创建YAML格式的游戏节点存储
 func NewGameNodeStore(ctx context.Context, dataFile string) (GameNodeStore, error) {
 	logger := utils.New("GameNodeStore")
 
+	// 创建存储的独立上下文
+	storeCtx, cancel := context.WithCancel(context.Background())
+
 	store := &YAMLGameNodeStore{
 		dataFile: dataFile,
 		nodes:    []models.GameNode{},
 		logger:   logger,
+		ctx:      storeCtx,
+		cancel:   cancel,
 	}
 
 	// 创建YAML保存器，使用1秒的延迟保存
@@ -115,13 +122,8 @@ func (s *YAMLGameNodeStore) Load(ctx context.Context) error {
 
 // Save 保存节点数据到文件
 func (s *YAMLGameNodeStore) Save(ctx context.Context) error {
-	// 检查上下文是否已取消
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	// 使用延迟保存器进行保存
-	return s.yamlSaver.Save(ctx)
+	// 使用存储的独立上下文进行保存
+	return s.yamlSaver.Save(s.ctx)
 }
 
 // List 获取所有节点
@@ -275,5 +277,8 @@ func (s *YAMLGameNodeStore) Close() {
 	s.logger.Info("关闭GameNodeStore，确保数据保存...")
 	if s.yamlSaver != nil {
 		s.yamlSaver.Close()
+	}
+	if s.cancel != nil {
+		s.cancel()
 	}
 }

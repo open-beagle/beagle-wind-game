@@ -72,7 +72,7 @@ GameNodeServer 是 GameNode 系统的核心服务组件之一，负责管理游�
   - 注册结果：
     - 成功：返回成功状态和欢迎消息
     - 失败：返回失败状态和错误原因
-  - 节点静态状态：
+  - 节点维护状态：
     - normal：正常状态，可以处理所有业务
     - maintenance：维护状态，不处理业务但保持心跳
     - disabled：禁用状态，只响应心跳
@@ -83,8 +83,8 @@ GameNodeServer 是 GameNode 系统的核心服务组件之一，负责管理游�
   3. 检查节点是否已存在
      - 新节点：创建新记录
      - 已有节点：更新信息
-  4. 获取节点静态状态
-  5. 根据静态状态决定后续行为：
+  4. 获取节点维护状态
+  5. 根据维护状态决定后续行为：
      - normal：允许注册，建立连接
      - maintenance：允许注册，建立连接
      - disabled：拒绝注册，返回错误
@@ -231,10 +231,10 @@ GameNodeServer 是 GameNode 系统的核心服务组件之一，负责管理游�
   - 存储失败：记录错误日志
   - 数据异常：记录警告日志
 
-#### 1.2.1.5 节点静态状态变更服务
+#### 1.2.1.5 节点维护状态变更服务
 
 - 功能描述：
-  - Server 主动通知 Agent 节点静态状态变更
+  - Server 主动通知 Agent 节点维护状态变更
   - 执行状态转换操作
   - 维护状态一致性
   - 确保 Agent 正确响应状态变更
@@ -750,7 +750,7 @@ type LogManager interface {
        }
 
        // 2. 通过 nodeService 更新指标数据
-       return nm.nodeService.UpdateMetrics(ctx, req)
+       return nm.nodeService.ReportMetrics(ctx, req)
    }
    ```
 

@@ -48,20 +48,22 @@ type YAMLGameInstanceStore struct {
 	mu        sync.RWMutex
 	logger    utils.Logger
 	yamlSaver *utils.YAMLSaver
+	ctx       context.Context    // 存储的独立上下文
+	cancel    context.CancelFunc // 用于取消存储的上下文
 }
 
 // NewGameInstanceStore 创建游戏实例存储
 func NewGameInstanceStore(ctx context.Context, dataFile string, logger utils.Logger) (GameInstanceStore, error) {
-	// 检查上下文是否已取消
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
+	// 创建存储的独立上下文
+	storeCtx, cancel := context.WithCancel(context.Background())
 
 	// 创建存储
 	store := &YAMLGameInstanceStore{
 		dataFile:  dataFile,
 		instances: []models.GameInstance{},
 		logger:    logger,
+		ctx:       storeCtx,
+		cancel:    cancel,
 	}
 
 	// 创建YAML保存器，使用1秒的延迟保存
@@ -142,13 +144,8 @@ func (s *YAMLGameInstanceStore) Load(ctx context.Context) error {
 
 // Save 保存数据
 func (s *YAMLGameInstanceStore) Save(ctx context.Context) error {
-	// 检查上下文是否已取消
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	// 使用延迟保存器进行保存
-	return s.yamlSaver.Save(ctx)
+	// 使用存储的独立上下文进行保存
+	return s.yamlSaver.Save(s.ctx)
 }
 
 // List 列出所有实例
@@ -445,10 +442,13 @@ func (s *YAMLGameInstanceStore) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-// Close 关闭存储，确保所有待处理的保存操作完成
+// Close 关闭存储
 func (s *YAMLGameInstanceStore) Close() {
 	s.logger.Info("关闭GameInstanceStore，确保数据保存...")
 	if s.yamlSaver != nil {
 		s.yamlSaver.Close()
+	}
+	if s.cancel != nil {
+		s.cancel()
 	}
 }

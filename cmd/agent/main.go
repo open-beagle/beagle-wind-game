@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
+
 	"github.com/open-beagle/beagle-wind-game/internal/gamenode"
+	"github.com/open-beagle/beagle-wind-game/internal/models"
 	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
@@ -99,11 +101,21 @@ func startMetrics(
 			if grpcClient == nil {
 				continue
 			}
-			if err := grpcClient.UpdateMetrics(ctx); err != nil {
+			if err := grpcClient.ReportMetrics(ctx); err != nil {
 				utils.GetLogger().Error("指标更新失败: %v", err)
 			}
 		}
 	}
+}
+
+// startBusinessProcessing 启动业务处理服务
+func startBusinessProcessing(
+	ctx context.Context,
+	grpcClient *gamenode.GameNodeAgent,
+	wg *sync.WaitGroup,
+) {
+	defer wg.Done()
+	// TODO: 实现业务处理逻辑
 }
 
 func main() {
@@ -165,17 +177,51 @@ func main() {
 	}
 	logger.Info("gRPC客户端初始化成功")
 
+	// 启动gRPC+注册节点
+	if err := grpcClient.Start(ctx); err != nil {
+		logger.Fatal("节点注册失败: %v", err)
+	}
+	logger.Info("节点注册成功")
+
+	// 上报资源信息
+	if err := grpcClient.ReportResource(ctx); err != nil {
+		logger.Fatal("资源信息上报失败: %v", err)
+	}
+	logger.Info("资源信息上报成功")
+
+	// 定义服务间隔时间
+	heartbeatInterval := 30 * time.Second
+	metricsInterval := 5 * time.Second
+
 	// 启动子线程
 	var wg sync.WaitGroup
-	wg.Add(2) // 只需要等待心跳和指标服务
 
-	// 启动心跳服务
-	heartbeatInterval := 30 * time.Second
-	go startHeartbeat(ctx, grpcClient, heartbeatInterval, &wg)
+	// 根据维护状态启动不同的服务
+	switch grpcClient.GetState() {
+	case models.GameNodeStaticStateNormal:
+		logger.Info("节点状态为正常，启动所有服务")
+		// 正常状态：启动所有服务
+		wg.Add(3) // 心跳、指标和业务服务
+		go startHeartbeat(ctx, grpcClient, heartbeatInterval, &wg)
+		go startMetrics(ctx, grpcClient, metricsInterval, &wg)
+		go startBusinessProcessing(ctx, grpcClient, &wg)
 
-	// 启动指标服务
-	metricsInterval := 5 * time.Second
-	go startMetrics(ctx, grpcClient, metricsInterval, &wg)
+	case models.GameNodeStaticStateMaintenance:
+		logger.Info("节点状态为维护中，仅启动基础服务")
+		// 维护状态：只启动基础服务
+		wg.Add(2) // 心跳和指标服务
+		go startHeartbeat(ctx, grpcClient, heartbeatInterval, &wg)
+		go startMetrics(ctx, grpcClient, metricsInterval, &wg)
+
+	case models.GameNodeStaticStateDisabled:
+		logger.Info("节点状态为已禁用，仅保持心跳")
+		// 禁用状态：只保持心跳
+		wg.Add(1) // 只启动心跳服务
+		go startHeartbeat(ctx, grpcClient, heartbeatInterval, &wg)
+
+	default:
+		logger.Fatal("无效的节点状态: %v", grpcClient.GetState())
+	}
 
 	// 等待信号
 	sigCh := make(chan os.Signal, 1)

@@ -97,7 +97,7 @@ type GameNodeStore interface {
 
     // 节点状态管理
     UpdateStatus(id string, status string) error
-    UpdateMetrics(id string, metrics *NodeMetrics) error
+    ReportMetrics(id string, metrics *NodeMetrics) error
 }
 ```
 

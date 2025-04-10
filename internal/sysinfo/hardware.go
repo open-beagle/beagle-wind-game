@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -563,7 +564,7 @@ func (c *HardwareCollector) collectMemoryInfo(hardwareInfo *models.HardwareInfo)
 
 // collectGPUInfo 采集GPU信息
 func (c *HardwareCollector) collectGPUInfo(hardwareInfo *models.HardwareInfo) error {
-	// 检查是否存在NVIDIA GPU
+	// 首先尝试获取NVIDIA GPU信息
 	if err := c.collectNvidiaGPUInfo(hardwareInfo); err != nil {
 		c.logger.Warn("采集NVIDIA GPU信息失败: %v", err)
 	}
@@ -585,6 +586,71 @@ func (c *HardwareCollector) collectGPUInfo(hardwareInfo *models.HardwareInfo) er
 	return nil
 }
 
+// getNvidiaGPUArchitecture 根据GPU型号判断架构
+func getNvidiaGPUArchitecture(model string) string {
+	model = strings.ToLower(model)
+
+	// 安培架构 (Ampere)
+	if strings.Contains(model, "rtx 30") || strings.Contains(model, "rtx 40") ||
+		strings.Contains(model, "a100") || strings.Contains(model, "a40") ||
+		strings.Contains(model, "a5000") || strings.Contains(model, "a6000") ||
+		strings.Contains(model, "a800") || strings.Contains(model, "a6000") ||
+		strings.Contains(model, "h100") || strings.Contains(model, "h800") ||
+		strings.Contains(model, "l40") || strings.Contains(model, "l40s") {
+		return "Ampere"
+	}
+
+	// 图灵架构 (Turing)
+	if strings.Contains(model, "rtx 20") || strings.Contains(model, "gtx 16") ||
+		strings.Contains(model, "t4") || strings.Contains(model, "quadro rtx") ||
+		strings.Contains(model, "t1000") || strings.Contains(model, "t600") ||
+		strings.Contains(model, "t400") || strings.Contains(model, "t500") {
+		return "Turing"
+	}
+
+	// 帕斯卡架构 (Pascal)
+	if strings.Contains(model, "gtx 10") || strings.Contains(model, "p100") ||
+		strings.Contains(model, "p40") || strings.Contains(model, "quadro p") ||
+		strings.Contains(model, "p6000") || strings.Contains(model, "p5000") ||
+		strings.Contains(model, "p4000") || strings.Contains(model, "p2000") {
+		return "Pascal"
+	}
+
+	// 麦克斯韦架构 (Maxwell)
+	if strings.Contains(model, "gtx 9") || strings.Contains(model, "gtx 750") ||
+		strings.Contains(model, "m40") || strings.Contains(model, "quadro m") ||
+		strings.Contains(model, "m6000") || strings.Contains(model, "m5000") ||
+		strings.Contains(model, "m4000") || strings.Contains(model, "m2000") {
+		return "Maxwell"
+	}
+
+	// 开普勒架构 (Kepler)
+	if strings.Contains(model, "gtx 6") || strings.Contains(model, "gtx 7") ||
+		strings.Contains(model, "k80") || strings.Contains(model, "quadro k") ||
+		strings.Contains(model, "k6000") || strings.Contains(model, "k5200") ||
+		strings.Contains(model, "k4200") || strings.Contains(model, "k2200") {
+		return "Kepler"
+	}
+
+	// 费米架构 (Fermi)
+	if strings.Contains(model, "gtx 4") || strings.Contains(model, "gtx 5") ||
+		strings.Contains(model, "quadro 4000") || strings.Contains(model, "quadro 5000") ||
+		strings.Contains(model, "quadro 6000") || strings.Contains(model, "quadro 5000") ||
+		strings.Contains(model, "quadro 4000") || strings.Contains(model, "quadro 2000") {
+		return "Fermi"
+	}
+
+	// 特斯拉架构 (Tesla)
+	if strings.Contains(model, "gtx 2") || strings.Contains(model, "gtx 3") ||
+		strings.Contains(model, "quadro fx") || strings.Contains(model, "tesla") ||
+		strings.Contains(model, "tesla c") || strings.Contains(model, "tesla m") ||
+		strings.Contains(model, "tesla s") || strings.Contains(model, "tesla t") {
+		return "Tesla"
+	}
+
+	return "Unknown"
+}
+
 // collectNvidiaGPUInfo 采集NVIDIA GPU信息
 func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareInfo) error {
 	// 使用我们的工具函数查找nvidia-smi
@@ -593,237 +659,262 @@ func (c *HardwareCollector) collectNvidiaGPUInfo(hardwareInfo *models.HardwareIn
 		return fmt.Errorf("未找到nvidia-smi命令: %v", err)
 	}
 
-	// 执行nvidia-smi获取详细信息
-	// 增加更多查询字段，包括UUID和序列号
-	cmd := fmt.Sprintf("%s --query-gpu=name,memory.total,pci.bus_id,gpu_uuid,serial,power.default_limit --format=csv,noheader", nvidiaSmiPath)
-	out, err := exec.Command("sh", "-c", cmd).Output()
+	// 执行基本nvidia-smi命令获取完整信息
+	cmd := exec.Command(nvidiaSmiPath, "-q")
+	basicOut, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("执行nvidia-smi命令失败: %v\n命令: %s", err, cmd)
+		return fmt.Errorf("执行nvidia-smi命令失败: %v, 输出: %s", err, string(basicOut))
 	}
 
 	// 解析输出
-	lines := strings.Split(string(out), "\n")
+	lines := strings.Split(string(basicOut), "\n")
+	var currentGPU *models.GPUDevice
+	var driverVersion string
+	var computeCapability string
+	var memoryFlag bool
+	var tdpFlag bool
+
 	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
+		line = strings.TrimSpace(line)
+
+		// 解析驱动版本
+		if strings.Contains(line, "Driver Version") {
+			parts := strings.Split(line, ":")
+			if len(parts) > 1 {
+				version := strings.TrimSpace(parts[1])
+				driverVersion = fmt.Sprintf("Nvidia Driver %s", version)
+			}
 			continue
 		}
 
-		fields := strings.Split(line, ", ")
-		if len(fields) >= 2 {
-			// 创建GPU设备，只使用重构后模型支持的字段
-			gpu := models.GPUDevice{
-				Model: fields[0],
+		// 解析CUDA版本
+		if strings.Contains(line, "CUDA Version") {
+			parts := strings.Split(line, ":")
+			if len(parts) > 1 {
+				version := strings.TrimSpace(parts[1])
+				computeCapability = fmt.Sprintf("CUDA %s", version)
 			}
+			continue
+		}
 
-			// 获取GPU显存
-			if len(fields) >= 2 {
-				memoryStr := strings.TrimSpace(fields[1])
-				// 处理单位(通常是MiB)
-				memoryStr = strings.ReplaceAll(memoryStr, "MiB", "")
-				memoryStr = strings.ReplaceAll(memoryStr, " ", "")
-				if memory, err := strconv.ParseFloat(memoryStr, 64); err == nil {
-					gpu.MemoryTotal = int64(memory * 1024 * 1024) // 转换为字节
-				} else {
-					c.logger.Warn("解析GPU显存大小失败: %v, 原始值: %s", err, memoryStr)
+		// 开始新的GPU信息
+		if strings.Contains(line, "Product Name") {
+			if currentGPU != nil {
+				hardwareInfo.GPUs = append(hardwareInfo.GPUs, *currentGPU)
+			}
+			parts := strings.Split(line, ":")
+			if len(parts) > 1 {
+				model := strings.TrimSpace(parts[1])
+				currentGPU = &models.GPUDevice{
+					Model:             model,
+					DriverVersion:     driverVersion,
+					ComputeCapability: computeCapability,
 				}
 			}
+			continue
+		}
 
-			// 获取PCI ID（不再保存，因为模型中没有这个字段）
-			var pciID string
-			if len(fields) >= 3 {
-				pciID = strings.TrimSpace(fields[2])
-				if pciID == "" {
-					c.logger.Warn("警告: GPU的PCI ID为空")
-				}
-			} else {
-				c.logger.Warn("警告: 未能获取GPU的PCI ID")
+		if currentGPU == nil {
+			continue
+		}
+
+		// 解析架构信息
+		if strings.Contains(line, "Product Brand") {
+			parts := strings.Split(line, ":")
+			if len(parts) > 1 {
+				currentGPU.Architecture = strings.TrimSpace(parts[1])
 			}
+			continue
+		}
 
-			// UUID和序列号（不再保存，因为模型中没有这个字段）
-			if len(fields) >= 4 {
-				uuid := strings.TrimSpace(fields[3])
-				if uuid == "" {
-					c.logger.Warn("警告: GPU的UUID为空")
-				} else if uuid == "N/A" {
-					c.logger.Warn("警告: GPU的UUID不可用")
-				}
-			}
+		// 解析显存信息
+		if strings.Contains(line, "FB Memory Usage") {
+			memoryFlag = true
+			continue
+		}
 
-			// 实际序列号（不再保存）
-			if len(fields) >= 5 {
-				serial := strings.TrimSpace(fields[4])
-				if serial == "" {
-					c.logger.Warn("警告: GPU的序列号为空")
-				}
-			}
-
-			// 添加功耗信息
-			if len(fields) >= 6 {
-				tdpStr := strings.TrimSpace(fields[5])
-				if tdpStr == "" {
-					c.logger.Warn("警告: GPU的功耗信息为空")
-				} else if tdpStr != "N/A" {
-					// 移除单位(通常是W)
-					tdpStr = strings.ReplaceAll(tdpStr, "W", "")
-					tdpStr = strings.TrimSpace(tdpStr)
-					tdp, err := strconv.ParseFloat(tdpStr, 64)
-					if err == nil {
-						gpu.TDP = int32(tdp)
-					} else {
-						c.logger.Warn("解析GPU功耗失败: %v, 原始值: %s", err, tdpStr)
-					}
+		// 解析显存信息
+		if strings.Contains(line, "Total") && memoryFlag {
+			memoryFlag = false
+			parts := strings.Split(line, ":")
+			if len(parts) > 1 {
+				memoryStr := strings.TrimSpace(parts[1])
+				memoryStr = strings.Split(memoryStr, " ")[0] // 获取数字部分
+				if memory, err := strconv.ParseUint(memoryStr, 10, 64); err == nil {
+					currentGPU.MemoryTotal = int64(memory * 1024 * 1024) // 转换为字节
 				}
 			}
+			continue
+		}
 
-			// 设置架构
-			gpu.Architecture = c.determineNvidiaArchitecture(fields[0])
-			if gpu.Architecture == "Unknown" {
-				c.logger.Warn("警告: 无法确定GPU %s 的架构", fields[0])
+		// 解析TDP信息
+		if strings.Contains(line, "GPU Power Readings") {
+			tdpFlag = true
+			continue
+		}
+
+		// 解析TDP信息
+		if strings.Contains(line, "Max Power Limit") && tdpFlag {
+			tdpFlag = false
+			parts := strings.Split(line, ":")
+			if len(parts) > 1 {
+				tdpStr := strings.TrimSpace(parts[1])
+				tdpStr = strings.Split(tdpStr, " ")[0] // 获取数字部分
+				if tdp, err := strconv.ParseFloat(tdpStr, 32); err == nil {
+					currentGPU.TDP = int32(tdp)
+				}
 			}
-
-			// 设置驱动版本
-			gpu.DriverVersion = "Unknown"
-
-			// 设置计算能力
-			gpu.ComputeCapability = "Unknown"
-
-			// 添加到硬件信息
-			hardwareInfo.GPUs = append(hardwareInfo.GPUs, gpu)
+			continue
 		}
 	}
 
-	// 尝试从lspci获取更多信息
-	if len(hardwareInfo.GPUs) > 0 {
-		// 在重构后，暂时禁用增强GPU信息的功能，因为字段发生变化
-		// if err := c.enhanceNvidiaGPUInfoWithLspci(hardwareInfo); err != nil {
-		// 	fmt.Printf("通过lspci增强GPU信息失败: %v\n", err)
-		// }
-	} else {
-		c.logger.Warn("警告: nvidia-smi未返回任何GPU信息")
-
-		// 尝试使用lspci检测是否存在NVIDIA GPU
-		lspciPath, err := findCommand("lspci")
-		if err == nil {
-			out, err := exec.Command(lspciPath).Output()
-			if err == nil && strings.Contains(string(out), "NVIDIA") {
-				c.logger.Warn("检测到NVIDIA GPU设备，但nvidia-smi未返回信息，可能是驱动问题")
-
-				// 尝试只从lspci获取基本信息
-				out, err := exec.Command(lspciPath, "-v").Output()
-				if err == nil {
-					lines := strings.Split(string(out), "\n")
-					for _, line := range lines {
-						if strings.Contains(line, "NVIDIA") && (strings.Contains(line, "VGA") || strings.Contains(line, "3D")) {
-							parts := strings.SplitN(line, ":", 2)
-							if len(parts) >= 2 {
-								// 这里不再使用pciSlot
-								desc := strings.TrimSpace(parts[1])
-
-								// 提取型号信息
-								modelMatch := regexp.MustCompile(`\[([^\]]+)\]`).FindStringSubmatch(desc)
-								model := "NVIDIA GPU"
-								if len(modelMatch) > 1 {
-									model = modelMatch[1]
-								}
-
-								gpu := models.GPUDevice{
-									Model:             model,
-									Architecture:      "Unknown",
-									DriverVersion:     "Unknown",
-									ComputeCapability: "Unknown",
-								}
-
-								hardwareInfo.GPUs = append(hardwareInfo.GPUs, gpu)
-								c.logger.Info("从lspci中检测到NVIDIA GPU: %s", model)
-							}
-						}
-					}
-				}
-			}
-		}
+	// 添加最后一个GPU
+	if currentGPU != nil {
+		hardwareInfo.GPUs = append(hardwareInfo.GPUs, *currentGPU)
 	}
 
 	return nil
 }
 
-// determineNvidiaArchitecture 根据型号确定NVIDIA GPU架构
-func (c *HardwareCollector) determineNvidiaArchitecture(model string) string {
-	model = strings.ToLower(model)
-
-	// Ampere架构
-	if strings.Contains(model, "a100") || strings.Contains(model, "a40") ||
-		strings.Contains(model, "a30") || strings.Contains(model, "a10") ||
-		strings.Contains(model, "rtx 30") || strings.Contains(model, "rtx a") {
-		return "Ampere"
-	}
-
-	// Ada Lovelace架构
-	if strings.Contains(model, "rtx 40") || strings.Contains(model, "4090") ||
-		strings.Contains(model, "4080") || strings.Contains(model, "4070") ||
-		strings.Contains(model, "4060") {
-		return "Ada Lovelace"
-	}
-
-	// Turing架构
-	if strings.Contains(model, "rtx 20") || strings.Contains(model, "gtx 16") ||
-		strings.Contains(model, "quadro rtx") {
-		return "Turing"
-	}
-
-	// Hopper架构
-	if strings.Contains(model, "h100") {
-		return "Hopper"
-	}
-
-	return "Unknown" // 默认架构
-}
-
 // collectAMDGPUInfo 采集AMD GPU信息
 func (c *HardwareCollector) collectAMDGPUInfo(hardwareInfo *models.HardwareInfo) error {
-	// 实现AMD GPU信息采集
-	// 暂时不实现，或后续添加
+	// 使用我们的工具函数查找rocm-smi
+	rocmSmiPath, err := findCommand("rocm-smi")
+	if err != nil {
+		return fmt.Errorf("未找到rocm-smi命令: %v", err)
+	}
+
+	// 执行rocm-smi获取详细信息
+	cmd := fmt.Sprintf("%s --showproductname --showmeminfo vram --showbus --showhwid", rocmSmiPath)
+	out, err := exec.Command("sh", "-c", cmd).Output()
+	if err != nil {
+		return fmt.Errorf("执行rocm-smi命令失败: %v", err)
+	}
+
+	// 解析输出
+	lines := strings.Split(string(out), "\n")
+	var model, memory, rocmVersion string
+
+	for _, line := range lines {
+		if strings.Contains(line, "GPU") {
+			// 提取型号
+			if strings.Contains(line, "GPU[") {
+				parts := strings.Split(line, ":")
+				if len(parts) > 1 {
+					model = strings.TrimSpace(parts[1])
+				}
+			}
+			// 提取显存
+			if strings.Contains(line, "Memory") {
+				parts := strings.Split(line, ":")
+				if len(parts) > 1 {
+					memory = strings.TrimSpace(parts[1])
+				}
+			}
+		}
+	}
+
+	// 获取ROCm版本
+	cmd = fmt.Sprintf("%s --showversion", rocmSmiPath)
+	if rocmOut, err := exec.Command("sh", "-c", cmd).Output(); err == nil {
+		if version := strings.TrimSpace(string(rocmOut)); version != "" {
+			rocmVersion = fmt.Sprintf("ROCm %s", version)
+		}
+	}
+
+	if model != "" {
+		// 转换内存大小
+		memoryTotal := uint64(0)
+		if memory != "" {
+			// 解析内存大小，例如 "16384 MB"
+			parts := strings.Fields(memory)
+			if len(parts) >= 2 {
+				if val, err := strconv.ParseUint(parts[0], 10, 64); err == nil {
+					memoryTotal = val * 1024 * 1024 // 转换为字节
+				}
+			}
+		}
+
+		gpu := models.GPUDevice{
+			Model:             model,
+			MemoryTotal:       int64(memoryTotal),
+			Architecture:      "AMD",
+			DriverVersion:     "Unknown", // AMD驱动版本需要额外命令获取
+			ComputeCapability: rocmVersion,
+			TDP:               0, // 需要额外命令获取
+		}
+
+		hardwareInfo.GPUs = append(hardwareInfo.GPUs, gpu)
+	}
+
 	return nil
 }
 
 // collectIntelGPUInfo 采集Intel GPU信息
 func (c *HardwareCollector) collectIntelGPUInfo(hardwareInfo *models.HardwareInfo) error {
-	// 使用lspci命令查找Intel显卡
-	lspciPath, err := findCommand("lspci")
+	// 检查/sys/class/drm目录
+	drmDir := "/sys/class/drm"
+	files, err := os.ReadDir(drmDir)
 	if err != nil {
-		return fmt.Errorf("未找到lspci命令: %v", err)
+		return fmt.Errorf("无法读取/sys/class/drm目录: %v", err)
 	}
 
-	// 使用完整路径执行命令
-	out, err := exec.Command(lspciPath, "-v").Output()
-	if err != nil {
-		return fmt.Errorf("执行lspci命令失败: %v", err)
-	}
+	for _, file := range files {
+		if !strings.HasPrefix(file.Name(), "card") {
+			continue
+		}
 
-	// 分析lspci输出，查找Intel GPU
-	lines := strings.Split(string(out), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "VGA") && strings.Contains(line, "Intel") {
-			// 提取型号信息
-			modelStart := strings.Index(line, "Intel")
-			if modelStart >= 0 {
-				model := line[modelStart:]
-				if idx := strings.Index(model, "["); idx > 0 {
-					model = model[:idx]
-				}
-				model = strings.TrimSpace(model)
+		// 读取设备信息
+		vendorPath := filepath.Join(drmDir, file.Name(), "device/vendor")
+		ueventPath := filepath.Join(drmDir, file.Name(), "device/uevent")
 
-				// 添加到硬件信息，使用新的模型结构
-				hardwareInfo.GPUs = append(hardwareInfo.GPUs, models.GPUDevice{
-					Model:             model,
-					MemoryTotal:       2 * 1024 * 1024 * 1024, // 假设2GB显存
-					Architecture:      "Intel",
-					DriverVersion:     "Unknown",
-					ComputeCapability: "Unknown",
-					TDP:               15, // 默认TDP较低
-				})
+		// 检查是否是Intel GPU
+		vendorData, err := os.ReadFile(vendorPath)
+		if err != nil {
+			continue
+		}
+
+		// Intel的vendor ID是0x8086
+		if strings.TrimSpace(string(vendorData)) != "0x8086" {
+			continue
+		}
+
+		// 读取uevent信息获取更多细节
+		ueventData, err := os.ReadFile(ueventPath)
+		if err != nil {
+			continue
+		}
+
+		// 解析uevent信息
+		model := "Intel GPU"
+		for _, line := range strings.Split(string(ueventData), "\n") {
+			if strings.HasPrefix(line, "DRIVER=") {
+				model = strings.TrimPrefix(line, "DRIVER=")
 				break
 			}
 		}
+
+		// 获取oneAPI版本
+		oneAPIVersion := "Unknown"
+		if intelGpuTopPath, err := findCommand("intel_gpu_top"); err == nil {
+			cmd := fmt.Sprintf("%s --version", intelGpuTopPath)
+			if versionOut, err := exec.Command("sh", "-c", cmd).Output(); err == nil {
+				if version := strings.TrimSpace(string(versionOut)); version != "" {
+					oneAPIVersion = fmt.Sprintf("oneAPI %s", version)
+				}
+			}
+		}
+
+		gpu := models.GPUDevice{
+			Model:             model,
+			MemoryTotal:       0, // Intel GPU显存需要额外命令获取
+			Architecture:      "Intel",
+			DriverVersion:     "Unknown", // Intel驱动版本需要额外命令获取
+			ComputeCapability: oneAPIVersion,
+			TDP:               0, // 需要额外命令获取
+		}
+
+		hardwareInfo.GPUs = append(hardwareInfo.GPUs, gpu)
 	}
 
 	return nil

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v5.29.4
-// source: gamenode.proto
+// source: internal/proto/gamenode.proto
 
 package proto
 
@@ -22,7 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// 节点静态状态
+// 节点维护状态
 type GameNodeStaticState int32
 
 const (
@@ -56,11 +56,11 @@ func (x GameNodeStaticState) String() string {
 }
 
 func (GameNodeStaticState) Descriptor() protoreflect.EnumDescriptor {
-	return file_gamenode_proto_enumTypes[0].Descriptor()
+	return file_internal_proto_gamenode_proto_enumTypes[0].Descriptor()
 }
 
 func (GameNodeStaticState) Type() protoreflect.EnumType {
-	return &file_gamenode_proto_enumTypes[0]
+	return &file_internal_proto_gamenode_proto_enumTypes[0]
 }
 
 func (x GameNodeStaticState) Number() protoreflect.EnumNumber {
@@ -69,7 +69,7 @@ func (x GameNodeStaticState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use GameNodeStaticState.Descriptor instead.
 func (GameNodeStaticState) EnumDescriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{0}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{0}
 }
 
 // 节点注册
@@ -89,7 +89,7 @@ type RegisterRequest struct {
 
 func (x *RegisterRequest) Reset() {
 	*x = RegisterRequest{}
-	mi := &file_gamenode_proto_msgTypes[0]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -101,7 +101,7 @@ func (x *RegisterRequest) String() string {
 func (*RegisterRequest) ProtoMessage() {}
 
 func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[0]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -114,7 +114,7 @@ func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
 func (*RegisterRequest) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{0}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *RegisterRequest) GetId() string {
@@ -177,14 +177,14 @@ type RegisterResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	State         GameNodeStaticState    `protobuf:"varint,3,opt,name=state,proto3,enum=gamenode.GameNodeStaticState" json:"state,omitempty"` // 节点静态状态
+	State         GameNodeStaticState    `protobuf:"varint,3,opt,name=state,proto3,enum=gamenode.GameNodeStaticState" json:"state,omitempty"` // 节点维护状态
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RegisterResponse) Reset() {
 	*x = RegisterResponse{}
-	mi := &file_gamenode_proto_msgTypes[1]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -196,7 +196,7 @@ func (x *RegisterResponse) String() string {
 func (*RegisterResponse) ProtoMessage() {}
 
 func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[1]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -209,7 +209,7 @@ func (x *RegisterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterResponse.ProtoReflect.Descriptor instead.
 func (*RegisterResponse) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{1}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RegisterResponse) GetSuccess() bool {
@@ -245,7 +245,7 @@ type HeartbeatRequest struct {
 
 func (x *HeartbeatRequest) Reset() {
 	*x = HeartbeatRequest{}
-	mi := &file_gamenode_proto_msgTypes[2]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -257,7 +257,7 @@ func (x *HeartbeatRequest) String() string {
 func (*HeartbeatRequest) ProtoMessage() {}
 
 func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[2]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -270,7 +270,7 @@ func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{2}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *HeartbeatRequest) GetId() string {
@@ -304,7 +304,7 @@ type HeartbeatResponse struct {
 
 func (x *HeartbeatResponse) Reset() {
 	*x = HeartbeatResponse{}
-	mi := &file_gamenode_proto_msgTypes[3]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -316,7 +316,7 @@ func (x *HeartbeatResponse) String() string {
 func (*HeartbeatResponse) ProtoMessage() {}
 
 func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[3]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -329,7 +329,7 @@ func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{3}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *HeartbeatResponse) GetStatus() string {
@@ -358,7 +358,7 @@ type MetricsRequest struct {
 
 func (x *MetricsRequest) Reset() {
 	*x = MetricsRequest{}
-	mi := &file_gamenode_proto_msgTypes[4]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -370,7 +370,7 @@ func (x *MetricsRequest) String() string {
 func (*MetricsRequest) ProtoMessage() {}
 
 func (x *MetricsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[4]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -383,7 +383,7 @@ func (x *MetricsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricsRequest.ProtoReflect.Descriptor instead.
 func (*MetricsRequest) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{4}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *MetricsRequest) GetId() string {
@@ -420,7 +420,7 @@ type MetricsInfo struct {
 
 func (x *MetricsInfo) Reset() {
 	*x = MetricsInfo{}
-	mi := &file_gamenode_proto_msgTypes[5]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -432,7 +432,7 @@ func (x *MetricsInfo) String() string {
 func (*MetricsInfo) ProtoMessage() {}
 
 func (x *MetricsInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[5]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -445,7 +445,7 @@ func (x *MetricsInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricsInfo.ProtoReflect.Descriptor instead.
 func (*MetricsInfo) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{5}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *MetricsInfo) GetCpus() []*CPUMetrics {
@@ -495,7 +495,7 @@ type CPUMetrics struct {
 
 func (x *CPUMetrics) Reset() {
 	*x = CPUMetrics{}
-	mi := &file_gamenode_proto_msgTypes[6]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -507,7 +507,7 @@ func (x *CPUMetrics) String() string {
 func (*CPUMetrics) ProtoMessage() {}
 
 func (x *CPUMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[6]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -520,7 +520,7 @@ func (x *CPUMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CPUMetrics.ProtoReflect.Descriptor instead.
 func (*CPUMetrics) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{6}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CPUMetrics) GetModel() string {
@@ -563,7 +563,7 @@ type MemoryMetrics struct {
 
 func (x *MemoryMetrics) Reset() {
 	*x = MemoryMetrics{}
-	mi := &file_gamenode_proto_msgTypes[7]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -575,7 +575,7 @@ func (x *MemoryMetrics) String() string {
 func (*MemoryMetrics) ProtoMessage() {}
 
 func (x *MemoryMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[7]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -588,7 +588,7 @@ func (x *MemoryMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MemoryMetrics.ProtoReflect.Descriptor instead.
 func (*MemoryMetrics) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{7}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *MemoryMetrics) GetTotal() int64 {
@@ -623,7 +623,7 @@ type GPUMetrics struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Model         string                 `protobuf:"bytes,1,opt,name=model,proto3" json:"model,omitempty"`
 	MemoryTotal   int64                  `protobuf:"varint,2,opt,name=memory_total,json=memoryTotal,proto3" json:"memory_total,omitempty"`
-	Usage         float64                `protobuf:"fixed64,3,opt,name=usage,proto3" json:"usage,omitempty"`
+	GpuUsage      float64                `protobuf:"fixed64,3,opt,name=gpu_usage,json=gpuUsage,proto3" json:"gpu_usage,omitempty"`
 	MemoryUsed    int64                  `protobuf:"varint,4,opt,name=memory_used,json=memoryUsed,proto3" json:"memory_used,omitempty"`
 	MemoryFree    int64                  `protobuf:"varint,5,opt,name=memory_free,json=memoryFree,proto3" json:"memory_free,omitempty"`
 	MemoryUsage   float64                `protobuf:"fixed64,6,opt,name=memory_usage,json=memoryUsage,proto3" json:"memory_usage,omitempty"`
@@ -633,7 +633,7 @@ type GPUMetrics struct {
 
 func (x *GPUMetrics) Reset() {
 	*x = GPUMetrics{}
-	mi := &file_gamenode_proto_msgTypes[8]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +645,7 @@ func (x *GPUMetrics) String() string {
 func (*GPUMetrics) ProtoMessage() {}
 
 func (x *GPUMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[8]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +658,7 @@ func (x *GPUMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GPUMetrics.ProtoReflect.Descriptor instead.
 func (*GPUMetrics) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{8}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GPUMetrics) GetModel() string {
@@ -675,9 +675,9 @@ func (x *GPUMetrics) GetMemoryTotal() int64 {
 	return 0
 }
 
-func (x *GPUMetrics) GetUsage() float64 {
+func (x *GPUMetrics) GetGpuUsage() float64 {
 	if x != nil {
-		return x.Usage
+		return x.GpuUsage
 	}
 	return 0
 }
@@ -718,7 +718,7 @@ type StorageMetrics struct {
 
 func (x *StorageMetrics) Reset() {
 	*x = StorageMetrics{}
-	mi := &file_gamenode_proto_msgTypes[9]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -730,7 +730,7 @@ func (x *StorageMetrics) String() string {
 func (*StorageMetrics) ProtoMessage() {}
 
 func (x *StorageMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[9]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -743,7 +743,7 @@ func (x *StorageMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageMetrics.ProtoReflect.Descriptor instead.
 func (*StorageMetrics) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{9}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *StorageMetrics) GetPath() string {
@@ -806,7 +806,7 @@ type NetworkMetrics struct {
 
 func (x *NetworkMetrics) Reset() {
 	*x = NetworkMetrics{}
-	mi := &file_gamenode_proto_msgTypes[10]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -818,7 +818,7 @@ func (x *NetworkMetrics) String() string {
 func (*NetworkMetrics) ProtoMessage() {}
 
 func (x *NetworkMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[10]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -831,7 +831,7 @@ func (x *NetworkMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkMetrics.ProtoReflect.Descriptor instead.
 func (*NetworkMetrics) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{10}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *NetworkMetrics) GetInboundTraffic() float64 {
@@ -865,7 +865,7 @@ type MetricsResponse struct {
 
 func (x *MetricsResponse) Reset() {
 	*x = MetricsResponse{}
-	mi := &file_gamenode_proto_msgTypes[11]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -877,7 +877,7 @@ func (x *MetricsResponse) String() string {
 func (*MetricsResponse) ProtoMessage() {}
 
 func (x *MetricsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[11]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -890,7 +890,7 @@ func (x *MetricsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetricsResponse.ProtoReflect.Descriptor instead.
 func (*MetricsResponse) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{11}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *MetricsResponse) GetSuccess() bool {
@@ -920,7 +920,7 @@ type ResourceRequest struct {
 
 func (x *ResourceRequest) Reset() {
 	*x = ResourceRequest{}
-	mi := &file_gamenode_proto_msgTypes[12]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -932,7 +932,7 @@ func (x *ResourceRequest) String() string {
 func (*ResourceRequest) ProtoMessage() {}
 
 func (x *ResourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[12]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -945,7 +945,7 @@ func (x *ResourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceRequest.ProtoReflect.Descriptor instead.
 func (*ResourceRequest) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{12}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ResourceRequest) GetNodeId() string {
@@ -986,7 +986,7 @@ type ResourceResponse struct {
 
 func (x *ResourceResponse) Reset() {
 	*x = ResourceResponse{}
-	mi := &file_gamenode_proto_msgTypes[13]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -998,7 +998,7 @@ func (x *ResourceResponse) String() string {
 func (*ResourceResponse) ProtoMessage() {}
 
 func (x *ResourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[13]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1011,7 +1011,7 @@ func (x *ResourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceResponse.ProtoReflect.Descriptor instead.
 func (*ResourceResponse) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{13}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ResourceResponse) GetSuccess() bool {
@@ -1040,7 +1040,7 @@ type StateChangeRequest struct {
 
 func (x *StateChangeRequest) Reset() {
 	*x = StateChangeRequest{}
-	mi := &file_gamenode_proto_msgTypes[14]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1052,7 +1052,7 @@ func (x *StateChangeRequest) String() string {
 func (*StateChangeRequest) ProtoMessage() {}
 
 func (x *StateChangeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[14]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1065,7 +1065,7 @@ func (x *StateChangeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StateChangeRequest.ProtoReflect.Descriptor instead.
 func (*StateChangeRequest) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{14}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *StateChangeRequest) GetNodeId() string {
@@ -1100,7 +1100,7 @@ type StateChangeResponse struct {
 
 func (x *StateChangeResponse) Reset() {
 	*x = StateChangeResponse{}
-	mi := &file_gamenode_proto_msgTypes[15]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1112,7 +1112,7 @@ func (x *StateChangeResponse) String() string {
 func (*StateChangeResponse) ProtoMessage() {}
 
 func (x *StateChangeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[15]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1125,7 +1125,7 @@ func (x *StateChangeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StateChangeResponse.ProtoReflect.Descriptor instead.
 func (*StateChangeResponse) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{15}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *StateChangeResponse) GetSuccess() bool {
@@ -1163,7 +1163,7 @@ type HardwareInfo struct {
 
 func (x *HardwareInfo) Reset() {
 	*x = HardwareInfo{}
-	mi := &file_gamenode_proto_msgTypes[16]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1175,7 +1175,7 @@ func (x *HardwareInfo) String() string {
 func (*HardwareInfo) ProtoMessage() {}
 
 func (x *HardwareInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[16]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1188,7 +1188,7 @@ func (x *HardwareInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HardwareInfo.ProtoReflect.Descriptor instead.
 func (*HardwareInfo) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{16}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *HardwareInfo) GetCpus() []*CPUHardware {
@@ -1240,7 +1240,7 @@ type CPUHardware struct {
 
 func (x *CPUHardware) Reset() {
 	*x = CPUHardware{}
-	mi := &file_gamenode_proto_msgTypes[17]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1252,7 +1252,7 @@ func (x *CPUHardware) String() string {
 func (*CPUHardware) ProtoMessage() {}
 
 func (x *CPUHardware) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[17]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1265,7 +1265,7 @@ func (x *CPUHardware) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CPUHardware.ProtoReflect.Descriptor instead.
 func (*CPUHardware) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{17}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CPUHardware) GetModel() string {
@@ -1321,7 +1321,7 @@ type MemoryHardware struct {
 
 func (x *MemoryHardware) Reset() {
 	*x = MemoryHardware{}
-	mi := &file_gamenode_proto_msgTypes[18]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1333,7 +1333,7 @@ func (x *MemoryHardware) String() string {
 func (*MemoryHardware) ProtoMessage() {}
 
 func (x *MemoryHardware) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[18]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1346,7 +1346,7 @@ func (x *MemoryHardware) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MemoryHardware.ProtoReflect.Descriptor instead.
 func (*MemoryHardware) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{18}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *MemoryHardware) GetSize() int64 {
@@ -1384,7 +1384,7 @@ type GPUHardware struct {
 
 func (x *GPUHardware) Reset() {
 	*x = GPUHardware{}
-	mi := &file_gamenode_proto_msgTypes[19]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1396,7 +1396,7 @@ func (x *GPUHardware) String() string {
 func (*GPUHardware) ProtoMessage() {}
 
 func (x *GPUHardware) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[19]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1409,7 +1409,7 @@ func (x *GPUHardware) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GPUHardware.ProtoReflect.Descriptor instead.
 func (*GPUHardware) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{19}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GPUHardware) GetModel() string {
@@ -1466,7 +1466,7 @@ type StorageDevice struct {
 
 func (x *StorageDevice) Reset() {
 	*x = StorageDevice{}
-	mi := &file_gamenode_proto_msgTypes[20]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1478,7 +1478,7 @@ func (x *StorageDevice) String() string {
 func (*StorageDevice) ProtoMessage() {}
 
 func (x *StorageDevice) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[20]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1491,7 +1491,7 @@ func (x *StorageDevice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StorageDevice.ProtoReflect.Descriptor instead.
 func (*StorageDevice) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{20}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *StorageDevice) GetType() string {
@@ -1534,7 +1534,7 @@ type NetworkDevice struct {
 
 func (x *NetworkDevice) Reset() {
 	*x = NetworkDevice{}
-	mi := &file_gamenode_proto_msgTypes[21]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1546,7 +1546,7 @@ func (x *NetworkDevice) String() string {
 func (*NetworkDevice) ProtoMessage() {}
 
 func (x *NetworkDevice) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[21]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1559,7 +1559,7 @@ func (x *NetworkDevice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkDevice.ProtoReflect.Descriptor instead.
 func (*NetworkDevice) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{21}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *NetworkDevice) GetName() string {
@@ -1608,7 +1608,7 @@ type SystemInfo struct {
 
 func (x *SystemInfo) Reset() {
 	*x = SystemInfo{}
-	mi := &file_gamenode_proto_msgTypes[22]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1620,7 +1620,7 @@ func (x *SystemInfo) String() string {
 func (*SystemInfo) ProtoMessage() {}
 
 func (x *SystemInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[22]
+	mi := &file_internal_proto_gamenode_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1633,7 +1633,7 @@ func (x *SystemInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemInfo.ProtoReflect.Descriptor instead.
 func (*SystemInfo) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{22}
+	return file_internal_proto_gamenode_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SystemInfo) GetOsDistribution() string {
@@ -1699,361 +1699,11 @@ func (x *SystemInfo) GetRuncVersion() string {
 	return ""
 }
 
-// 日志流
-type LogRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	PipelineId    string                 `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
-	StepId        string                 `protobuf:"bytes,3,opt,name=step_id,json=stepId,proto3" json:"step_id,omitempty"`
-	StartTime     int64                  `protobuf:"varint,4,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	EndTime       int64                  `protobuf:"varint,5,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
+var File_internal_proto_gamenode_proto protoreflect.FileDescriptor
 
-func (x *LogRequest) Reset() {
-	*x = LogRequest{}
-	mi := &file_gamenode_proto_msgTypes[23]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LogRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LogRequest) ProtoMessage() {}
-
-func (x *LogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[23]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LogRequest.ProtoReflect.Descriptor instead.
-func (*LogRequest) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{23}
-}
-
-func (x *LogRequest) GetNodeId() string {
-	if x != nil {
-		return x.NodeId
-	}
-	return ""
-}
-
-func (x *LogRequest) GetPipelineId() string {
-	if x != nil {
-		return x.PipelineId
-	}
-	return ""
-}
-
-func (x *LogRequest) GetStepId() string {
-	if x != nil {
-		return x.StepId
-	}
-	return ""
-}
-
-func (x *LogRequest) GetStartTime() int64 {
-	if x != nil {
-		return x.StartTime
-	}
-	return 0
-}
-
-func (x *LogRequest) GetEndTime() int64 {
-	if x != nil {
-		return x.EndTime
-	}
-	return 0
-}
-
-type LogEntry struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	PipelineId    string                 `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
-	StepId        string                 `protobuf:"bytes,3,opt,name=step_id,json=stepId,proto3" json:"step_id,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
-	Level         string                 `protobuf:"bytes,5,opt,name=level,proto3" json:"level,omitempty"`
-	Message       string                 `protobuf:"bytes,6,opt,name=message,proto3" json:"message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LogEntry) Reset() {
-	*x = LogEntry{}
-	mi := &file_gamenode_proto_msgTypes[24]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LogEntry) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LogEntry) ProtoMessage() {}
-
-func (x *LogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[24]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LogEntry.ProtoReflect.Descriptor instead.
-func (*LogEntry) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{24}
-}
-
-func (x *LogEntry) GetNodeId() string {
-	if x != nil {
-		return x.NodeId
-	}
-	return ""
-}
-
-func (x *LogEntry) GetPipelineId() string {
-	if x != nil {
-		return x.PipelineId
-	}
-	return ""
-}
-
-func (x *LogEntry) GetStepId() string {
-	if x != nil {
-		return x.StepId
-	}
-	return ""
-}
-
-func (x *LogEntry) GetTimestamp() int64 {
-	if x != nil {
-		return x.Timestamp
-	}
-	return 0
-}
-
-func (x *LogEntry) GetLevel() string {
-	if x != nil {
-		return x.Level
-	}
-	return ""
-}
-
-func (x *LogEntry) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-type LogResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Entries       []*LogEntry            `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
-	Success       bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
-	ErrorMessage  string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *LogResponse) Reset() {
-	*x = LogResponse{}
-	mi := &file_gamenode_proto_msgTypes[25]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *LogResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*LogResponse) ProtoMessage() {}
-
-func (x *LogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[25]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use LogResponse.ProtoReflect.Descriptor instead.
-func (*LogResponse) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{25}
-}
-
-func (x *LogResponse) GetEntries() []*LogEntry {
-	if x != nil {
-		return x.Entries
-	}
-	return nil
-}
-
-func (x *LogResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-func (x *LogResponse) GetErrorMessage() string {
-	if x != nil {
-		return x.ErrorMessage
-	}
-	return ""
-}
-
-// Pipeline执行
-type ExecuteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
-	PipelineId    string                 `protobuf:"bytes,2,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
-	StepId        string                 `protobuf:"bytes,3,opt,name=step_id,json=stepId,proto3" json:"step_id,omitempty"`
-	Parameters    map[string]string      `protobuf:"bytes,4,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ExecuteRequest) Reset() {
-	*x = ExecuteRequest{}
-	mi := &file_gamenode_proto_msgTypes[26]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ExecuteRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ExecuteRequest) ProtoMessage() {}
-
-func (x *ExecuteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[26]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ExecuteRequest.ProtoReflect.Descriptor instead.
-func (*ExecuteRequest) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{26}
-}
-
-func (x *ExecuteRequest) GetNodeId() string {
-	if x != nil {
-		return x.NodeId
-	}
-	return ""
-}
-
-func (x *ExecuteRequest) GetPipelineId() string {
-	if x != nil {
-		return x.PipelineId
-	}
-	return ""
-}
-
-func (x *ExecuteRequest) GetStepId() string {
-	if x != nil {
-		return x.StepId
-	}
-	return ""
-}
-
-func (x *ExecuteRequest) GetParameters() map[string]string {
-	if x != nil {
-		return x.Parameters
-	}
-	return nil
-}
-
-type ExecuteResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	ErrorMessage  string                 `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ExecuteResponse) Reset() {
-	*x = ExecuteResponse{}
-	mi := &file_gamenode_proto_msgTypes[27]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ExecuteResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ExecuteResponse) ProtoMessage() {}
-
-func (x *ExecuteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_gamenode_proto_msgTypes[27]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ExecuteResponse.ProtoReflect.Descriptor instead.
-func (*ExecuteResponse) Descriptor() ([]byte, []int) {
-	return file_gamenode_proto_rawDescGZIP(), []int{27}
-}
-
-func (x *ExecuteResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-func (x *ExecuteResponse) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
-func (x *ExecuteResponse) GetErrorMessage() string {
-	if x != nil {
-		return x.ErrorMessage
-	}
-	return ""
-}
-
-var File_gamenode_proto protoreflect.FileDescriptor
-
-const file_gamenode_proto_rawDesc = "" +
+const file_internal_proto_gamenode_proto_rawDesc = "" +
 	"\n" +
-	"\x0egamenode.proto\x12\bgamenode\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf3\x03\n" +
+	"\x1dinternal/proto/gamenode.proto\x12\bgamenode\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf3\x03\n" +
 	"\x0fRegisterRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05alias\x18\x02 \x01(\tR\x05alias\x12\x14\n" +
@@ -2104,12 +1754,12 @@ const file_gamenode_proto_rawDesc = "" +
 	"\x05total\x18\x01 \x01(\x03R\x05total\x12\x1c\n" +
 	"\tavailable\x18\x02 \x01(\x03R\tavailable\x12\x12\n" +
 	"\x04used\x18\x03 \x01(\x03R\x04used\x12\x14\n" +
-	"\x05usage\x18\x04 \x01(\x01R\x05usage\"\xc0\x01\n" +
+	"\x05usage\x18\x04 \x01(\x01R\x05usage\"\xc7\x01\n" +
 	"\n" +
 	"GPUMetrics\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12!\n" +
-	"\fmemory_total\x18\x02 \x01(\x03R\vmemoryTotal\x12\x14\n" +
-	"\x05usage\x18\x03 \x01(\x01R\x05usage\x12\x1f\n" +
+	"\fmemory_total\x18\x02 \x01(\x03R\vmemoryTotal\x12\x1b\n" +
+	"\tgpu_usage\x18\x03 \x01(\x01R\bgpuUsage\x12\x1f\n" +
 	"\vmemory_used\x18\x04 \x01(\x03R\n" +
 	"memoryUsed\x12\x1f\n" +
 	"\vmemory_free\x18\x05 \x01(\x03R\n" +
@@ -2194,71 +1844,33 @@ const file_gamenode_proto_rawDesc = "" +
 	"\x17gpu_compute_api_version\x18\x06 \x01(\tR\x14gpuComputeApiVersion\x12%\n" +
 	"\x0edocker_version\x18\a \x01(\tR\rdockerVersion\x12-\n" +
 	"\x12containerd_version\x18\b \x01(\tR\x11containerdVersion\x12!\n" +
-	"\frunc_version\x18\t \x01(\tR\vruncVersion\"\x99\x01\n" +
-	"\n" +
-	"LogRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1f\n" +
-	"\vpipeline_id\x18\x02 \x01(\tR\n" +
-	"pipelineId\x12\x17\n" +
-	"\astep_id\x18\x03 \x01(\tR\x06stepId\x12\x1d\n" +
-	"\n" +
-	"start_time\x18\x04 \x01(\x03R\tstartTime\x12\x19\n" +
-	"\bend_time\x18\x05 \x01(\x03R\aendTime\"\xab\x01\n" +
-	"\bLogEntry\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1f\n" +
-	"\vpipeline_id\x18\x02 \x01(\tR\n" +
-	"pipelineId\x12\x17\n" +
-	"\astep_id\x18\x03 \x01(\tR\x06stepId\x12\x1c\n" +
-	"\ttimestamp\x18\x04 \x01(\x03R\ttimestamp\x12\x14\n" +
-	"\x05level\x18\x05 \x01(\tR\x05level\x12\x18\n" +
-	"\amessage\x18\x06 \x01(\tR\amessage\"z\n" +
-	"\vLogResponse\x12,\n" +
-	"\aentries\x18\x01 \x03(\v2\x12.gamenode.LogEntryR\aentries\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess\x12#\n" +
-	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\"\xec\x01\n" +
-	"\x0eExecuteRequest\x12\x17\n" +
-	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1f\n" +
-	"\vpipeline_id\x18\x02 \x01(\tR\n" +
-	"pipelineId\x12\x17\n" +
-	"\astep_id\x18\x03 \x01(\tR\x06stepId\x12H\n" +
-	"\n" +
-	"parameters\x18\x04 \x03(\v2(.gamenode.ExecuteRequest.ParametersEntryR\n" +
-	"parameters\x1a=\n" +
-	"\x0fParametersEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"j\n" +
-	"\x0fExecuteResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\x12#\n" +
-	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage*a\n" +
+	"\frunc_version\x18\t \x01(\tR\vruncVersion*a\n" +
 	"\x13GameNodeStaticState\x12\x15\n" +
 	"\x11NODE_STATE_NORMAL\x10\x00\x12\x1a\n" +
 	"\x16NODE_STATE_MAINTENANCE\x10\x01\x12\x17\n" +
-	"\x13NODE_STATE_DISABLED\x10\x022\xf1\x03\n" +
+	"\x13NODE_STATE_DISABLED\x10\x022\xfd\x02\n" +
 	"\x13GameNodeGRPCService\x12A\n" +
 	"\bRegister\x12\x19.gamenode.RegisterRequest\x1a\x1a.gamenode.RegisterResponse\x12D\n" +
 	"\tHeartbeat\x12\x1a.gamenode.HeartbeatRequest\x1a\x1b.gamenode.HeartbeatResponse\x12D\n" +
 	"\rReportMetrics\x12\x18.gamenode.MetricsRequest\x1a\x19.gamenode.MetricsResponse\x12G\n" +
 	"\x0eReportResource\x12\x19.gamenode.ResourceRequest\x1a\x1a.gamenode.ResourceResponse\x12N\n" +
-	"\x0fUpdateNodeState\x12\x1c.gamenode.StateChangeRequest\x1a\x1d.gamenode.StateChangeResponse\x122\n" +
-	"\x03Log\x12\x14.gamenode.LogRequest\x1a\x15.gamenode.LogResponse\x12>\n" +
-	"\aExecute\x12\x18.gamenode.ExecuteRequest\x1a\x19.gamenode.ExecuteResponseB8Z6github.com/open-beagle/beagle-wind-game/internal/protob\x06proto3"
+	"\x0fUpdateNodeState\x12\x1c.gamenode.StateChangeRequest\x1a\x1d.gamenode.StateChangeResponseB8Z6github.com/open-beagle/beagle-wind-game/internal/protob\x06proto3"
 
 var (
-	file_gamenode_proto_rawDescOnce sync.Once
-	file_gamenode_proto_rawDescData []byte
+	file_internal_proto_gamenode_proto_rawDescOnce sync.Once
+	file_internal_proto_gamenode_proto_rawDescData []byte
 )
 
-func file_gamenode_proto_rawDescGZIP() []byte {
-	file_gamenode_proto_rawDescOnce.Do(func() {
-		file_gamenode_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_gamenode_proto_rawDesc), len(file_gamenode_proto_rawDesc)))
+func file_internal_proto_gamenode_proto_rawDescGZIP() []byte {
+	file_internal_proto_gamenode_proto_rawDescOnce.Do(func() {
+		file_internal_proto_gamenode_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_proto_gamenode_proto_rawDesc), len(file_internal_proto_gamenode_proto_rawDesc)))
 	})
-	return file_gamenode_proto_rawDescData
+	return file_internal_proto_gamenode_proto_rawDescData
 }
 
-var file_gamenode_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_gamenode_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
-var file_gamenode_proto_goTypes = []any{
+var file_internal_proto_gamenode_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_internal_proto_gamenode_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_internal_proto_gamenode_proto_goTypes = []any{
 	(GameNodeStaticState)(0),      // 0: gamenode.GameNodeStaticState
 	(*RegisterRequest)(nil),       // 1: gamenode.RegisterRequest
 	(*RegisterResponse)(nil),      // 2: gamenode.RegisterResponse
@@ -2283,21 +1895,15 @@ var file_gamenode_proto_goTypes = []any{
 	(*StorageDevice)(nil),         // 21: gamenode.StorageDevice
 	(*NetworkDevice)(nil),         // 22: gamenode.NetworkDevice
 	(*SystemInfo)(nil),            // 23: gamenode.SystemInfo
-	(*LogRequest)(nil),            // 24: gamenode.LogRequest
-	(*LogEntry)(nil),              // 25: gamenode.LogEntry
-	(*LogResponse)(nil),           // 26: gamenode.LogResponse
-	(*ExecuteRequest)(nil),        // 27: gamenode.ExecuteRequest
-	(*ExecuteResponse)(nil),       // 28: gamenode.ExecuteResponse
-	nil,                           // 29: gamenode.RegisterRequest.HardwareEntry
-	nil,                           // 30: gamenode.RegisterRequest.SystemEntry
-	nil,                           // 31: gamenode.RegisterRequest.LabelsEntry
-	nil,                           // 32: gamenode.ExecuteRequest.ParametersEntry
-	(*timestamppb.Timestamp)(nil), // 33: google.protobuf.Timestamp
+	nil,                           // 24: gamenode.RegisterRequest.HardwareEntry
+	nil,                           // 25: gamenode.RegisterRequest.SystemEntry
+	nil,                           // 26: gamenode.RegisterRequest.LabelsEntry
+	(*timestamppb.Timestamp)(nil), // 27: google.protobuf.Timestamp
 }
-var file_gamenode_proto_depIdxs = []int32{
-	29, // 0: gamenode.RegisterRequest.hardware:type_name -> gamenode.RegisterRequest.HardwareEntry
-	30, // 1: gamenode.RegisterRequest.system:type_name -> gamenode.RegisterRequest.SystemEntry
-	31, // 2: gamenode.RegisterRequest.labels:type_name -> gamenode.RegisterRequest.LabelsEntry
+var file_internal_proto_gamenode_proto_depIdxs = []int32{
+	24, // 0: gamenode.RegisterRequest.hardware:type_name -> gamenode.RegisterRequest.HardwareEntry
+	25, // 1: gamenode.RegisterRequest.system:type_name -> gamenode.RegisterRequest.SystemEntry
+	26, // 2: gamenode.RegisterRequest.labels:type_name -> gamenode.RegisterRequest.LabelsEntry
 	0,  // 3: gamenode.RegisterResponse.state:type_name -> gamenode.GameNodeStaticState
 	6,  // 4: gamenode.MetricsRequest.metrics:type_name -> gamenode.MetricsInfo
 	7,  // 5: gamenode.MetricsInfo.cpus:type_name -> gamenode.CPUMetrics
@@ -2308,57 +1914,51 @@ var file_gamenode_proto_depIdxs = []int32{
 	17, // 10: gamenode.ResourceRequest.hardware:type_name -> gamenode.HardwareInfo
 	23, // 11: gamenode.ResourceRequest.system:type_name -> gamenode.SystemInfo
 	0,  // 12: gamenode.StateChangeRequest.target_state:type_name -> gamenode.GameNodeStaticState
-	33, // 13: gamenode.StateChangeRequest.change_time:type_name -> google.protobuf.Timestamp
-	33, // 14: gamenode.StateChangeResponse.confirm_time:type_name -> google.protobuf.Timestamp
+	27, // 13: gamenode.StateChangeRequest.change_time:type_name -> google.protobuf.Timestamp
+	27, // 14: gamenode.StateChangeResponse.confirm_time:type_name -> google.protobuf.Timestamp
 	18, // 15: gamenode.HardwareInfo.cpus:type_name -> gamenode.CPUHardware
 	19, // 16: gamenode.HardwareInfo.memories:type_name -> gamenode.MemoryHardware
 	20, // 17: gamenode.HardwareInfo.gpus:type_name -> gamenode.GPUHardware
 	21, // 18: gamenode.HardwareInfo.storages:type_name -> gamenode.StorageDevice
 	22, // 19: gamenode.HardwareInfo.networks:type_name -> gamenode.NetworkDevice
-	25, // 20: gamenode.LogResponse.entries:type_name -> gamenode.LogEntry
-	32, // 21: gamenode.ExecuteRequest.parameters:type_name -> gamenode.ExecuteRequest.ParametersEntry
-	1,  // 22: gamenode.GameNodeGRPCService.Register:input_type -> gamenode.RegisterRequest
-	3,  // 23: gamenode.GameNodeGRPCService.Heartbeat:input_type -> gamenode.HeartbeatRequest
-	5,  // 24: gamenode.GameNodeGRPCService.ReportMetrics:input_type -> gamenode.MetricsRequest
-	13, // 25: gamenode.GameNodeGRPCService.ReportResource:input_type -> gamenode.ResourceRequest
-	15, // 26: gamenode.GameNodeGRPCService.UpdateNodeState:input_type -> gamenode.StateChangeRequest
-	24, // 27: gamenode.GameNodeGRPCService.Log:input_type -> gamenode.LogRequest
-	27, // 28: gamenode.GameNodeGRPCService.Execute:input_type -> gamenode.ExecuteRequest
-	2,  // 29: gamenode.GameNodeGRPCService.Register:output_type -> gamenode.RegisterResponse
-	4,  // 30: gamenode.GameNodeGRPCService.Heartbeat:output_type -> gamenode.HeartbeatResponse
-	12, // 31: gamenode.GameNodeGRPCService.ReportMetrics:output_type -> gamenode.MetricsResponse
-	14, // 32: gamenode.GameNodeGRPCService.ReportResource:output_type -> gamenode.ResourceResponse
-	16, // 33: gamenode.GameNodeGRPCService.UpdateNodeState:output_type -> gamenode.StateChangeResponse
-	26, // 34: gamenode.GameNodeGRPCService.Log:output_type -> gamenode.LogResponse
-	28, // 35: gamenode.GameNodeGRPCService.Execute:output_type -> gamenode.ExecuteResponse
-	29, // [29:36] is the sub-list for method output_type
-	22, // [22:29] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	1,  // 20: gamenode.GameNodeGRPCService.Register:input_type -> gamenode.RegisterRequest
+	3,  // 21: gamenode.GameNodeGRPCService.Heartbeat:input_type -> gamenode.HeartbeatRequest
+	5,  // 22: gamenode.GameNodeGRPCService.ReportMetrics:input_type -> gamenode.MetricsRequest
+	13, // 23: gamenode.GameNodeGRPCService.ReportResource:input_type -> gamenode.ResourceRequest
+	15, // 24: gamenode.GameNodeGRPCService.UpdateNodeState:input_type -> gamenode.StateChangeRequest
+	2,  // 25: gamenode.GameNodeGRPCService.Register:output_type -> gamenode.RegisterResponse
+	4,  // 26: gamenode.GameNodeGRPCService.Heartbeat:output_type -> gamenode.HeartbeatResponse
+	12, // 27: gamenode.GameNodeGRPCService.ReportMetrics:output_type -> gamenode.MetricsResponse
+	14, // 28: gamenode.GameNodeGRPCService.ReportResource:output_type -> gamenode.ResourceResponse
+	16, // 29: gamenode.GameNodeGRPCService.UpdateNodeState:output_type -> gamenode.StateChangeResponse
+	25, // [25:30] is the sub-list for method output_type
+	20, // [20:25] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
-func init() { file_gamenode_proto_init() }
-func file_gamenode_proto_init() {
-	if File_gamenode_proto != nil {
+func init() { file_internal_proto_gamenode_proto_init() }
+func file_internal_proto_gamenode_proto_init() {
+	if File_internal_proto_gamenode_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_gamenode_proto_rawDesc), len(file_gamenode_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_proto_gamenode_proto_rawDesc), len(file_internal_proto_gamenode_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   32,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_gamenode_proto_goTypes,
-		DependencyIndexes: file_gamenode_proto_depIdxs,
-		EnumInfos:         file_gamenode_proto_enumTypes,
-		MessageInfos:      file_gamenode_proto_msgTypes,
+		GoTypes:           file_internal_proto_gamenode_proto_goTypes,
+		DependencyIndexes: file_internal_proto_gamenode_proto_depIdxs,
+		EnumInfos:         file_internal_proto_gamenode_proto_enumTypes,
+		MessageInfos:      file_internal_proto_gamenode_proto_msgTypes,
 	}.Build()
-	File_gamenode_proto = out.File
-	file_gamenode_proto_goTypes = nil
-	file_gamenode_proto_depIdxs = nil
+	File_internal_proto_gamenode_proto = out.File
+	file_internal_proto_gamenode_proto_goTypes = nil
+	file_internal_proto_gamenode_proto_depIdxs = nil
 }
