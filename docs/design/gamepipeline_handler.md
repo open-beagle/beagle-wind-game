@@ -1,10 +1,10 @@
-# GameNodePipelineHandler 设计文档
+# GamePipelineHandler 设计文档
 
-GameNodePipelineHandler[gamenode_pipeline_handler.go](../../internal/api/gamenode_pipeline_handler.go)
+GamePipelineHandler[gamepipeline_handler.go](../../internal/api/gamepipeline_handler.go)
 
 ## 1. 概述
 
-GameNodePipelineHandler 是系统的 HTTP API 服务实体，负责处理 Pipeline 相关的 HTTP 请求。它不直接参与 Pipeline 的执行逻辑，而是作为一个轻量级的 API 网关，提供 Pipeline 的查询和管理功能。
+GamePipelineHandler 是系统的 HTTP API 服务实体，负责处理 Pipeline 相关的 HTTP 请求。它不直接参与 Pipeline 的执行逻辑，而是作为一个轻量级的 API 网关，提供 Pipeline 的查询和管理功能。
 
 ## 2. 职责边界
 
@@ -76,20 +76,20 @@ POST   /api/v1/pipelines/{id}/delete  # 删除 Pipeline
 
 ### 4.1 依赖关系
 
-- GameNodePipelineService：支撑 GameNodePipelineHandler，内部实现 GameNodePipeline 业务的服务，[gamenode_pipeline_service.go](../../internal/service/gamenode_pipeline_service.go)
-- GameNodePipelineStore：存储 GameNodePipeline 的实现，管理 GameNodePipeline 的 Yaml，[gamenode_pipeline_store.go](../../internal/store/gamenode_pipeline_store.go)
+- GamePipelineGRPCService：支撑 GamePipelineHandler，内部实现 GamePipeline 业务的服务，[gamepipeline_service.go](../../internal/service/gamepipeline_service.go)
+- GamePipelineStore：存储 GamePipeline 的实现，管理 GamePipeline 的 Yaml，[gamenode_pipeline_store.go](../../internal/store/gamenode_pipeline_store.go)
 - Event Handler：事件处理服务
 
 ### 4.2 存储设计
 
-#### 4.2.1 GameNodePipelineStore 接口
+#### 4.2.1 GamePipelineStore 接口
 
 ```go
-// GameNodePipelineStore Pipeline 存储接口
-type GameNodePipelineStore interface {
+// GamePipelineStore Pipeline 存储接口
+type GamePipelineStore interface {
     // Pipeline 基础信息管理
-    List(query *PipelineQuery) ([]*gamenode.GameNodePipeline, int64, error)
-    Get(id string) (*gamenode.GameNodePipeline, error)
+    List(query *PipelineQuery) ([]*gamenode.GamePipeline, int64, error)
+    Get(id string) (*gamenode.GamePipeline, error)
     Delete(id string, force bool) error
 
     // Pipeline 状态管理
@@ -103,4 +103,4 @@ type GameNodePipelineStore interface {
 
 #### 4.2.2 数据模型
 
-Pipeline 数据模型使用 `models.GameNodePipeline`，定义在 [gamenode_pipeline.go](../../internal/models/gamenode_pipeline.go) 中：
+Pipeline 数据模型使用 `models.GamePipeline`，定义在 [gamepipeline.go](../../internal/models/gamepipeline.go) 中：

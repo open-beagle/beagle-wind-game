@@ -22,7 +22,7 @@ GameNodeService 是 GameNode 系统的核心服务组件，负责管理游戏节
    - 处理二进制数据传输
    - 管理状态更新和事件通知
 
-4. **GameNodePipeline**：Pipeline 任务模板
+4. **GamePipeline**：Pipeline 任务模板
 
    - 定义任务执行流程
    - 管理任务状态

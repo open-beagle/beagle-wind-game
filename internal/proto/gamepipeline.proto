@@ -1,0 +1,259 @@
+syntax = "proto3";
+
+package pipeline;
+
+option go_package = "github.com/open-beagle/beagle-wind-game/internal/proto";
+
+import "google/protobuf/timestamp.proto";
+
+// PipelineModel 表示流水线模板类型
+enum PipelineModel {
+    PIPELINE_MODEL_UNKNOWN = 0;
+    PIPELINE_MODEL_START_PLATFORM = 1;
+}
+
+// PipelineState 表示流水线状态
+enum PipelineState {
+    PIPELINE_STATE_PENDING = 0;
+    PIPELINE_STATE_RUNNING = 1;
+    PIPELINE_STATE_COMPLETED = 2;
+    PIPELINE_STATE_FAILED = 3;
+    PIPELINE_STATE_CANCELED = 4;
+}
+
+// StepState 表示步骤状态
+enum StepState {
+    STEP_STATE_PENDING = 0;
+    STEP_STATE_RUNNING = 1;
+    STEP_STATE_COMPLETED = 2;
+    STEP_STATE_FAILED = 3;
+    STEP_STATE_SKIPPED = 4;
+}
+
+// StepStatus 步骤状态信息
+message StepStatus {
+    string id = 1;
+    string name = 2;
+    StepState state = 3;
+    google.protobuf.Timestamp start_time = 4;
+    google.protobuf.Timestamp end_time = 5;
+    string error = 6;
+    string output = 7;
+    bytes logs = 8;
+    double progress = 9;
+    google.protobuf.Timestamp updated_at = 10;
+}
+
+// ContainerConfig 容器配置
+message ContainerConfig {
+    string image = 1;
+    string container_name = 2;
+    string hostname = 3;
+    bool privileged = 4;
+    DeployConfig deploy = 5;
+    repeated string security_opt = 6;
+    repeated string cap_add = 7;
+    repeated string tmpfs = 8;
+    repeated string devices = 9;
+    repeated string volumes = 10;
+    repeated string ports = 11;
+    map<string, string> environment = 12;
+    repeated string command = 13;
+}
+
+// DeployConfig 部署配置
+message DeployConfig {
+    ResourcesConfig resources = 1;
+}
+
+// ResourcesConfig 资源配置
+message ResourcesConfig {
+    ReservationsConfig reservations = 1;
+}
+
+// ReservationsConfig 资源预留配置
+message ReservationsConfig {
+    repeated DeviceConfig devices = 1;
+}
+
+// DeviceConfig 设备配置
+message DeviceConfig {
+    repeated string capabilities = 1;
+}
+
+// PipelineStep 流水线步骤
+message PipelineStep {
+    string name = 1;
+    string type = 2;
+    ContainerConfig container = 3;
+}
+
+// PipelineStatus 流水线状态信息
+message PipelineStatus {
+    string node_id = 1;
+    PipelineState state = 2;
+    int32 current_step = 3;
+    int32 total_steps = 4;
+    google.protobuf.Timestamp start_time = 5;
+    google.protobuf.Timestamp end_time = 6;
+    repeated StepStatus steps = 7;
+    string error_message = 8;
+    google.protobuf.Timestamp updated_at = 9;
+}
+
+// GamePipeline 表示一个游戏节点流水线模板
+message GamePipeline {
+    string id = 1;
+    PipelineModel model = 2;
+    
+    // 静态信息（模板定义）
+    string name = 3;
+    string description = 4;
+    repeated string envs = 5;
+    repeated string args = 6;
+    repeated PipelineStep steps = 7;
+    
+    // 动态信息（执行状态）
+    PipelineStatus status = 8;
+}
+
+// CreatePipelineRequest 创建流水线请求
+message CreatePipelineRequest {
+    GamePipeline pipeline = 1;
+}
+
+// CreatePipelineResponse 创建流水线响应
+message CreatePipelineResponse {
+    string id = 1;
+}
+
+// GetPipelineRequest 获取流水线请求
+message GetPipelineRequest {
+    string id = 1;
+}
+
+// GetPipelineResponse 获取流水线响应
+message GetPipelineResponse {
+    GamePipeline pipeline = 1;
+}
+
+// ListPipelinesRequest 获取流水线列表请求
+message ListPipelinesRequest {
+    int32 page = 1;
+    int32 size = 2;
+    PipelineState status = 3;
+    string node_id = 4;
+    google.protobuf.Timestamp start_time = 5;
+    google.protobuf.Timestamp end_time = 6;
+    string sort_by = 7;
+    string sort_order = 8;
+}
+
+// ListPipelinesResponse 获取流水线列表响应
+message ListPipelinesResponse {
+    repeated GamePipeline pipelines = 1;
+    int32 total = 2;
+}
+
+// UpdatePipelineRequest 更新流水线请求
+message UpdatePipelineRequest {
+    GamePipeline pipeline = 1;
+}
+
+// UpdatePipelineResponse 更新流水线响应
+message UpdatePipelineResponse {
+    bool success = 1;
+}
+
+// DeletePipelineRequest 删除流水线请求
+message DeletePipelineRequest {
+    string id = 1;
+    bool force = 2;
+}
+
+// DeletePipelineResponse 删除流水线响应
+message DeletePipelineResponse {
+    bool success = 1;
+}
+
+// ExecutePipelineRequest 执行流水线请求
+message ExecutePipelineRequest {
+    string id = 1;
+}
+
+// ExecutePipelineResponse 执行流水线响应
+message ExecutePipelineResponse {
+    bool success = 1;
+}
+
+// PipelineStreamRequest 流水线流式请求
+message PipelineStreamRequest {
+    // 心跳消息
+    Heartbeat heartbeat = 1;
+}
+
+// PipelineStreamResponse 流水线流式响应
+message PipelineStreamResponse {
+    oneof response {
+        // 心跳确认
+        HeartbeatAck heartbeat_ack = 1;
+        // 流水线任务
+        GamePipeline pipeline = 2;
+        // 取消命令
+        CancelCommand cancel = 3;
+    }
+}
+
+// Heartbeat 心跳消息
+message Heartbeat {
+    string node_id = 1;
+    google.protobuf.Timestamp timestamp = 2;
+}
+
+// HeartbeatAck 心跳确认
+message HeartbeatAck {
+    bool success = 1;
+}
+
+// CancelCommand 取消命令
+message CancelCommand {
+    string reason = 1;
+}
+
+// UpdatePipelineStatusRequest 更新流水线状态请求
+message UpdatePipelineStatusRequest {
+    string pipeline_id = 1;
+    PipelineStatus status = 2;
+}
+
+// UpdatePipelineStatusResponse 更新流水线状态响应
+message UpdatePipelineStatusResponse {
+    bool success = 1;
+}
+
+// UpdateStepStatusRequest 更新步骤状态请求
+message UpdateStepStatusRequest {
+    string pipeline_id = 1;
+    string step_id = 2;
+    StepStatus status = 3;
+}
+
+// UpdateStepStatusResponse 更新步骤状态响应
+message UpdateStepStatusResponse {
+    bool success = 1;
+}
+
+// GamePipelineGRPCService 游戏节点流水线服务
+service GamePipelineGRPCService {
+    // Pipeline 流式服务
+    // 1. Agent 通过此服务保持与 Server 的连接
+    // 2. Server 通过此服务下发 Pipeline 任务
+    // 3. Server 通过此服务发送取消命令
+    rpc PipelineStream(stream PipelineStreamRequest) returns (stream PipelineStreamResponse);
+    
+    // 更新流水线状态
+    rpc UpdatePipelineStatus(UpdatePipelineStatusRequest) returns (UpdatePipelineStatusResponse);
+    
+    // 更新步骤状态
+    rpc UpdateStepStatus(UpdateStepStatusRequest) returns (UpdateStepStatusResponse);
+} 

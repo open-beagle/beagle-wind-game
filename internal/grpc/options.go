@@ -1,4 +1,4 @@
-package gamenode
+package grpc
 
 import (
 	"time"

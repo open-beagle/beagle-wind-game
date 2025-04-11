@@ -11,7 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/open-beagle/beagle-wind-game/internal/api"
-	"github.com/open-beagle/beagle-wind-game/internal/gamenode"
+	"github.com/open-beagle/beagle-wind-game/internal/grpc"
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 	"github.com/open-beagle/beagle-wind-game/internal/store"
 	"github.com/open-beagle/beagle-wind-game/internal/utils"
@@ -23,7 +23,7 @@ var (
 )
 
 // initStores 初始化所有存储
-func initStores(ctx context.Context) (store.GameNodeStore, *store.YAMLGameNodePipelineStore, store.GamePlatformStore, store.GameCardStore, store.GameInstanceStore, error) {
+func initStores(ctx context.Context) (store.GameNodeStore, *store.YAMLGamePipelineStore, store.GamePlatformStore, store.GameCardStore, store.GameInstanceStore, error) {
 	// 初始化游戏节点存储
 	gamenodeStore, err := store.NewGameNodeStore(ctx, "data/gamenodes.yaml")
 	if err != nil {
@@ -31,10 +31,10 @@ func initStores(ctx context.Context) (store.GameNodeStore, *store.YAMLGameNodePi
 	}
 
 	// 初始化游戏节点流水线存储
-	gamenodePipelineStore := store.NewYAMLGameNodePipelineStore(ctx, "data/game-pipelines.yaml")
+	GamePipelineStore := store.NewYAMLGamePipelineStore(ctx, "data/gamepipelines.yaml")
 
 	// 初始化游戏平台存储
-	gamePlatformStore, err := store.NewGamePlatformStore(ctx, "config/gameplatforms.yaml")
+	gamePlatformStore, err := store.NewGamePlatformStore(ctx, "data/gameplatforms.yaml")
 	if err != nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("创建平台存储失败: %v", err)
 	}
@@ -54,7 +54,7 @@ func initStores(ctx context.Context) (store.GameNodeStore, *store.YAMLGameNodePi
 		return nil, nil, nil, nil, nil, fmt.Errorf("创建实例存储失败: %v", err)
 	}
 
-	return gamenodeStore, gamenodePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, nil
+	return gamenodeStore, GamePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, nil
 }
 
 func main() {
@@ -94,7 +94,7 @@ func main() {
 
 	// 初始化存储
 	logger.Info("初始化存储...")
-	gamenodeStore, gamenodePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, err := initStores(context.Background())
+	gamenodeStore, GamePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, err := initStores(context.Background())
 	if err != nil {
 		logger.Fatal("初始化存储失败: %v", err)
 	}
@@ -103,18 +103,18 @@ func main() {
 	// 创建服务实例
 	logger.Info("创建服务实例...")
 	nodeService := service.NewGameNodeService(gamenodeStore)
-	pipelineService := service.NewGameNodePipelineService(gamenodePipelineStore)
+	pipelineService := service.NewGamePipelineService(GamePipelineStore)
 	platformService := service.NewGamePlatformService(gamePlatformStore)
 	cardService := service.NewGameCardService(gameCardStore)
 	instanceService := service.NewGameInstanceService(gameInstanceStore)
 
 	// 创建 agent 服务器
 	logger.Info("创建 gRPC 服务器...")
-	gamenodeServer := gamenode.NewGameNodeServer(
+	gamenodeServer := grpc.NewGameNodeServer(
 		nodeService,
 		pipelineService,
 		logger,
-		&gamenode.ServerConfig{
+		&grpc.ServerConfig{
 			MaxConnections:  100,
 			HeartbeatPeriod: time.Second * 30,
 		},
@@ -147,7 +147,7 @@ func main() {
 	// 启动 gRPC 服务器
 	go func() {
 		logger.Info("gRPC服务器开始监听 %s", *grpcAddr)
-		opts := &gamenode.GameNodeServerOptions{
+		opts := &grpc.GameNodeServerOptions{
 			ListenAddr: *grpcAddr,
 		}
 		if err := gamenodeServer.Start(ctx, opts); err != nil {
@@ -195,8 +195,8 @@ func main() {
 		closer.Close()
 	}
 
-	logger.Info("正在关闭GameNodePipelineStore...")
-	gamenodePipelineStore.Close()
+	logger.Info("正在关闭GamePipelineStore...")
+	GamePipelineStore.Close()
 
 	// 等待一段时间让服务器完成关闭
 	time.Sleep(5 * time.Second)

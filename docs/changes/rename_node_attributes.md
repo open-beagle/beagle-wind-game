@@ -24,7 +24,7 @@
 ### 模型文件
 
 - [x] internal/models/gamenode.go
-- [x] internal/models/gamenode_pipeline.go
+- [x] internal/models/gamepipeline.go
 
 ### 服务文件
 
@@ -74,7 +74,7 @@
 2. 模型文件修改
 
    - 更新了 GameNode 结构体中的字段名称
-   - 更新了 PipelineStatus 和 GameNodePipeline 结构体中的字段名称
+   - 更新了 PipelineStatus 和 GamePipeline 结构体中的字段名称
    - 确保了所有相关方法和函数都使用了新的字段名称
 
 3. 服务文件修改

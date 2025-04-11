@@ -12,7 +12,7 @@ import (
 
 	"github.com/docker/docker/client"
 
-	"github.com/open-beagle/beagle-wind-game/internal/gamenode"
+	"github.com/open-beagle/beagle-wind-game/internal/grpc"
 	"github.com/open-beagle/beagle-wind-game/internal/models"
 	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
@@ -27,7 +27,7 @@ func startGRPCClient(
 	ctx context.Context,
 	nodeID string,
 	serverAddr string,
-) (*gamenode.GameNodeAgent, error) {
+) (*grpc.GameNodeAgent, error) {
 	// 组件初始化
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -36,12 +36,12 @@ func startGRPCClient(
 	}
 
 	// 初始化gRPC客户端
-	grpcOpts := &gamenode.GameNodeOptions{
+	grpcOpts := &grpc.GameNodeOptions{
 		HeartbeatPeriod: 30 * time.Second, // 默认值
 		MetricsInterval: 5 * time.Second,  // 默认值
 	}
 
-	grpcClient, err := gamenode.NewGameNodeAgent(
+	grpcClient, err := grpc.NewGameNodeAgent(
 		ctx,
 		nodeID,
 		serverAddr,
@@ -59,7 +59,7 @@ func startGRPCClient(
 // startHeartbeat 启动心跳服务
 func startHeartbeat(
 	ctx context.Context,
-	grpcClient *gamenode.GameNodeAgent,
+	grpcClient *grpc.GameNodeAgent,
 	interval time.Duration,
 	wg *sync.WaitGroup,
 ) {
@@ -85,7 +85,7 @@ func startHeartbeat(
 // startMetrics 启动指标收集服务
 func startMetrics(
 	ctx context.Context,
-	grpcClient *gamenode.GameNodeAgent,
+	grpcClient *grpc.GameNodeAgent,
 	interval time.Duration,
 	wg *sync.WaitGroup,
 ) {
@@ -111,7 +111,7 @@ func startMetrics(
 // startBusinessProcessing 启动业务处理服务
 func startBusinessProcessing(
 	ctx context.Context,
-	grpcClient *gamenode.GameNodeAgent,
+	grpcClient *grpc.GameNodeAgent,
 	wg *sync.WaitGroup,
 ) {
 	defer wg.Done()

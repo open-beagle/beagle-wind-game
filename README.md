@@ -93,7 +93,7 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
      - 数据备份
    - 动态属性 Status 暂无
 
-7. GameNodePipeline（流程管理）[详细设计](docs/design/gamenode_pipeline.md)
+7. GamePipeline（流程管理）[详细设计](docs/design/gamepipeline.md)
 
    - 静态属性
      - 基础属性：name、description
@@ -260,11 +260,11 @@ Beagle Wind Game 是一个基于 Go 语言开发的游戏云平台，支持多�
 ### 系统设计
 
 - [系统总体设计](docs/design/summary.md)
-- [节点 Agent 通信设计](docs/design/gamenode_communication.md)
+- [节点 Agent 通信设计](docs/design/grpc_communication.md)
 - [游戏平台设计](docs/design/gameplatform.md)
 - [游戏卡片设计](docs/design/gamecard.md)
 - [游戏实例设计](docs/design/gameinstance.md)
-- [Pipeline 系统设计](docs/design/gamenode_pipeline.md)
+- [Pipeline 系统设计](docs/design/gamepipeline.md)
 - [节点管理设计](docs/design/node_management.md)
 - [数据模型设计](docs/models.md)
 - [工作流程设计](docs/workflow.md)

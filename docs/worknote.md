@@ -74,7 +74,7 @@
   - `Agent` → `GameNodeAgent`
   - `AgentServer` → `GameNodeServer`
   - `AgentServerManager` → `GameNodeManager`
-  - `Pipeline` → `GameNodePipeline`
+  - `Pipeline` → `GamePipeline`
 - 移动 proto 定义：
   - `internal/agent/proto` → `internal/proto`
 

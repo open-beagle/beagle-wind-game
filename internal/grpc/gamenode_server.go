@@ -1,4 +1,4 @@
-package gamenode
+package grpc
 
 import (
 	"context"
@@ -30,8 +30,8 @@ type GameNodeServer struct {
 	pb.UnimplementedGameNodeGRPCServiceServer
 
 	// 服务依赖
-	nodeService     NodeService
-	pipelineService PipelineService
+	nodeService     GameNodeServiceInterface
+	pipelineService GamePipelineServiceInterface
 
 	// 日志框架
 	logger utils.Logger
@@ -48,8 +48,8 @@ type GameNodeServer struct {
 	done   chan struct{}
 }
 
-// NodeService 节点服务接口
-type NodeService interface {
+// GameNodeServiceInterface 节点服务接口
+type GameNodeServiceInterface interface {
 	// 创建节点
 	Create(ctx context.Context, node models.GameNode) error
 	// 更新节点
@@ -64,14 +64,14 @@ type NodeService interface {
 	UpdateHardwareAndSystem(ctx context.Context, id string, hardware models.HardwareInfo, system models.SystemInfo) error
 }
 
-// PipelineService Pipeline服务接口
-type PipelineService interface {
+// GamePipelineServiceInterface Pipeline服务接口
+type GamePipelineServiceInterface interface {
 	// 创建Pipeline
-	Create(ctx context.Context, pipeline *models.GameNodePipeline) error
+	Create(ctx context.Context, pipeline *models.GamePipeline) error
 	// 更新Pipeline
-	Update(ctx context.Context, pipeline *models.GameNodePipeline) error
+	Update(ctx context.Context, pipeline *models.GamePipeline) error
 	// 获取Pipeline
-	Get(ctx context.Context, id string) (*models.GameNodePipeline, error)
+	Get(ctx context.Context, id string) (*models.GamePipeline, error)
 	// 更新Pipeline状态
 	UpdateStatus(ctx context.Context, id string, status *models.PipelineStatus) error
 	// 更新Step状态
@@ -94,8 +94,8 @@ type ServerConfig struct {
 
 // NewGameNodeServer 创建新的游戏节点服务器
 func NewGameNodeServer(
-	nodeService NodeService,
-	pipelineService PipelineService,
+	nodeService GameNodeServiceInterface,
+	pipelineService GamePipelineServiceInterface,
 	logger utils.Logger,
 	config *ServerConfig,
 ) *GameNodeServer {

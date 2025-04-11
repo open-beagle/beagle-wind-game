@@ -12,16 +12,16 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
-// GameNodePipelineStore 游戏节点流水线存储接口
-type GameNodePipelineStore interface {
+// GamePipelineStore 游戏节点流水线存储接口
+type GamePipelineStore interface {
 	// Get 获取指定ID的流水线
-	Get(ctx context.Context, id string) (*models.GameNodePipeline, error)
+	Get(ctx context.Context, id string) (*models.GamePipeline, error)
 	// List 获取所有流水线
-	List(ctx context.Context) ([]*models.GameNodePipeline, error)
+	List(ctx context.Context) ([]*models.GamePipeline, error)
 	// Add 添加新的流水线
-	Add(ctx context.Context, pipeline *models.GameNodePipeline) error
+	Add(ctx context.Context, pipeline *models.GamePipeline) error
 	// Update 更新流水线
-	Update(ctx context.Context, pipeline *models.GameNodePipeline) error
+	Update(ctx context.Context, pipeline *models.GamePipeline) error
 	// Delete 删除流水线
 	Delete(ctx context.Context, id string) error
 	// Save 保存所有流水线到文件
@@ -34,22 +34,22 @@ type GameNodePipelineStore interface {
 	Close()
 }
 
-// YAMLGameNodePipelineStore 基于YAML文件的流水线存储实现
-type YAMLGameNodePipelineStore struct {
+// YAMLGamePipelineStore 基于YAML文件的流水线存储实现
+type YAMLGamePipelineStore struct {
 	filepath  string
-	pipelines map[string]*models.GameNodePipeline
+	pipelines map[string]*models.GamePipeline
 	mu        sync.RWMutex
 	logger    utils.Logger
 	yamlSaver *utils.YAMLSaver
 }
 
-// NewYAMLGameNodePipelineStore 创建新的YAML流水线存储
-func NewYAMLGameNodePipelineStore(ctx context.Context, filepath string) *YAMLGameNodePipelineStore {
-	logger := utils.New("GameNodePipelineStore")
+// NewYAMLGamePipelineStore 创建新的YAML流水线存储
+func NewYAMLGamePipelineStore(ctx context.Context, filepath string) *YAMLGamePipelineStore {
+	logger := utils.New("GamePipelineStore")
 
-	store := &YAMLGameNodePipelineStore{
+	store := &YAMLGamePipelineStore{
 		filepath:  filepath,
-		pipelines: make(map[string]*models.GameNodePipeline),
+		pipelines: make(map[string]*models.GamePipeline),
 		logger:    logger,
 	}
 
@@ -77,7 +77,7 @@ func NewYAMLGameNodePipelineStore(ctx context.Context, filepath string) *YAMLGam
 }
 
 // Get 获取指定ID的流水线
-func (s *YAMLGameNodePipelineStore) Get(ctx context.Context, id string) (*models.GameNodePipeline, error) {
+func (s *YAMLGamePipelineStore) Get(ctx context.Context, id string) (*models.GamePipeline, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -92,11 +92,11 @@ func (s *YAMLGameNodePipelineStore) Get(ctx context.Context, id string) (*models
 }
 
 // List 获取所有流水线
-func (s *YAMLGameNodePipelineStore) List(ctx context.Context) ([]*models.GameNodePipeline, error) {
+func (s *YAMLGamePipelineStore) List(ctx context.Context) ([]*models.GamePipeline, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	pipelines := make([]*models.GameNodePipeline, 0, len(s.pipelines))
+	pipelines := make([]*models.GamePipeline, 0, len(s.pipelines))
 	for _, pipeline := range s.pipelines {
 		pipelines = append(pipelines, pipeline)
 	}
@@ -106,7 +106,7 @@ func (s *YAMLGameNodePipelineStore) List(ctx context.Context) ([]*models.GameNod
 }
 
 // Add 添加新的流水线
-func (s *YAMLGameNodePipelineStore) Add(ctx context.Context, pipeline *models.GameNodePipeline) error {
+func (s *YAMLGamePipelineStore) Add(ctx context.Context, pipeline *models.GamePipeline) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -115,18 +115,18 @@ func (s *YAMLGameNodePipelineStore) Add(ctx context.Context, pipeline *models.Ga
 		return fmt.Errorf("pipeline status is nil")
 	}
 
-	if _, exists := s.pipelines[pipeline.Status.ID]; exists {
-		s.logger.Error("流水线已存在: %s", pipeline.Status.ID)
-		return fmt.Errorf("pipeline already exists: %s", pipeline.Status.ID)
+	if _, exists := s.pipelines[pipeline.ID]; exists {
+		s.logger.Error("流水线已存在: %s", pipeline.ID)
+		return fmt.Errorf("pipeline already exists: %s", pipeline.ID)
 	}
 
-	s.pipelines[pipeline.Status.ID] = pipeline
-	s.logger.Info("添加流水线: %s", pipeline.Status.ID)
+	s.pipelines[pipeline.ID] = pipeline
+	s.logger.Info("添加流水线: %s", pipeline.ID)
 	return s.Save(ctx)
 }
 
 // Update 更新流水线
-func (s *YAMLGameNodePipelineStore) Update(ctx context.Context, pipeline *models.GameNodePipeline) error {
+func (s *YAMLGamePipelineStore) Update(ctx context.Context, pipeline *models.GamePipeline) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -135,18 +135,18 @@ func (s *YAMLGameNodePipelineStore) Update(ctx context.Context, pipeline *models
 		return fmt.Errorf("pipeline status is nil")
 	}
 
-	if _, exists := s.pipelines[pipeline.Status.ID]; !exists {
-		s.logger.Error("流水线不存在: %s", pipeline.Status.ID)
-		return fmt.Errorf("pipeline not found: %s", pipeline.Status.ID)
+	if _, exists := s.pipelines[pipeline.ID]; !exists {
+		s.logger.Error("流水线不存在: %s", pipeline.ID)
+		return fmt.Errorf("pipeline not found: %s", pipeline.ID)
 	}
 
-	s.pipelines[pipeline.Status.ID] = pipeline
-	s.logger.Info("更新流水线: %s", pipeline.Status.ID)
+	s.pipelines[pipeline.ID] = pipeline
+	s.logger.Info("更新流水线: %s", pipeline.ID)
 	return s.Save(ctx)
 }
 
 // Delete 删除流水线
-func (s *YAMLGameNodePipelineStore) Delete(ctx context.Context, id string) error {
+func (s *YAMLGamePipelineStore) Delete(ctx context.Context, id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -161,7 +161,7 @@ func (s *YAMLGameNodePipelineStore) Delete(ctx context.Context, id string) error
 }
 
 // Save 保存所有流水线到文件
-func (s *YAMLGameNodePipelineStore) Save(ctx context.Context) error {
+func (s *YAMLGamePipelineStore) Save(ctx context.Context) error {
 	// 检查上下文是否已取消
 	if err := ctx.Err(); err != nil {
 		return err
@@ -172,7 +172,7 @@ func (s *YAMLGameNodePipelineStore) Save(ctx context.Context) error {
 }
 
 // Load 从文件加载所有流水线
-func (s *YAMLGameNodePipelineStore) Load(ctx context.Context) error {
+func (s *YAMLGamePipelineStore) Load(ctx context.Context) error {
 	// 检查上下文是否已取消
 	if err := ctx.Err(); err != nil {
 		return err
@@ -205,7 +205,7 @@ func (s *YAMLGameNodePipelineStore) Load(ctx context.Context) error {
 }
 
 // Cleanup 清理资源
-func (s *YAMLGameNodePipelineStore) Cleanup(ctx context.Context) error {
+func (s *YAMLGamePipelineStore) Cleanup(ctx context.Context) error {
 	// 检查上下文是否已取消
 	if err := ctx.Err(); err != nil {
 		return err
@@ -215,7 +215,7 @@ func (s *YAMLGameNodePipelineStore) Cleanup(ctx context.Context) error {
 	defer s.mu.Unlock()
 
 	// 清空流水线数据
-	s.pipelines = make(map[string]*models.GameNodePipeline)
+	s.pipelines = make(map[string]*models.GamePipeline)
 
 	// 尝试删除文件
 	if err := os.Remove(s.filepath); err != nil && !os.IsNotExist(err) {
@@ -228,8 +228,8 @@ func (s *YAMLGameNodePipelineStore) Cleanup(ctx context.Context) error {
 }
 
 // Close 关闭存储，确保所有待处理的保存操作完成
-func (s *YAMLGameNodePipelineStore) Close() {
-	s.logger.Info("关闭GameNodePipelineStore，确保数据保存...")
+func (s *YAMLGamePipelineStore) Close() {
+	s.logger.Info("关闭GamePipelineStore，确保数据保存...")
 	if s.yamlSaver != nil {
 		s.yamlSaver.Close()
 	}

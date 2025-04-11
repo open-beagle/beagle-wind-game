@@ -6,9 +6,27 @@
 
 游戏节点 GRPC 通信系统是 [GameNode](../README.md#gamenode) 的核心组件之一，负责游戏节点的远程管理和控制。系统采用客户端-服务器架构，基于 gRPC 实现。系统包含以下主要组件：
 
-1. **GameNodeServer - 游戏节点的 GRPC 服务**：作为 gRPC 服务端，提供 API 接口供节点 Agent 调用
-2. **GameNodeAgent - 游戏节点的 GPRC 客户端**：部署在每个游戏节点上，作为 gRPC 客户端与 gRPC 服务通信
-3. **GameNodeProto - 通信协议服务定义**：使用 Protocol Buffers 定义消息格式和服务接口
+1. **GameNodeGRPCService - 节点管理服务**：作为 gRPC 服务端，提供节点管理相关的 API 接口
+2. **GamePipelineGRPCService - Pipeline 服务**：作为 gRPC 服务端，提供 Pipeline 相关的 API 接口
+3. **GameNodeAgent - 游戏节点的 GPRC 客户端**：部署在每个游戏节点上，作为 gRPC 客户端与 gRPC 服务通信
+4. **GameNodeProto - 通信协议服务定义**：使用 Protocol Buffers 定义消息格式和服务接口
+
+两个 gRPC 服务共享同一个服务端口，通过不同的服务定义实现功能分离：
+
+```go
+// 服务注册示例
+func NewServer() *grpc.Server {
+    server := grpc.NewServer()
+    
+    // 注册节点管理服务
+    gamenode.RegisterGameNodeGRPCServiceServer(server, &GameNodeServer{})
+    
+    // 注册 Pipeline 服务
+    pipeline.RegisterGamePipelineGRPCServiceServer(server, &GamePipelineServer{})
+    
+    return server
+}
+```
 
 ### 1.2 通信流程
 
@@ -17,57 +35,132 @@
 │             │                │             │
 │   Agent     │                │   Server    │
 │             │                │             │
-│             │  1. Register   │             │
+│             │  1. Node      │             │
 │             │ ─────────────> │             │
 │             │                │             │
-│             │  2. Heartbeat  │             │
+│             │  2. Pipeline  │             │
 │             │ <────────────> │             │
 │             │                │             │
-│             │  3. Execute*   │             │
-│             │ <────────────> │             │
-│             │                │             │
-│             │  4. Events     │             │
+│             │  3. Instance  │             │
 │             │ <────────────> │             │
 │             │                │             │
 └─────────────┘                └─────────────┘
 
-1. Register: 节点注册，获取 session_id
-2. Heartbeat: 定期心跳，保持连接
-3. Execute*: 命令执行（Pipeline、Container等）
-4. Events: 事件流，实时通知
+1. Node: 节点注册、心跳、状态上报
+2. Pipeline: 任务下发、执行、进度报告
+3. Instance: 容器管理、状态监控、日志收集
 ```
 
 ### 1.3 核心功能
 
-1. **节点注册与心跳**：Agent 启动时向服务器注册，并定期发送心跳保持连接
-2. **Pipeline 执行**：服务器向 Agent 下发 Pipeline，Agent 执行 Pipeline 并反馈状态
-3. **容器管理**：服务器可远程控制 Agent 上的容器生命周期
-4. **状态监控**：Agent 定期上报节点资源使用情况和容器状态
-5. **日志流**：Agent 实时上传节点和容器日志
-6. **事件流**：服务器订阅 Agent 的各类事件通知
+1. **节点维护（Node）**：
+   - 节点注册：Agent 启动时向服务器注册，获取 session_id
+   - 心跳机制：Agent 定期发送心跳，保持连接
+   - 状态上报：Agent 定期上报节点资源使用情况
+   - 事件通知：Agent 实时上报节点事件
+
+2. **Pipeline 维护**：
+   - 任务发布：Server 选择模板并发布 Pipeline 任务
+   - 任务领取：Agent 通过 gRPC 服务领取任务
+   - 参数处理：Agent 处理模板参数和环境变量
+   - 任务执行：Agent 执行 Pipeline 步骤
+   - 进度报告：Agent 实时上报执行进度
+   - 任务取消：支持取消正在执行的 Pipeline
+
+3. **实例维护（Instance）**：
+   - 容器管理：创建、启动、停止、删除容器
+   - 状态监控：监控容器资源使用情况
+   - 日志收集：收集容器日志
+   - 事件处理：处理容器生命周期事件
 
 ## 2. Pipeline 系统
 
-GameNodePipeline 是游戏节点通讯的流程管理工具，简称 Pipeline.
-Pipeline 是节点 Agent 的核心功能之一，负责执行容器化任务。它是 [GamePlatform](../README.md#gameplatform) 的重要组成部分，用于游戏平台的部署和运行环境准备。详细设计请参考 [Pipeline 系统设计文档](./gamenode_pipeline.md)。
+Pipeline 是节点 Agent 的核心功能之一，负责执行容器化任务。
+它是 [GamePlatform](../README.md#gameplatform) 的重要组成部分，用于游戏平台的部署和运行环境准备。
+
+Pipeline 系统由以下组件构成：
+
+1. **GamePipelineProto** (`internal/proto/gamepipeline.proto`)
+   - 定义 Pipeline 相关的 gRPC 方法
+   - 包括 Pipeline 的创建、执行、状态查询等接口
+   - 定义 Pipeline 相关的数据结构
+
+2. **GamePipelineServer** (`internal/grpc/gamepipeline_server.go`)
+   - Pipeline 的服务端实现
+   - 提供 Pipeline 相关的 gRPC 接口
+   - 管理 Pipeline 的生命周期
+   - 处理 Pipeline 的状态和进度
+   - 将 pipeline 数据持久化到数据库
+   - 计算 pipeline 执行节点
+   - 发布任务给 GamePipelineAgent
+
+3. **GamePipelineAgent** (`internal/grpc/gamepipeline_agent.go`)
+   - Pipeline 的客户端实现
+   - 负责接收和执行 Pipeline 任务
+   - 将 pipeline 模板实例化
+   - 执行 pipeline 步骤
+   - 与 GamePipelineServer 保持通信，报告执行状态
+   - 处理 Pipeline 的异常情况
+
+4. **GamePipeline** (`internal/models/gamepipeline.go`)
+   - Pipeline 的数据模型定义
+   - 定义 Pipeline 的结构和属性
+   - 包含 Pipeline 的步骤定义
+   - 定义 Pipeline 的执行参数
+
+5. **GamePipelineService** (`internal/service/gamepipeline_service.go`)
+   - Pipeline 的数据服务层
+   - 提供 Pipeline 的持久化存储
+   - 管理 Pipeline 的元数据
+   - 提供 Pipeline 的查询接口
+
+6. **GamePipelineHandler** (`internal/handler/gamepipeline_handler.go`)
+   - Pipeline 的生命周期起点
+   - 接收客户端发起的 Pipeline 需求
+   - 将 Pipeline 交给 GamePipelineService 存储
+   - 触发 pipeline 执行流程
+
+### 2.1 Pipeline 业务流程
+
+1. **Pipeline 创建与存储**
+   - GamePipelineHandler 接收 Pipeline 请求
+   - 调用 GamePipelineService 将 Pipeline 存储到数据库
+   - 触发 pipeline 执行流程
+
+2. **Pipeline 任务分配**
+   - GamePipelineServer 发现新建的 pipeline
+   - 计算合适的执行节点（GameNode）
+   - 将任务发布给目标节点的 GamePipelineAgent
+
+3. **Pipeline 执行**
+   - GamePipelineAgent 接收任务
+   - 将 pipeline 模板实例化
+   - 执行 pipeline 步骤
+   - 持续向 GamePipelineServer 报告执行状态
+
+4. **Pipeline 状态管理**
+   - GamePipelineServer 接收执行状态
+   - 更新 pipeline 数据到数据库
+   - 监控 pipeline 执行进度
+   - 处理异常情况
+
+详细设计请参考 [Pipeline 系统设计文档](./gamepipeline.md)。
 
 ### 2.1 Pipeline 创建
 
-GameNodeServer 负责创建 Pipeline 模版，然后发布 Pipeline 任务，GameNodeAgent 领取 Pipeline 任务：
+GameNodeServer 负责发布 Pipeline 任务，GameNodeAgent 领取 Pipeline 任务：
 
-1. **接收 Pipeline**
+1. **发布 Pipeline**
 
 - GameNodeServer，对外提供接收 Pipeline 的接口；
 - 参数-模版 ID，如"start-platfrom"；
 - 参数-模版 args，模版启动参数，主要是需要传入这些参数来填充模版内的预定义参数。以启动平台为例，args 与启动的具体实例有关，故其每个参数的 key 是固定的，但是 value 是动态的，这个业务应该由谁启动 start-platform 谁传递这些动态的参数值。
 
-2. **发布 Pipeline**
-
 - 选择 pipeline 模版，GameNodeServer 会根据上游的任务要求，选择 pipeline 模版；
 - 填充 args 参数，envs 参数，pipeline 模版中存在这预定义的 args 参数和 envs 参数，Server 将会为 Pipeline 填充正确的 args 参数，同时将 envs 并不填充，而是 随 pipeline 传递给 agent；
 - 选择适合执行的 Agent ，发布 pipeline 任务，最后 Server 发布 Pipeline 任务，此流程结束
 
-3. **获取 Pipeline**
+2. **获取 Pipeline**
 
 - agent 通过 grpc 服务领取到自己的 pipeline 任务；
 - 此时 agent 要检查自己的 envs,然后对比服务传来的 envs 参数，并对其同名参数进行覆盖，不一致可补充进去；

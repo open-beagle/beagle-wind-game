@@ -2,8 +2,8 @@
 
 ## 相关文档
 
-- [GameNode 通信设计](gamenode_communication.md)：详细描述了 GameNode 的通信机制和协议，包括 Pipeline 任务管理、执行和接口设计
-- [GameNode Pipeline 设计](gamenode_pipeline.md)：详细描述了 GameNode 的流水线执行机制
+- [GameNode 通信设计](grpc_communication.md)：详细描述了 GameNode 的通信机制和协议，包括 Pipeline 任务管理、执行和接口设计
+- [GameNode Pipeline 设计](gamepipeline.md)：详细描述了 GameNode 的流水线执行机制
 
 ## 1. 系统概述
 
@@ -13,7 +13,7 @@ GameNode 是 Beagle Wind Game 平台的核心组件之一，负责管理和执�
 2. GameNodeHandler：HTTP API 服务实体，处理前端交互
 3. GameNodeService：核心业务实现，管理游戏节点状态和生命周期
 4. GameNodeStore：数据存储管理器，负责数据持久化
-5. GameNodeCommunication：节点通信设计，实现节点间通信，包括 Pipeline 任务管理、执行和接口设计，详见[通信设计文档](gamenode_communication.md)
+5. GameNodeCommunication：节点通信设计，实现节点间通信，包括 Pipeline 任务管理、执行和接口设计，详见[通信设计文档](grpc_communication.md)
 
 ## 2. 核心组件设计
 
@@ -287,18 +287,18 @@ GameNodeHandler 是系统的 HTTP API 服务实体，负责处理前端交互。
 数据存储管理器，负责数据的持久化。存储接口的设计和实现细节请参考：
 
 - [GameNodeHandler 设计文档](gamenode_handler.md) 中的 GameNodeStore 设计
-- [GameNodePipelineHandler 设计文档](gamenode_pipeline_handler.md) 中的 GameNodePipelineStore 设计
+- [GamePipelineHandler 设计文档](gamepipeline_handler.md) 中的 GamePipelineStore 设计
 
 ### 2.5 GameNode Communication
 
-节点通信设计，实现节点间的通信。详细设计请参考[通信设计文档](gamenode_communication.md)：
+节点通信设计，实现节点间的通信。详细设计请参考[通信设计文档](grpc_communication.md)：
 
 #### 2.5.1 通信组件
 
 - GameNodeServer：Pipeline 任务管理器
 - GameNodeAgent：Pipeline 任务执行器
 - GameNodeProto：Pipeline 任务接口设计
-- GameNodePipeline：Pipeline 任务模板
+- GamePipeline：Pipeline 任务模板
 
 #### 2.5.2 通信协议
 

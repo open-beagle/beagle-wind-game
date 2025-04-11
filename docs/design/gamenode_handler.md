@@ -17,7 +17,7 @@ GameNodeHandler 是系统的 HTTP API 服务实体，负责处理前端交互。
 
 1. 节点注册：由 GameNodeAgent 通过 gRPC 实现
 2. 节点心跳：由 GameNodeAgent 通过 gRPC 实现
-3. Pipeline 管理：由 GameNodePipelineHandler 负责，详见 [GameNodePipelineHandler 设计文档](gamenode_pipeline_handler.md)
+3. Pipeline 管理：由 GamePipelineHandler 负责，详见 [GamePipelineHandler 设计文档](gamepipeline_handler.md)
 4. 容器管理：暂缓实现
 5. 日志管理：暂缓实现
 6. 事件流管理：由 Event Handler 负责，详见 [Event Handler 设计文档](event_handler.md)

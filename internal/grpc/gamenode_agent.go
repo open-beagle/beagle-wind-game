@@ -1,4 +1,4 @@
-package gamenode
+package grpc
 
 import (
 	"context"
@@ -45,7 +45,7 @@ type GameNodeAgent struct {
 	mu     sync.RWMutex
 	status *models.GameNodeStatus
 
-	pipelines map[string]*models.GameNodePipeline
+	pipelines map[string]*models.GamePipeline
 
 	// 日志框架
 	logger utils.Logger

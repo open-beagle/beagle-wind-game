@@ -10,7 +10,7 @@ GameNodeServer 是 GameNode 系统的核心服务组件之一，负责管理游�
 
 - 状态数据分为两类：
   - GameNode 状态数据：由 GameNodeService 统一管理
-  - GameNodePipeline 状态数据：由 GameNodePipelineService 统一管理
+  - GamePipeline 状态数据：由 GamePipelineGRPCService 统一管理
 - GameNodeServer 不存储任何状态数据
 - 所有状态更新通过对应的 Service 进行
 - 保持状态管理的一致性和集中性
@@ -22,7 +22,7 @@ GameNodeServer 是 GameNode 系统的核心服务组件之一，负责管理游�
   - 负责与 Agent 的 gRPC 通信
   - 处理通信协议转换
   - 通过 GameNodeService 处理节点状态
-  - 通过 GameNodePipelineService 处理 Pipeline 状态
+  - 通过 GamePipelineGRPCService 处理 Pipeline 状态
   - 不存储任何状态数据
 
 - GameNodeService：节点状态管理组件
@@ -32,7 +32,7 @@ GameNodeServer 是 GameNode 系统的核心服务组件之一，负责管理游�
   - 维护节点数据一致性
   - 提供节点状态查询接口
 
-- GameNodePipelineService：Pipeline 状态管理组件
+- GamePipelineGRPCService：Pipeline 状态管理组件
 
   - 负责 Pipeline 状态数据的存储
   - 处理 Pipeline 状态更新逻辑
@@ -331,8 +331,8 @@ GameNodeServer 是 GameNode 系统的核心服务组件之一，负责管理游�
 - 处理任务取消请求
 - 管理 Step 状态变更
 
-同样对于 pipeline 任务，其状态由 GameNodePipelineService 负责维护，GameNodeServer 初始化时应传入 GameNodePipelineService 实例，用于管理 pipeline 数据。
-注意任何不满足业务需求的数据结构都应该提出修改意见，并修改 GameNodePipeline 对象，这个对象的位置有设计文件专门管；
+同样对于 pipeline 任务，其状态由 GamePipelineGRPCService 负责维护，GameNodeServer 初始化时应传入 GamePipelineGRPCService 实例，用于管理 pipeline 数据。
+注意任何不满足业务需求的数据结构都应该提出修改意见，并修改 GamePipeline 对象，这个对象的位置有设计文件专门管；
 
 1.2.4 **状态同步**
 
@@ -348,7 +348,7 @@ graph TD
     A --> C[NodeManager]
     A --> D[LogManager]
 
-    B --> E[GameNodePipelineService]
+    B --> E[GamePipelineGRPCService]
     C --> F[GameNodeService]
 
     B --> G[TaskDispatcher]
@@ -364,7 +364,7 @@ graph TD
 
 ```go
 type PipelineManager struct {
-    pipelineService *GameNodePipelineService
+    pipelineService *GamePipelineGRPCService
     taskDispatcher  *TaskDispatcher
 }
 

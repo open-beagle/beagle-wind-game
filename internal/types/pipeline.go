@@ -15,8 +15,8 @@ type PipelineListParams struct {
 
 // PipelineListResult Pipeline 列表查询结果
 type PipelineListResult struct {
-	Total int64                      `json:"total"`
-	Items []*models.GameNodePipeline `json:"items"`
+	Total int64                  `json:"total"`
+	Items []*models.GamePipeline `json:"items"`
 }
 
 // StepStatus 步骤状态

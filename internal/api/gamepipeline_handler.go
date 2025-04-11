@@ -8,20 +8,20 @@ import (
 	"github.com/open-beagle/beagle-wind-game/internal/service"
 )
 
-// GameNodePipelineHandler 处理游戏节点流水线相关的 HTTP 请求
-type GameNodePipelineHandler struct {
-	svc *service.GameNodePipelineService
+// GamePipelineHandler 处理游戏节点流水线相关的 HTTP 请求
+type GamePipelineHandler struct {
+	svc *service.GamePipelineGRPCService
 }
 
-// NewGameNodePipelineHandler 创建新的 GameNodePipelineHandler
-func NewGameNodePipelineHandler(svc *service.GameNodePipelineService) *GameNodePipelineHandler {
-	return &GameNodePipelineHandler{
+// NewGamePipelineHandler 创建新的 GamePipelineHandler
+func NewGamePipelineHandler(svc *service.GamePipelineGRPCService) *GamePipelineHandler {
+	return &GamePipelineHandler{
 		svc: svc,
 	}
 }
 
 // RegisterRoutes 注册路由
-func (h *GameNodePipelineHandler) RegisterRoutes(r *gin.Engine) {
+func (h *GamePipelineHandler) RegisterRoutes(r *gin.Engine) {
 	pipelines := r.Group("/api/v1/pipelines")
 	{
 		pipelines.GET("", h.List)
@@ -49,7 +49,7 @@ func (h *GameNodePipelineHandler) RegisterRoutes(r *gin.Engine) {
 // @Failure 400 {object} map[string]interface{} "请求参数错误"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /api/v1/pipelines [get]
-func (h *GameNodePipelineHandler) List(c *gin.Context) {
+func (h *GamePipelineHandler) List(c *gin.Context) {
 	pipelines, err := h.svc.List(c)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -71,7 +71,7 @@ func (h *GameNodePipelineHandler) List(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{} "流水线不存在"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /api/v1/pipelines/{id} [get]
-func (h *GameNodePipelineHandler) Get(c *gin.Context) {
+func (h *GamePipelineHandler) Get(c *gin.Context) {
 	pipelineID := c.Param("id")
 	if pipelineID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -120,7 +120,7 @@ func (h *GameNodePipelineHandler) Get(c *gin.Context) {
 // @Failure 409 {object} map[string]interface{} "流水线状态不允许取消"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /api/v1/pipelines/{id}/cancel [post]
-func (h *GameNodePipelineHandler) Cancel(c *gin.Context) {
+func (h *GamePipelineHandler) Cancel(c *gin.Context) {
 	pipelineID := c.Param("id")
 	if pipelineID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -175,7 +175,7 @@ func (h *GameNodePipelineHandler) Cancel(c *gin.Context) {
 // @Failure 409 {object} map[string]interface{} "流水线状态不允许删除"
 // @Failure 500 {object} map[string]interface{} "服务器内部错误"
 // @Router /api/v1/pipelines/{id}/delete [post]
-func (h *GameNodePipelineHandler) Delete(c *gin.Context) {
+func (h *GamePipelineHandler) Delete(c *gin.Context) {
 	// 获取目标流水线ID
 	pipelineID := c.Param("id")
 	if pipelineID == "" {

@@ -259,7 +259,7 @@ func main() {
     
     // 初始化存储
     logger.Info("初始化存储...")
-    gamenodeStore, gamenodePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, err := initStores()
+    gamenodeStore, GamePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, err := initStores()
     if err != nil {
         logger.Fatal("初始化存储失败: %v", err)
     }

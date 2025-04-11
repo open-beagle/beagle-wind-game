@@ -9,7 +9,7 @@ import (
 // SetupRouter 设置路由
 func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeService *service.GameNodeService,
 	gameCardService *service.GameCardService, gameinstanceService *service.GameInstanceService,
-	gamenodePipelineService *service.GameNodePipelineService) *gin.Engine {
+	GamePipelineGRPCService *service.GamePipelineGRPCService) *gin.Engine {
 	// 创建默认的gin引擎
 	r := gin.Default()
 
@@ -32,7 +32,7 @@ func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeServi
 	gamenodeHandler := NewGameNodeHandler(gamenodeService)
 	gameCardHandler := NewGameCardHandler(gameCardService)
 	gameinstanceHandler := NewGameInstanceHandler(gameinstanceService)
-	gamenodePipelineHandler := NewGameNodePipelineHandler(gamenodePipelineService)
+	GamePipelineHandler := NewGamePipelineHandler(GamePipelineGRPCService)
 
 	// API v1 路由组
 	v1 := r.Group("/api/v1")
@@ -82,10 +82,10 @@ func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeServi
 		// 游戏节点流水线管理
 		pipelines := v1.Group("/pipelines")
 		{
-			pipelines.GET("", gamenodePipelineHandler.List)
-			pipelines.GET("/:id", gamenodePipelineHandler.Get)
-			pipelines.POST("/:id/cancel", gamenodePipelineHandler.Cancel)
-			pipelines.POST("/:id/delete", gamenodePipelineHandler.Delete)
+			pipelines.GET("", GamePipelineHandler.List)
+			pipelines.GET("/:id", GamePipelineHandler.Get)
+			pipelines.POST("/:id/cancel", GamePipelineHandler.Cancel)
+			pipelines.POST("/:id/delete", GamePipelineHandler.Delete)
 		}
 	}
 

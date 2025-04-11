@@ -81,7 +81,7 @@ err := saver.Save(ctx)
 - YAMLGameCardStore
 - YAMLGameInstanceStore
 - YAMLGamePlatformStore
-- YAMLGameNodePipelineStore
+- YAMLGamePipelineStore
 
 默认配置为1秒的延迟，可根据需要调整。
 
