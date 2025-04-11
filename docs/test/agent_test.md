@@ -88,7 +88,7 @@
 ## 测试工具
 
 - 测试 Agent：`cmd/agent/test/agent/main.go`
-- 数据文件：`data/game-nodes.yaml`
+- 数据文件：`data/gamenodes.yaml`
 - 日志文件：`logs/agent_test.log`
 
 ## 注意事项

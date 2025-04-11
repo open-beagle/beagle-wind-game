@@ -174,7 +174,7 @@
 ```text
 project/
 ├── config/                 # 配置数据源
-│   ├── platforms.yaml     # 平台配置
+│   ├── gameplatforms.yaml     # 平台配置
 │   └── cards.yaml        # 游戏卡片配置
 ├── data/                  # 示例数据源
 │   ├── platforms/        # 平台示例

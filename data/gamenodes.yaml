@@ -179,14 +179,14 @@
   status:
     state: online
     online: true
-    last_online: 2025-04-10T19:48:21.884809868+08:00
-    updated_at: 2025-04-10T19:48:22.701318096+08:00
+    last_online: 2025-04-11T11:38:21.946469227+08:00
+    updated_at: 2025-04-11T11:38:21.946469312+08:00
     hardware:
         cpus:
             - model: Intel i9-13900H
               cores: 2
               threads: 4
-              frequency: 2.995198
+              frequency: 2.9952010000000002
               cache: 0
               architecture: x86_64
         memories:
@@ -213,10 +213,6 @@
               model: Virtual Disk
               capacity: 995358670848
               path: /mnt/d
-            - type: HDD
-              model: Virtual Disk
-              capacity: 1081258016768
-              path: /mnt/wsl/docker-desktop/docker-desktop-user-distro
         networks:
             - name: eth0
               mac_address: "00:00:00:00:00:00"
@@ -229,42 +225,42 @@
         kernel_version: 5.15.167.4-microsoft-standard-WSL2
         gpu_driver_version: NVIDIA Driver 572.83
         gpu_compute_api_version: "12.6"
-        docker_version: 27.0.3
-        containerd_version: 1.7.18
-        runc_version: 1.7.18
+        docker_version: ""
+        containerd_version: ""
+        runc_version: ""
     metrics:
         cpus:
             - model: Intel i9-13900H
               cores: 2
               threads: 4
-              usage: 4.433497536955524
+              usage: 3.465346534652769
         memory:
             total: 16776024064
-            available: 14486466560
-            used: 1944608768
-            usage: 11.591595008336773
+            available: 15117312000
+            used: 1315045376
+            usage: 7.838838159644642
         gpus:
             - model: NVIDIA GeForce RTX 4070 Laptop GPU
               memory_total: 8188
-              usage: 5
-              memory_used: 1384
-              memory_free: 6565
-              memory_usage: 16.90278456277479
+              gpu_usage: 0
+              memory_used: 787
+              memory_free: 7162
+              memory_usage: 9.611626770884222
         storages:
             - path: /
               type: SSD
               model: Virtual Disk
               capacity: 1081101176832
-              used: 73729933312
-              free: 952378888192
-              usage: 6.81989205932179
+              used: 73734553600
+              free: 952374267904
+              usage: 6.820319428017618
             - path: /mnt/c
               type: HDD
               model: Virtual Disk
               capacity: 4067180933120
-              used: 2320623497216
-              free: 1746557435904
-              usage: 57.0572968199822
+              used: 2320590340096
+              free: 1746590593024
+              usage: 57.056481584059696
             - path: /mnt/d
               type: HDD
               model: Virtual Disk
@@ -272,16 +268,9 @@
               used: 98044231680
               free: 896635293696
               usage: 9.856866375422594
-            - path: /mnt/wsl/docker-desktop/docker-desktop-user-distro
-              type: HDD
-              model: Virtual Disk
-              capacity: 1081101176832
-              used: 58875904
-              free: 1026049945600
-              usage: 0.0054459198881391235
         network:
-            inbound_traffic: 2.700334167480469
-            outbound_traffic: 1.4148422241210938
-            connections: 33
+            inbound_traffic: 0.08803863525390625
+            outbound_traffic: 0.04144287109375
+            connections: 26
   created_at: 2025-04-10T16:48:13.858358065+08:00
-  updated_at: 2025-04-10T19:48:22.701318182+08:00
+  updated_at: 2025-04-11T11:37:51.945180056+08:00

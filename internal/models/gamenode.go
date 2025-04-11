@@ -96,8 +96,8 @@ type MemoryMetrics struct {
 // GPUMetrics GPU监控指标
 type GPUMetrics struct {
 	Model       string  `json:"model" yaml:"model"`               // GPU型号
-	MemoryTotal int64   `json:"memory_total" yaml:"memory_total"` // 显存总量
 	GPUUsage    float64 `json:"gpu_usage" yaml:"gpu_usage"`       // GPU使用率
+	MemoryTotal int64   `json:"memory_total" yaml:"memory_total"` // 显存总量
 	MemoryUsed  int64   `json:"memory_used" yaml:"memory_used"`   // 已用显存
 	MemoryFree  int64   `json:"memory_free" yaml:"memory_free"`   // 可用显存
 	MemoryUsage float64 `json:"memory_usage" yaml:"memory_usage"` // 显存使用率

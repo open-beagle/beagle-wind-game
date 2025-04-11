@@ -25,7 +25,7 @@ var (
 // initStores 初始化所有存储
 func initStores(ctx context.Context) (store.GameNodeStore, *store.YAMLGameNodePipelineStore, store.GamePlatformStore, store.GameCardStore, store.GameInstanceStore, error) {
 	// 初始化游戏节点存储
-	gamenodeStore, err := store.NewGameNodeStore(ctx, "data/game-nodes.yaml")
+	gamenodeStore, err := store.NewGameNodeStore(ctx, "data/gamenodes.yaml")
 	if err != nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("创建节点存储失败: %v", err)
 	}
@@ -34,13 +34,13 @@ func initStores(ctx context.Context) (store.GameNodeStore, *store.YAMLGameNodePi
 	gamenodePipelineStore := store.NewYAMLGameNodePipelineStore(ctx, "data/game-pipelines.yaml")
 
 	// 初始化游戏平台存储
-	gamePlatformStore, err := store.NewGamePlatformStore(ctx, "config/platforms.yaml")
+	gamePlatformStore, err := store.NewGamePlatformStore(ctx, "config/gameplatforms.yaml")
 	if err != nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("创建平台存储失败: %v", err)
 	}
 
 	// 初始化游戏卡牌存储
-	gameCardStore, err := store.NewGameCardStore(ctx, "data/game-cards.yaml")
+	gameCardStore, err := store.NewGameCardStore(ctx, "data/gamecards.yaml")
 	if err != nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("创建卡牌存储失败: %v", err)
 	}
@@ -49,7 +49,7 @@ func initStores(ctx context.Context) (store.GameNodeStore, *store.YAMLGameNodePi
 	logger := utils.New("GameInstanceStore")
 
 	// 初始化游戏实例存储
-	gameInstanceStore, err := store.NewGameInstanceStore(ctx, "data/game-instances.yaml", logger)
+	gameInstanceStore, err := store.NewGameInstanceStore(ctx, "data/gameinstances.yaml", logger)
 	if err != nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("创建实例存储失败: %v", err)
 	}

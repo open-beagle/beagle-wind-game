@@ -90,7 +90,7 @@ const syncConfigToMocks = async () => {
   
   try {
     // 同步平台数据
-    const platforms = readYamlFile<GamePlatform[]>(path.join(CONFIG_DIR, 'platforms.yaml'))
+    const platforms = readYamlFile<GamePlatform[]>(path.join(CONFIG_DIR, 'gameplatforms.yaml'))
     if (platforms.every(validatePlatform)) {
       generateTsFile(
         path.join(MOCKS_DIR, 'GamePlatform.ts'),
@@ -129,7 +129,7 @@ const syncMocksToConfig = async () => {
     const platforms = require('../src/mocks/data/GamePlatform').mockGamePlatforms
     if (platforms.every(validatePlatform)) {
       writeYamlFile(
-        path.join(CONFIG_DIR, 'platforms.yaml'),
+        path.join(CONFIG_DIR, 'gameplatforms.yaml'),
         platforms
       )
     }

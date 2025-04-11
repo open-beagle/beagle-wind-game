@@ -335,7 +335,7 @@ GameNodeHandler 是系统的 HTTP API 服务实体，负责处理前端交互。
 
 - 系统自动创建节点记录
 - 使用 YAML 文件存储节点信息
-- 存储在 `data/game-nodes.yaml` 中
+- 存储在 `data/gamenodes.yaml` 中
 
 ### 3.2 管理员维护
 
