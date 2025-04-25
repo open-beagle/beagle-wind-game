@@ -76,15 +76,16 @@ func (s *GamePipelineGRPCService) Create(ctx context.Context, pipeline *models.G
 
 	// 2. 设置初始状态
 	if pipeline.Status == nil {
+		now := time.Now()
 		pipeline.Status = &models.PipelineStatus{
 			State:        models.PipelineStatePending,
 			TotalSteps:   int32(len(pipeline.Steps)),
 			Steps:        make([]models.StepStatus, len(pipeline.Steps)),
 			CurrentStep:  0,
-			StartTime:    time.Time{},
-			EndTime:      time.Time{},
+			StartTime:    nil,
+			EndTime:      nil,
 			ErrorMessage: "",
-			UpdatedAt:    time.Now(),
+			UpdatedAt:    &now,
 		}
 	}
 
@@ -201,7 +202,6 @@ func (s *GamePipelineGRPCService) UpdateStepStatus(ctx context.Context, pipeline
 			// 只更新状态字段，保留其他信息
 			pipeline.Status.Steps[i].State = status.State
 			pipeline.Status.Steps[i].Error = status.Error
-			pipeline.Status.Steps[i].UpdatedAt = time.Now()
 			stepFound = true
 			break
 		}
@@ -302,7 +302,8 @@ func (s *GamePipelineGRPCService) updatePipelineState(pipeline *models.GamePipel
 		} else {
 			pipeline.Status.State = models.PipelineStateCompleted
 		}
-		pipeline.Status.EndTime = time.Now()
+		now := time.Now()
+		pipeline.Status.EndTime = &now
 	}
 }
 
@@ -355,16 +356,17 @@ func (s *GamePipelineGRPCService) Cancel(ctx context.Context, id string) error {
 	}
 
 	// 创建新的状态对象
+	now := time.Now()
 	status := &models.PipelineStatus{
 		NodeID:       pipeline.Status.NodeID,
 		State:        models.PipelineStateCanceled,
 		CurrentStep:  pipeline.Status.CurrentStep,
 		TotalSteps:   pipeline.Status.TotalSteps,
 		StartTime:    pipeline.Status.StartTime,
-		EndTime:      time.Now(),
+		EndTime:      &now,
 		Steps:        pipeline.Status.Steps,
 		ErrorMessage: "Pipeline was canceled",
-		UpdatedAt:    time.Now(),
+		UpdatedAt:    &now,
 	}
 
 	return s.UpdateStatus(ctx, id, status)

@@ -38,73 +38,74 @@ const (
 
 // StepStatus 步骤状态信息
 type StepStatus struct {
-	ID        string    `json:"id" yaml:"id"`                 // 步骤ID
-	Name      string    `json:"name" yaml:"name"`             // 步骤名称
-	State     StepState `json:"status" yaml:"status"`         // 步骤状态
-	StartTime time.Time `json:"start_time" yaml:"start_time"` // 开始时间
-	EndTime   time.Time `json:"end_time" yaml:"end_time"`     // 结束时间
-	Error     string    `json:"error" yaml:"error"`           // 错误信息
-	Output    string    `json:"-" yaml:"-"`                   // 执行输出
-	Logs      []byte    `json:"logs" yaml:"logs"`             // 执行日志
-	Progress  float64   `json:"progress" yaml:"progress"`     // 执行进度
-	UpdatedAt time.Time `json:"updated_at" yaml:"updated_at"` // 更新时间
+	ID          string     `json:"id" yaml:"id"`                                         // 步骤ID
+	Name        string     `json:"name" yaml:"name"`                                     // 步骤名称
+	State       StepState  `json:"status" yaml:"status"`                                 // 步骤状态
+	ContainerID string     `json:"container_id,omitempty" yaml:"container_id,omitempty"` // 容器ID
+	StartTime   *time.Time `json:"start_time,omitempty" yaml:"start_time,omitempty"`     // 开始时间
+	EndTime     *time.Time `json:"end_time,omitempty" yaml:"end_time,omitempty"`         // 结束时间
+	Error       string     `json:"error,omitempty" yaml:"error,omitempty"`               // 错误信息
+	Output      string     `json:"-" yaml:"-"`                                           // 执行输出
+	Logs        []byte     `json:"logs,omitempty" yaml:"logs,omitempty"`                 // 执行日志
+	Progress    float64    `json:"progress,omitempty" yaml:"progress,omitempty"`         // 执行进度
+	UpdatedAt   *time.Time `json:"updated_at,omitempty" yaml:"updated_at,omitempty"`     // 更新时间
 }
 
 // ContainerConfig 容器配置
 type ContainerConfig struct {
 	Image         string            `json:"image" yaml:"image"`
-	ContainerName string            `json:"container_name" yaml:"container_name"`
-	Hostname      string            `json:"hostname" yaml:"hostname"`
+	ContainerName string            `json:"container_name,omitempty" yaml:"container_name,omitempty"`
+	Hostname      string            `json:"hostname,omitempty" yaml:"hostname,omitempty"`
 	Privileged    bool              `json:"privileged" yaml:"privileged"`
-	Deploy        DeployConfig      `json:"deploy" yaml:"deploy"`
-	SecurityOpt   []string          `json:"security_opt" yaml:"security_opt"`
-	CapAdd        []string          `json:"cap_add" yaml:"cap_add"`
-	Tmpfs         []string          `json:"tmpfs" yaml:"tmpfs"`
-	Devices       []string          `json:"devices" yaml:"devices"`
-	Volumes       []string          `json:"volumes" yaml:"volumes"`
-	Ports         []string          `json:"ports" yaml:"ports"`
-	Environment   map[string]string `json:"environment" yaml:"environment"`
-	Command       []string          `json:"command" yaml:"command"`
+	Deploy        DeployConfig      `json:"deploy,omitempty" yaml:"deploy,omitempty"`
+	SecurityOpt   []string          `json:"security_opt,omitempty" yaml:"security_opt,omitempty"`
+	CapAdd        []string          `json:"cap_add,omitempty" yaml:"cap_add,omitempty"`
+	Tmpfs         []string          `json:"tmpfs,omitempty" yaml:"tmpfs,omitempty"`
+	Devices       []string          `json:"devices,omitempty" yaml:"devices,omitempty"`
+	Volumes       []string          `json:"volumes,omitempty" yaml:"volumes,omitempty"`
+	Ports         []string          `json:"ports,omitempty" yaml:"ports,omitempty"`
+	Environment   map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
+	Command       []string          `json:"command,omitempty" yaml:"command,omitempty"`
 }
 
 // DeployConfig 部署配置
 type DeployConfig struct {
-	Resources ResourcesConfig `json:"resources" yaml:"resources"`
+	Resources ResourcesConfig `json:"resources,omitempty" yaml:"resources,omitempty"`
 }
 
 // ResourcesConfig 资源配置
 type ResourcesConfig struct {
-	Reservations ReservationsConfig `json:"reservations" yaml:"reservations"`
+	Reservations ReservationsConfig `json:"reservations,omitempty" yaml:"reservations,omitempty"`
 }
 
 // ReservationsConfig 资源预留配置
 type ReservationsConfig struct {
-	Devices []DeviceConfig `json:"devices" yaml:"devices"`
+	Devices []DeviceConfig `json:"devices,omitempty" yaml:"devices,omitempty"`
 }
 
 // DeviceConfig 设备配置
 type DeviceConfig struct {
-	Capabilities []string `json:"capabilities" yaml:"capabilities"`
+	Capabilities []string `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
 }
 
 // PipelineStep 流水线步骤
 type PipelineStep struct {
 	Name      string          `json:"name" yaml:"name"`
 	Type      string          `json:"type" yaml:"type"`
-	Container ContainerConfig `json:"container" yaml:"container"`
+	Container ContainerConfig `json:"container,omitempty" yaml:"container,omitempty"`
 }
 
 // PipelineStatus 流水线状态信息
 type PipelineStatus struct {
-	NodeID       string        `json:"node_id" yaml:"node_id"`           // 节点ID
-	State        PipelineState `json:"status" yaml:"status"`             // 流水线状态
-	CurrentStep  int32         `json:"current_step" yaml:"current_step"` // 当前步骤
-	TotalSteps   int32         `json:"total_steps" yaml:"total_steps"`   // 总步骤数
-	StartTime    time.Time     `json:"start_time" yaml:"start_time"`     // 开始时间
-	EndTime      time.Time     `json:"end_time" yaml:"end_time"`         // 结束时间
-	Steps        []StepStatus  `json:"steps" yaml:"steps"`               // 步骤状态列表
-	ErrorMessage string        `json:"error" yaml:"error"`               // 错误信息
-	UpdatedAt    time.Time     `json:"updated_at" yaml:"updated_at"`     // 更新时间
+	NodeID       string        `json:"node_id" yaml:"node_id"`                           // 节点ID
+	State        PipelineState `json:"status" yaml:"status"`                             // 流水线状态
+	CurrentStep  int32         `json:"current_step" yaml:"current_step"`                 // 当前步骤
+	TotalSteps   int32         `json:"total_steps" yaml:"total_steps"`                   // 总步骤数
+	StartTime    *time.Time    `json:"start_time,omitempty" yaml:"start_time,omitempty"` // 开始时间
+	EndTime      *time.Time    `json:"end_time,omitempty" yaml:"end_time,omitempty"`     // 结束时间
+	Steps        []StepStatus  `json:"steps,omitempty" yaml:"steps,omitempty"`           // 步骤状态列表
+	ErrorMessage string        `json:"error,omitempty" yaml:"error,omitempty"`           // 错误信息
+	UpdatedAt    *time.Time    `json:"updated_at,omitempty" yaml:"updated_at,omitempty"` // 更新时间
 }
 
 // GamePipeline 表示一个游戏节点流水线模板
@@ -114,13 +115,13 @@ type GamePipeline struct {
 
 	// 静态信息（模板定义）
 	Name        string         `json:"name" yaml:"name"`
-	Description string         `json:"description" yaml:"description"`
-	Envs        []string       `json:"envs" yaml:"envs"`
-	Args        []string       `json:"args" yaml:"args"`
-	Steps       []PipelineStep `json:"steps" yaml:"steps"`
+	Description string         `json:"description,omitempty" yaml:"description,omitempty"`
+	Envs        []string       `json:"envs,omitempty" yaml:"envs,omitempty"`
+	Args        []string       `json:"args,omitempty" yaml:"args,omitempty"`
+	Steps       []PipelineStep `json:"steps,omitempty" yaml:"steps,omitempty"`
 
 	// 动态信息（执行状态）
-	Status *PipelineStatus `json:"status" yaml:"status"`
+	Status *PipelineStatus `json:"status,omitempty" yaml:"status,omitempty"`
 }
 
 // NewGamePipelineFromYAML 从YAML创建新的游戏节点流水线模板

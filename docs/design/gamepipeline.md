@@ -4,7 +4,7 @@
 
 GamePipeline 简称 Pipeline 系统是 Beagle Wind Game 平台的控制 GameNode 上运行流程的核心组件之一。
 GameNode 流程管理核心组件之一，注意 Pipeline 是流程执行的模版，其提供 Status 属性来存储流程运行的进度与状态信息；
-生命周期开始，注意 GameNodeServer 发布 Pipeline 任务时，其生命周期开始的特征点；
+生命周期开始，注意 GamePipelineServer 发布 Pipeline 任务时，其生命周期开始的特征点；
 生命周期结束，Pipeline 执行完毕，则其生命周期结束；注意虽然 Pipeline 最后一个执行步骤是启动一个容器，而这个容器的生命周期可能长达数小时，或数天，但是其不影响 Pipeline 进入生命周期的终点。
 
 ### 1.1 核心功能
@@ -19,8 +19,8 @@ GameNode 流程管理核心组件之一，注意 Pipeline 是流程执行的模�
 
 Pipeline 是 GameNode 流程管理核心组件之一，GameNode 流程管理包含以下核心组件：
 
-- GameNodeServer - Pipeline 服务器：负责任务调度和状态管理
-- GameNodeAgent - Pipeline 客户端：负责容器执行和资源管理
+- GamePipelineServer - Pipeline 服务器：负责任务调度和状态管理
+- GamePipelineAgent - Pipeline 客户端：负责容器执行和资源管理
 - GamePipeline - Pipeline 定义模版：使用 YAML 格式描述任务流程
 
 ### 1.3 主要业务

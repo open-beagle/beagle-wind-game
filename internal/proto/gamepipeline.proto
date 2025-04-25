@@ -208,6 +208,7 @@ message PipelineStreamResponse {
 message Heartbeat {
     string node_id = 1;
     google.protobuf.Timestamp timestamp = 2;
+    repeated string pipeline_ids = 3; // 正在运行的 Pipeline IDs
 }
 
 // HeartbeatAck 心跳确认
