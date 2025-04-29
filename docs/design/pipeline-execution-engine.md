@@ -1,10 +1,72 @@
-# Pipeline 执行引擎设计
+# GamePipeline 执行引擎设计
 
 ## 概况
 
+### 概要设计
+
+数据载体，models.GamePipeline，GamePipelineAgent 将 models.GamePipeline 给到 GamePipelineEngine 来执行任务，
+GamePipelineEngine，负责启动容器执行 models.GamePipeline 任务，并收集更新 models.GamePipeline 的 Status 属性。
+GamePipelineAgent 将订阅 GamePipelineEngine 的事件来更新 models.GamePipeline 的状态与取消 models.GamePipeline 的执行。
+
+#### 事件类型
+
+GamePipelineEngine 将产生以下类型的事件：
+
+1. **状态更新事件**
+   - PipelineStarted：Pipeline 开始执行
+   - StepStarted：单个步骤开始执行
+   - StepCompleted：单个步骤执行完成
+   - StepFailed：单个步骤执行失败
+   - PipelineCompleted：Pipeline 执行完成
+   - PipelineFailed：Pipeline 执行失败
+
+2. **日志事件**
+   - StepLog：步骤执行日志
+   - ErrorLog：错误日志
+
+#### 状态更新机制
+
+1. **实时状态更新**
+   - GamePipelineEngine 通过事件总线发送状态更新事件
+   - GamePipelineAgent 订阅并处理这些事件
+   - 状态更新采用乐观锁机制，确保并发安全
+
+2. **状态持久化**
+   - 关键状态变更实时持久化
+   - 定期状态快照保存
+   - 支持状态恢复机制
+
+#### 错误处理策略
+
+1. **Docker 命令执行失败**
+   - 原因：Docker 命令本身执行失败（如 docker run 失败）
+   - 处理策略：
+     - 记录详细错误日志
+     - 释放相关资源
+     - 更新 Pipeline 状态为失败
+     - 触发错误告警
+
+2. **Step 执行失败**
+   - 原因：Docker 容器内命令执行返回非零状态码
+   - 处理策略：
+     - 收集容器日志
+     - 分析失败原因
+     - 根据配置决定是否重试
+     - 更新 Step 状态为失败
+     - 触发 Pipeline 失败处理流程
+
+3. **Pipeline 执行超时**
+   - 原因：整体执行时间超过配置的超时时间
+   - 处理策略：
+     - 强制终止所有运行中的容器
+     - 清理所有相关资源
+     - 更新 Pipeline 状态为超时
+     - 记录超时原因和上下文
+     - 触发超时告警
+
 ### 开发目标
 
-设计并实现一个 Pipeline 执行引擎，该引擎作为 Agent 的核心组件，负责管理和执行 Pipeline 任务。主要职责包括：
+设计并实现一个 GamePipeline 执行引擎，该引擎作为 GamePipelineAgent 的核心组件，负责管理和执行 GamePipeline 任务。主要职责包括：
 
 - Pipeline 生命周期的完整管理
 - 容器化步骤的执行控制
@@ -31,8 +93,8 @@ internal/
 建议在 `pipeline.go` 中定义核心接口，在 `engine.go` 中实现：
 
 ```go
-// PipelineEngine 定义了Pipeline执行引擎的核心接口
-type PipelineEngine interface {
+// GamePipelineEngine 定义了游戏Pipeline执行引擎的核心接口
+type GamePipelineEngine interface {
     // Start 启动执行引擎
     Start(ctx context.Context) error
 
@@ -49,88 +111,3 @@ type PipelineEngine interface {
     CancelPipeline(pipelineID string, reason string) error
 }
 ```
-
-## 整体架构
-
-### 1. Pipeline 执行器
-
-- Pipeline 生命周期管理
-- 步骤依赖关系处理
-- 状态机管理
-- 错误处理和恢复机制
-
-### 2. 容器执行引擎
-
-- 容器创建和管理
-- 资源分配和限制
-- 网络配置
-- 数据卷挂载
-
-### 3. 状态监控系统
-
-- 实时状态收集
-- 状态更新和推送
-- 健康检查
-- 超时控制
-
-### 4. 日志管理系统
-
-- 容器日志收集
-- 日志分类和过滤
-- 日志持久化
-- 日志查询接口
-
-## 执行流程
-
-1. **任务接收**
-
-   - 验证 Pipeline 配置
-   - 资源预检
-   - 初始化执行环境
-
-2. **步骤执行**
-
-   - 步骤预处理
-   - 容器配置生成
-   - 容器启动和监控
-   - 执行结果收集
-
-3. **状态管理**
-
-   - 步骤状态追踪
-   - Pipeline 整体状态维护
-   - 异常处理策略
-   - 状态持久化
-
-4. **监控和日志**
-
-   - 实时监控指标
-   - 日志收集和处理
-   - 告警机制
-   - 性能分析
-
-## 关键设计点
-
-1. **并发控制**
-
-   - 多 Pipeline 并行执行
-   - 资源竞争处理
-   - 任务队列管理
-
-2. **容错机制**
-
-   - 步骤重试策略
-   - 故障恢复机制
-   - 清理机制
-
-3. **扩展性设计**
-
-   - 插件化架构
-   - 自定义步骤支持
-   - 监控指标扩展
-
-4. **安全考虑**
-
-   - 容器安全策略
-   - 资源隔离
-   - 权限控制
