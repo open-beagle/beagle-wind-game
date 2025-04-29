@@ -30,25 +30,25 @@ show_help() {
 # 解析参数
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --help)
-      show_help
-      ;;
-    --server-addr)
-      SERVER_ADDR="$2"
-      shift 2
-      ;;
-    --log-level)
-      LOG_LEVEL="$2"
-      shift 2
-      ;;
-    --node-id)
-      CUSTOM_NODE_ID="$2"
-      shift 2
-      ;;
-    *)
-      echo "未知选项: $1"
-      show_help
-      ;;
+  --help)
+    show_help
+    ;;
+  --server-addr)
+    SERVER_ADDR="$2"
+    shift 2
+    ;;
+  --log-level)
+    LOG_LEVEL="$2"
+    shift 2
+    ;;
+  --node-id)
+    CUSTOM_NODE_ID="$2"
+    shift 2
+    ;;
+  *)
+    echo "未知选项: $1"
+    show_help
+    ;;
   esac
 done
 

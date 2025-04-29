@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/open-beagle/beagle-wind-game/internal/api"
 	"github.com/open-beagle/beagle-wind-game/internal/grpc"
 	"github.com/open-beagle/beagle-wind-game/internal/service"
