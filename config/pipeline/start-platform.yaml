@@ -26,7 +26,7 @@ steps:
       image: registry.cn-qingdao.aliyuncs.com/wod/devops-minio:1.0
       volumes:
         - "${{ envs.BEAGLE_WIND_ROOT }}:/data/wind"
-      command:
+      commands:
         - mkdir -p /data/wind/platforms
         - mc alias set cache --api=S3v4 ${{ envs.S3_URL }} ${{ envs.S3_ACCESS_KEY }} ${{ envs.S3_SECRET_KEY }}
         - mc cp cache/${{ envs.S3_BUCKET }}/platforms/${{ args.PLATFORM }}.tar.gz /data/wind/platforms/${{ args.PLATFORM }}.tar.gz
@@ -36,7 +36,7 @@ steps:
       image: registry.cn-qingdao.aliyuncs.com/wod/alpine:3
       volumes:
         - "${{ envs.BEAGLE_WIND_ROOT }}:/data/wind"
-      command:
+      commands:
         - mkdir -p /data/wind/volumes
         - tar -xvzf /data/wind/platforms/${{ args.PLATFORM }}.tar.gz -C /data/wind/volumes/${{ args.INSTANCE }}
 
@@ -44,7 +44,6 @@ steps:
     type: service
     container:
       image: ${{ args.IMAGE }}
-      container_name: ${{ args.INSTANCE }}
       hostname: ${{ args.HOSTNAME }}
       privileged: true
       deploy:

@@ -32,7 +32,7 @@ func initStores(ctx context.Context) (store.GameNodeStore, *store.YAMLGamePipeli
 	}
 
 	// 初始化游戏节点流水线存储
-	GamePipelineStore := store.NewYAMLGamePipelineStore(ctx, "data/gamepipelines.yaml")
+	gamePipelineStore := store.NewYAMLGamePipelineStore(ctx, "data/gamepipelines.yaml")
 
 	// 初始化游戏平台存储
 	gamePlatformStore, err := store.NewGamePlatformStore(ctx, "data/gameplatforms.yaml")
@@ -55,7 +55,16 @@ func initStores(ctx context.Context) (store.GameNodeStore, *store.YAMLGamePipeli
 		return nil, nil, nil, nil, nil, fmt.Errorf("创建实例存储失败: %v", err)
 	}
 
-	return gamenodeStore, GamePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, nil
+	return gamenodeStore, gamePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, nil
+}
+
+// closeStores 关闭所有存储层，确保数据保存
+func closeStores(stores ...interface{}) {
+	for _, store := range stores {
+		if closer, ok := store.(interface{ Close() }); ok {
+			closer.Close()
+		}
+	}
 }
 
 func main() {
@@ -95,7 +104,7 @@ func main() {
 
 	// 初始化存储
 	logger.Info("初始化存储...")
-	gamenodeStore, GamePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, err := initStores(context.Background())
+	gamenodeStore, gamePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, err := initStores(context.Background())
 	if err != nil {
 		logger.Fatal("初始化存储失败: %v", err)
 	}
@@ -104,7 +113,7 @@ func main() {
 	// 创建服务实例
 	logger.Info("创建服务实例...")
 	nodeService := service.NewGameNodeService(gamenodeStore)
-	pipelineService := service.NewGamePipelineService(GamePipelineStore)
+	pipelineService := service.NewGamePipelineService(gamePipelineStore)
 	platformService := service.NewGamePlatformService(gamePlatformStore)
 	cardService := service.NewGameCardService(gameCardStore)
 	instanceService := service.NewGameInstanceService(gameInstanceStore)
@@ -176,28 +185,8 @@ func main() {
 	cancel()
 
 	// 关闭存储层，确保数据保存
-	logger.Info("正在关闭GameNodeStore...")
-	if closer, ok := gamenodeStore.(interface{ Close() }); ok {
-		closer.Close()
-	}
-
-	logger.Info("正在关闭GameCardStore...")
-	if closer, ok := gameCardStore.(interface{ Close() }); ok {
-		closer.Close()
-	}
-
-	logger.Info("正在关闭GameInstanceStore...")
-	if closer, ok := gameInstanceStore.(interface{ Close() }); ok {
-		closer.Close()
-	}
-
-	logger.Info("正在关闭GamePlatformStore...")
-	if closer, ok := gamePlatformStore.(interface{ Close() }); ok {
-		closer.Close()
-	}
-
-	logger.Info("正在关闭GamePipelineStore...")
-	GamePipelineStore.Close()
+	logger.Info("正在关闭所有存储...")
+	closeStores(gamenodeStore, gameCardStore, gameInstanceStore, gamePlatformStore, gamePipelineStore)
 
 	// 等待一段时间让服务器完成关闭
 	time.Sleep(5 * time.Second)

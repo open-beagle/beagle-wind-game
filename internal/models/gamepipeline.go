@@ -18,22 +18,23 @@ const (
 type PipelineState string
 
 const (
-	PipelineStatePending   PipelineState = "pending"
-	PipelineStateRunning   PipelineState = "running"
-	PipelineStateCompleted PipelineState = "completed"
-	PipelineStateFailed    PipelineState = "failed"
-	PipelineStateCanceled  PipelineState = "canceled"
+	PipelineStateNotStarted PipelineState = "not_started" // 未开始
+	PipelineStatePending    PipelineState = "pending"     // 等待中
+	PipelineStateRunning    PipelineState = "running"     // 运行中
+	PipelineStateCompleted  PipelineState = "completed"   // 已完成
+	PipelineStateFailed     PipelineState = "failed"      // 失败
+	PipelineStateCanceled   PipelineState = "canceled"    // 取消
 )
 
 // StepState 表示步骤状态
 type StepState string
 
 const (
-	StepStatePending   StepState = "pending"
-	StepStateRunning   StepState = "running"
-	StepStateCompleted StepState = "completed"
-	StepStateFailed    StepState = "failed"
-	StepStateSkipped   StepState = "skipped"
+	StepStatePending   StepState = "pending"   // 等待中
+	StepStateRunning   StepState = "running"   // 运行中
+	StepStateCompleted StepState = "completed" // 已完成
+	StepStateFailed    StepState = "failed"    // 失败
+	StepStateSkipped   StepState = "skipped"   // 已跳过
 )
 
 // StepStatus 步骤状态信息
@@ -53,19 +54,18 @@ type StepStatus struct {
 
 // ContainerConfig 容器配置
 type ContainerConfig struct {
-	Image         string            `json:"image" yaml:"image"`
-	ContainerName string            `json:"container_name,omitempty" yaml:"container_name,omitempty"`
-	Hostname      string            `json:"hostname,omitempty" yaml:"hostname,omitempty"`
-	Privileged    bool              `json:"privileged" yaml:"privileged"`
-	Deploy        DeployConfig      `json:"deploy,omitempty" yaml:"deploy,omitempty"`
-	SecurityOpt   []string          `json:"security_opt,omitempty" yaml:"security_opt,omitempty"`
-	CapAdd        []string          `json:"cap_add,omitempty" yaml:"cap_add,omitempty"`
-	Tmpfs         []string          `json:"tmpfs,omitempty" yaml:"tmpfs,omitempty"`
-	Devices       []string          `json:"devices,omitempty" yaml:"devices,omitempty"`
-	Volumes       []string          `json:"volumes,omitempty" yaml:"volumes,omitempty"`
-	Ports         []string          `json:"ports,omitempty" yaml:"ports,omitempty"`
-	Environment   map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
-	Command       []string          `json:"command,omitempty" yaml:"command,omitempty"`
+	Image       string            `json:"image" yaml:"image"`
+	Hostname    string            `json:"hostname,omitempty" yaml:"hostname,omitempty"`
+	Privileged  bool              `json:"privileged" yaml:"privileged"`
+	Deploy      DeployConfig      `json:"deploy,omitempty" yaml:"deploy,omitempty"`
+	SecurityOpt []string          `json:"security_opt,omitempty" yaml:"security_opt,omitempty"`
+	CapAdd      []string          `json:"cap_add,omitempty" yaml:"cap_add,omitempty"`
+	Tmpfs       []string          `json:"tmpfs,omitempty" yaml:"tmpfs,omitempty"`
+	Devices     []string          `json:"devices,omitempty" yaml:"devices,omitempty"`
+	Volumes     []string          `json:"volumes,omitempty" yaml:"volumes,omitempty"`
+	Ports       []string          `json:"ports,omitempty" yaml:"ports,omitempty"`
+	Environment map[string]string `json:"environment,omitempty" yaml:"environment,omitempty"`
+	Commands    []string          `json:"commands,omitempty" yaml:"commands,omitempty"`
 }
 
 // DeployConfig 部署配置
@@ -134,7 +134,7 @@ func NewGamePipelineFromYAML(data []byte) (*GamePipeline, error) {
 	// 初始化状态
 	totalSteps := int32(len(pipeline.Steps))
 	pipeline.Status = &PipelineStatus{
-		State:      PipelineStatePending,
+		State:      PipelineStateNotStarted,
 		TotalSteps: totalSteps,
 		Steps:      make([]StepStatus, totalSteps),
 	}

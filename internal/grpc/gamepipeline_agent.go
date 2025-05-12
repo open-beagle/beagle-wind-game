@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -9,37 +10,51 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/open-beagle/beagle-wind-game/internal/models"
+	pl "github.com/open-beagle/beagle-wind-game/internal/pipeline"
 	"github.com/open-beagle/beagle-wind-game/internal/proto"
 	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
-// PipelineAgent 表示 Pipeline Agent
-type PipelineAgent struct {
+// GamePipelineAgent 表示 Game Pipeline Agent
+type GamePipelineAgent struct {
 	agent   *Agent
 	logger  utils.Logger
 	sources map[string]*models.GamePipeline
 	mu      sync.RWMutex
+	engine  *pl.Engine
 }
 
-// NewPipelineAgent 创建一个新的 Pipeline Agent
-func NewPipelineAgent(agent *Agent) *PipelineAgent {
-	return &PipelineAgent{
-		agent:   agent,
-		logger:  utils.New("PipelineAgent"),
-		sources: make(map[string]*models.GamePipeline),
+// NewGamePipelineAgent 创建一个新的 Pipeline Agent
+func NewGamePipelineAgent(agent *Agent) (*GamePipelineAgent, error) {
+	// 创建 Pipeline 执行引擎
+	engine, err := pl.NewEngine()
+	if err != nil {
+		return nil, fmt.Errorf("创建 Pipeline 执行引擎失败: %w", err)
 	}
+
+	return &GamePipelineAgent{
+		agent:   agent,
+		logger:  agent.GetLogger(),
+		sources: make(map[string]*models.GamePipeline),
+		engine:  engine,
+	}, nil
 }
 
 // GetSourceCount 获取当前 Pipeline 数量
-func (a *PipelineAgent) GetSourceCount() int {
+func (a *GamePipelineAgent) GetSourceCount() int {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return len(a.sources)
 }
 
 // Start 启动 Pipeline Agent
-func (a *PipelineAgent) Start(ctx context.Context) error {
+func (a *GamePipelineAgent) Start(ctx context.Context) error {
 	a.logger.Info("启动 Pipeline Agent...")
+
+	// 启动执行引擎
+	if err := a.engine.Start(ctx); err != nil {
+		return fmt.Errorf("启动 Pipeline 执行引擎失败: %w", err)
+	}
 
 	// 启动 Pipeline 流
 	go a.runPipelineStream(ctx)
@@ -48,12 +63,12 @@ func (a *PipelineAgent) Start(ctx context.Context) error {
 }
 
 // Stop 停止 Pipeline Agent
-func (a *PipelineAgent) Stop(ctx context.Context) {
+func (a *GamePipelineAgent) Stop(ctx context.Context) {
 	a.logger.Info("停止 Pipeline Agent...")
 }
 
 // runPipelineStream 运行 Pipeline 流
-func (a *PipelineAgent) runPipelineStream(ctx context.Context) {
+func (a *GamePipelineAgent) runPipelineStream(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -69,7 +84,7 @@ func (a *PipelineAgent) runPipelineStream(ctx context.Context) {
 }
 
 // handlePipelineStream 处理 Pipeline 流
-func (a *PipelineAgent) handlePipelineStream(ctx context.Context) error {
+func (a *GamePipelineAgent) handlePipelineStream(ctx context.Context) error {
 	client := a.agent.GetPipelineClient()
 
 	// 创建流
@@ -117,7 +132,7 @@ func (a *PipelineAgent) handlePipelineStream(ctx context.Context) error {
 }
 
 // convertProtoToModelPipeline 将 proto.GamePipeline 转换为 models.GamePipeline
-func (a *PipelineAgent) convertProtoToModelPipeline(pipeline *proto.GamePipeline) *models.GamePipeline {
+func (a *GamePipelineAgent) convertProtoToModelPipeline(pipeline *proto.GamePipeline) *models.GamePipeline {
 	// 初始化步骤状态
 	now := time.Now()
 
@@ -145,17 +160,9 @@ func (a *PipelineAgent) convertProtoToModelPipeline(pipeline *proto.GamePipeline
 			Name: step.Name,
 			Type: step.Type,
 			Container: models.ContainerConfig{
-				Image:         step.Container.Image,
-				ContainerName: step.Container.ContainerName,
-				Hostname:      step.Container.Hostname,
-				Privileged:    step.Container.Privileged,
-				Deploy: models.DeployConfig{
-					Resources: models.ResourcesConfig{
-						Reservations: models.ReservationsConfig{
-							Devices: make([]models.DeviceConfig, len(step.Container.Deploy.Resources.Reservations.Devices)),
-						},
-					},
-				},
+				Image:       step.Container.Image,
+				Hostname:    step.Container.Hostname,
+				Privileged:  step.Container.Privileged,
 				SecurityOpt: step.Container.SecurityOpt,
 				CapAdd:      step.Container.CapAdd,
 				Tmpfs:       step.Container.Tmpfs,
@@ -163,7 +170,7 @@ func (a *PipelineAgent) convertProtoToModelPipeline(pipeline *proto.GamePipeline
 				Volumes:     step.Container.Volumes,
 				Ports:       step.Container.Ports,
 				Environment: step.Container.Environment,
-				Command:     step.Container.Command,
+				Commands:    step.Container.Commands,
 			},
 		}
 
@@ -186,7 +193,7 @@ func (a *PipelineAgent) convertProtoToModelPipeline(pipeline *proto.GamePipeline
 }
 
 // handlePipeline 处理 Pipeline 任务
-func (a *PipelineAgent) handlePipeline(ctx context.Context, pipeline *proto.GamePipeline) error {
+func (a *GamePipelineAgent) handlePipeline(ctx context.Context, pipeline *proto.GamePipeline) error {
 	a.logger.Info("处理 Pipeline 任务: %s", pipeline.Id)
 
 	// 将 proto.GamePipeline 转换为 models.GamePipeline
@@ -220,13 +227,90 @@ func (a *PipelineAgent) handlePipeline(ctx context.Context, pipeline *proto.Game
 		return err
 	}
 
-	// TODO: 实现 Pipeline 执行逻辑
+	// 注册事件处理器
+	a.engine.RegisterHandler(func(event pl.Event) {
+		switch event.Type {
+		case pl.StepStarted:
+			// 更新步骤状态为运行中
+			stepStatus := &proto.StepStatus{
+				Id:        event.Step.Name,
+				Name:      event.Step.Name,
+				State:     proto.StepState_STEP_STATE_RUNNING,
+				StartTime: timestamppb.Now(),
+				UpdatedAt: timestamppb.Now(),
+			}
+			if err := a.UpdateStepStatus(ctx, pipeline.Id, event.Step.Name, stepStatus); err != nil {
+				a.logger.Error("更新步骤状态失败: %v", err)
+			}
+		case pl.StepCompleted:
+			// 更新步骤状态为完成
+			stepStatus := &proto.StepStatus{
+				Id:        event.Step.Name,
+				Name:      event.Step.Name,
+				State:     proto.StepState_STEP_STATE_COMPLETED,
+				EndTime:   timestamppb.Now(),
+				UpdatedAt: timestamppb.Now(),
+			}
+			if err := a.UpdateStepStatus(ctx, pipeline.Id, event.Step.Name, stepStatus); err != nil {
+				a.logger.Error("更新步骤状态失败: %v", err)
+			}
+		case pl.StepFailed:
+			// 更新步骤状态为失败
+			stepStatus := &proto.StepStatus{
+				Id:        event.Step.Name,
+				Name:      event.Step.Name,
+				State:     proto.StepState_STEP_STATE_FAILED,
+				Error:     event.Message,
+				EndTime:   timestamppb.Now(),
+				UpdatedAt: timestamppb.Now(),
+			}
+			if err := a.UpdateStepStatus(ctx, pipeline.Id, event.Step.Name, stepStatus); err != nil {
+				a.logger.Error("更新步骤状态失败: %v", err)
+			}
+		case pl.PipelineCompleted:
+			// 更新 Pipeline 状态为完成
+			status.State = proto.PipelineState_PIPELINE_STATE_COMPLETED
+			status.EndTime = timestamppb.Now()
+			status.UpdatedAt = timestamppb.Now()
+			if _, err := client.UpdatePipelineStatus(ctx, &proto.UpdatePipelineStatusRequest{
+				PipelineId: pipeline.Id,
+				Status:     status,
+			}); err != nil {
+				a.logger.Error("更新 Pipeline 状态失败: %v", err)
+			}
+		case pl.PipelineFailed:
+			// 更新 Pipeline 状态为失败
+			status.State = proto.PipelineState_PIPELINE_STATE_FAILED
+			status.ErrorMessage = event.Message
+			status.EndTime = timestamppb.Now()
+			status.UpdatedAt = timestamppb.Now()
+			if _, err := client.UpdatePipelineStatus(ctx, &proto.UpdatePipelineStatusRequest{
+				PipelineId: pipeline.Id,
+				Status:     status,
+			}); err != nil {
+				a.logger.Error("更新 Pipeline 状态失败: %v", err)
+			}
+		}
+	})
+
+	// 执行 Pipeline
+	if err := a.engine.Execute(ctx, modelPipeline); err != nil {
+		a.logger.Error("执行 Pipeline 失败: %v", err)
+		status.State = proto.PipelineState_PIPELINE_STATE_FAILED
+		status.ErrorMessage = fmt.Sprintf("执行 Pipeline 失败: %v", err)
+		status.UpdatedAt = timestamppb.Now()
+		_, _ = client.UpdatePipelineStatus(ctx, &proto.UpdatePipelineStatusRequest{
+			PipelineId: pipeline.Id,
+			Status:     status,
+		})
+		return err
+	}
 
 	return nil
 }
 
 // UpdatePipelineStatus 更新 Pipeline 状态
-func (a *PipelineAgent) UpdatePipelineStatus(ctx context.Context, pipelineId string, status *proto.PipelineStatus) error {
+func (a *GamePipelineAgent) UpdatePipelineStatus(ctx context.Context, pipelineId string, status *proto.PipelineStatus) error {
 	client := a.agent.GetPipelineClient()
 	_, err := client.UpdatePipelineStatus(ctx, &proto.UpdatePipelineStatusRequest{
 		PipelineId: pipelineId,
@@ -236,7 +320,7 @@ func (a *PipelineAgent) UpdatePipelineStatus(ctx context.Context, pipelineId str
 }
 
 // UpdateStepStatus 更新步骤状态
-func (a *PipelineAgent) UpdateStepStatus(ctx context.Context, pipelineId string, stepId string, status *proto.StepStatus) error {
+func (a *GamePipelineAgent) UpdateStepStatus(ctx context.Context, pipelineId string, stepId string, status *proto.StepStatus) error {
 	client := a.agent.GetPipelineClient()
 	_, err := client.UpdateStepStatus(ctx, &proto.UpdateStepStatusRequest{
 		PipelineId: pipelineId,

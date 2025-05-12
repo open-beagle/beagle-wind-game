@@ -10,11 +10,11 @@ import (
 
 // GamePipelineHandler 处理游戏节点流水线相关的 HTTP 请求
 type GamePipelineHandler struct {
-	svc *service.GamePipelineGRPCService
+	svc *service.GamePipelineService
 }
 
 // NewGamePipelineHandler 创建新的 GamePipelineHandler
-func NewGamePipelineHandler(svc *service.GamePipelineGRPCService) *GamePipelineHandler {
+func NewGamePipelineHandler(svc *service.GamePipelineService) *GamePipelineHandler {
 	return &GamePipelineHandler{
 		svc: svc,
 	}

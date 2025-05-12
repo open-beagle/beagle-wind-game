@@ -14,51 +14,51 @@ enum PipelineModel {
 
 // PipelineState 表示流水线状态
 enum PipelineState {
-    PIPELINE_STATE_PENDING = 0;
-    PIPELINE_STATE_RUNNING = 1;
-    PIPELINE_STATE_COMPLETED = 2;
-    PIPELINE_STATE_FAILED = 3;
-    PIPELINE_STATE_CANCELED = 4;
+    PIPELINE_STATE_NOT_STARTED = 0;  // 未开始
+    PIPELINE_STATE_PENDING = 1;      // 等待中
+    PIPELINE_STATE_RUNNING = 2;      // 运行中
+    PIPELINE_STATE_COMPLETED = 3;    // 已完成
+    PIPELINE_STATE_FAILED = 4;       // 失败
+    PIPELINE_STATE_CANCELED = 5;     // 取消
 }
 
 // StepState 表示步骤状态
 enum StepState {
-    STEP_STATE_PENDING = 0;
-    STEP_STATE_RUNNING = 1;
-    STEP_STATE_COMPLETED = 2;
-    STEP_STATE_FAILED = 3;
-    STEP_STATE_SKIPPED = 4;
+    STEP_STATE_PENDING = 0;    // 等待中
+    STEP_STATE_RUNNING = 1;    // 运行中
+    STEP_STATE_COMPLETED = 2;  // 已完成
+    STEP_STATE_FAILED = 3;     // 失败
+    STEP_STATE_SKIPPED = 4;    // 已跳过
 }
 
 // StepStatus 步骤状态信息
 message StepStatus {
-    string id = 1;
-    string name = 2;
-    StepState state = 3;
-    google.protobuf.Timestamp start_time = 4;
-    google.protobuf.Timestamp end_time = 5;
-    string error = 6;
-    string output = 7;
-    bytes logs = 8;
-    double progress = 9;
-    google.protobuf.Timestamp updated_at = 10;
+    string id = 1;                        // 步骤 ID
+    string name = 2;                      // 步骤名称
+    StepState state = 3;                  // 步骤状态
+    string error = 4;                     // 错误信息
+    string output = 5;                    // 输出信息
+    bytes logs = 6;                       // 日志数据
+    double progress = 7;                  // 进度（0-100）
+    google.protobuf.Timestamp start_time = 8;  // 开始时间
+    google.protobuf.Timestamp end_time = 9;    // 结束时间
+    google.protobuf.Timestamp updated_at = 10; // 更新时间
 }
 
 // ContainerConfig 容器配置
 message ContainerConfig {
     string image = 1;
-    string container_name = 2;
-    string hostname = 3;
-    bool privileged = 4;
-    DeployConfig deploy = 5;
-    repeated string security_opt = 6;
-    repeated string cap_add = 7;
-    repeated string tmpfs = 8;
-    repeated string devices = 9;
-    repeated string volumes = 10;
-    repeated string ports = 11;
-    map<string, string> environment = 12;
-    repeated string command = 13;
+    string hostname = 2;
+    bool privileged = 3;
+    DeployConfig deploy = 4;
+    repeated string security_opt = 5;
+    repeated string cap_add = 6;
+    repeated string tmpfs = 7;
+    repeated string devices = 8;
+    repeated string volumes = 9;
+    repeated string ports = 10;
+    map<string, string> environment = 11;
+    repeated string commands = 12;
 }
 
 // DeployConfig 部署配置
@@ -88,17 +88,16 @@ message PipelineStep {
     ContainerConfig container = 3;
 }
 
-// PipelineStatus 流水线状态信息
+// PipelineStatus 表示 Pipeline 的状态
 message PipelineStatus {
-    string node_id = 1;
-    PipelineState state = 2;
-    int32 current_step = 3;
-    int32 total_steps = 4;
-    google.protobuf.Timestamp start_time = 5;
-    google.protobuf.Timestamp end_time = 6;
-    repeated StepStatus steps = 7;
-    string error_message = 8;
-    google.protobuf.Timestamp updated_at = 9;
+    string node_id = 1;                    // 节点 ID
+    PipelineState state = 2;               // Pipeline 状态
+    int32 current_step = 3;                // 当前步骤索引
+    int32 total_steps = 4;                 // 总步骤数
+    string error_message = 5;              // 错误信息
+    google.protobuf.Timestamp start_time = 6;  // 开始时间
+    google.protobuf.Timestamp end_time = 7;    // 结束时间
+    google.protobuf.Timestamp updated_at = 8;  // 更新时间
 }
 
 // GamePipeline 表示一个游戏节点流水线模板

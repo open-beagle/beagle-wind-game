@@ -1,0 +1,23 @@
+id: test-pipeline-1
+model: start-platform
+name: 测试流水线
+description: 用于测试 Pipeline 执行引擎的流水线
+steps:
+  - name: 测试步骤1
+    type: container
+    container:
+      image: registry.cn-qingdao.aliyuncs.com/wod/alpine:3
+      commands:
+        - apk --no-cache --update add ca-certificates
+  - name: 测试步骤2
+    type: container
+    container:
+      image: registry.cn-qingdao.aliyuncs.com/wod/alpine:3
+      commands:
+        - apk --no-cache --update add bash
+  - name: 测试步骤3
+    type: container
+    container:
+      image: registry.cn-qingdao.aliyuncs.com/wod/alpine:3
+      commands:
+        - apk --no-cache --update add tzdata

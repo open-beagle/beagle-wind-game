@@ -22,23 +22,23 @@ type PipelineStore interface {
 	Cleanup() error
 }
 
-// GamePipelineGRPCService 游戏节点流水线服务
-type GamePipelineGRPCService struct {
+// GamePipelineService 游戏节点流水线服务
+type GamePipelineService struct {
 	store  store.GamePipelineStore
 	logger utils.Logger
 }
 
 // NewGamePipelineService 创建新的游戏节点流水线服务
-func NewGamePipelineService(store store.GamePipelineStore) *GamePipelineGRPCService {
-	logger := utils.New("GamePipelineGRPCService")
-	return &GamePipelineGRPCService{
+func NewGamePipelineService(store store.GamePipelineStore) *GamePipelineService {
+	logger := utils.New("GamePipelineService")
+	return &GamePipelineService{
 		store:  store,
 		logger: logger,
 	}
 }
 
 // List 获取流水线列表
-func (s *GamePipelineGRPCService) List(ctx context.Context) ([]*models.GamePipeline, error) {
+func (s *GamePipelineService) List(ctx context.Context) ([]*models.GamePipeline, error) {
 	s.logger.Debug("获取流水线列表")
 	pipelines, err := s.store.List(ctx)
 	if err != nil {
@@ -50,7 +50,7 @@ func (s *GamePipelineGRPCService) List(ctx context.Context) ([]*models.GamePipel
 }
 
 // Get 获取流水线详情
-func (s *GamePipelineGRPCService) Get(ctx context.Context, id string) (*models.GamePipeline, error) {
+func (s *GamePipelineService) Get(ctx context.Context, id string) (*models.GamePipeline, error) {
 	s.logger.Debug("获取流水线详情: %s", id)
 	pipeline, err := s.store.Get(ctx, id)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *GamePipelineGRPCService) Get(ctx context.Context, id string) (*models.G
 }
 
 // Create 创建流水线
-func (s *GamePipelineGRPCService) Create(ctx context.Context, pipeline *models.GamePipeline) error {
+func (s *GamePipelineService) Create(ctx context.Context, pipeline *models.GamePipeline) error {
 	s.logger.Debug("创建流水线: %s", pipeline.ID)
 
 	// 1. 验证Pipeline信息
@@ -100,7 +100,7 @@ func (s *GamePipelineGRPCService) Create(ctx context.Context, pipeline *models.G
 }
 
 // validatePipeline 验证Pipeline信息
-func (s *GamePipelineGRPCService) validatePipeline(pipeline *models.GamePipeline) error {
+func (s *GamePipelineService) validatePipeline(pipeline *models.GamePipeline) error {
 	if pipeline == nil {
 		return fmt.Errorf("pipeline is nil")
 	}
@@ -125,33 +125,8 @@ func (s *GamePipelineGRPCService) validatePipeline(pipeline *models.GamePipeline
 	return nil
 }
 
-// Execute 执行流水线
-func (s *GamePipelineGRPCService) Execute(ctx context.Context, id string) error {
-	s.logger.Debug("执行流水线: %s", id)
-	// 获取流水线
-	pipeline, err := s.store.Get(ctx, id)
-	if err != nil {
-		s.logger.Error("获取流水线失败: %v", err)
-		return fmt.Errorf("获取流水线失败: %w", err)
-	}
-	if pipeline == nil {
-		s.logger.Error("流水线不存在: %s", id)
-		return fmt.Errorf("流水线不存在: %s", id)
-	}
-
-	// 更新状态
-	pipeline.Status.State = models.PipelineStateRunning
-	err = s.store.Update(ctx, pipeline)
-	if err != nil {
-		s.logger.Error("更新流水线状态失败: %v", err)
-		return fmt.Errorf("更新流水线状态失败: %w", err)
-	}
-	s.logger.Info("成功执行流水线: %s, 状态: %s", id, pipeline.Status.State)
-	return nil
-}
-
 // UpdateStatus 更新流水线状态
-func (s *GamePipelineGRPCService) UpdateStatus(ctx context.Context, id string, status *models.PipelineStatus) error {
+func (s *GamePipelineService) UpdateStatus(ctx context.Context, id string, status *models.PipelineStatus) error {
 	s.logger.Debug("更新流水线状态: %s, 新状态: %s", id, status.State)
 	// 获取流水线
 	pipeline, err := s.store.Get(ctx, id)
@@ -176,7 +151,7 @@ func (s *GamePipelineGRPCService) UpdateStatus(ctx context.Context, id string, s
 }
 
 // UpdateStepStatus 更新步骤状态
-func (s *GamePipelineGRPCService) UpdateStepStatus(ctx context.Context, pipelineID string, stepID string, status *models.StepStatus) error {
+func (s *GamePipelineService) UpdateStepStatus(ctx context.Context, pipelineID string, stepID string, status *models.StepStatus) error {
 	s.logger.Debug("更新流水线步骤状态: 流水线ID: %s, 步骤ID: %s, 状态: %s", pipelineID, stepID, status.State)
 
 	// 获取流水线
@@ -229,7 +204,7 @@ func (s *GamePipelineGRPCService) UpdateStepStatus(ctx context.Context, pipeline
 }
 
 // validateStepStateTransition 验证步骤状态转换是否合法
-func (s *GamePipelineGRPCService) validateStepStateTransition(pipeline *models.GamePipeline, stepID string, newState models.StepState) error {
+func (s *GamePipelineService) validateStepStateTransition(pipeline *models.GamePipeline, stepID string, newState models.StepState) error {
 	// 获取当前步骤
 	var currentStep *models.StepStatus
 	for i := range pipeline.Status.Steps {
@@ -263,7 +238,7 @@ func (s *GamePipelineGRPCService) validateStepStateTransition(pipeline *models.G
 }
 
 // updatePipelineProgress 更新流水线进度
-func (s *GamePipelineGRPCService) updatePipelineProgress(pipeline *models.GamePipeline) {
+func (s *GamePipelineService) updatePipelineProgress(pipeline *models.GamePipeline) {
 	completedSteps := 0
 
 	for _, step := range pipeline.Status.Steps {
@@ -275,7 +250,7 @@ func (s *GamePipelineGRPCService) updatePipelineProgress(pipeline *models.GamePi
 }
 
 // updatePipelineState 更新流水线状态
-func (s *GamePipelineGRPCService) updatePipelineState(pipeline *models.GamePipeline) {
+func (s *GamePipelineService) updatePipelineState(pipeline *models.GamePipeline) {
 	// 检查所有步骤是否都已完成
 	allStepsCompleted := true
 	hasFailedStep := false
@@ -308,7 +283,7 @@ func (s *GamePipelineGRPCService) updatePipelineState(pipeline *models.GamePipel
 }
 
 // SaveStepLogs 保存步骤日志
-func (s *GamePipelineGRPCService) SaveStepLogs(ctx context.Context, pipelineID string, stepID string, logs []byte) error {
+func (s *GamePipelineService) SaveStepLogs(ctx context.Context, pipelineID string, stepID string, logs []byte) error {
 	s.logger.Debug("保存流水线步骤日志: 流水线ID: %s, 步骤ID: %s, 日志大小: %d字节", pipelineID, stepID, len(logs))
 	// 获取流水线
 	pipeline, err := s.store.Get(ctx, pipelineID)
@@ -346,7 +321,7 @@ func (s *GamePipelineGRPCService) SaveStepLogs(ctx context.Context, pipelineID s
 }
 
 // Cancel 取消流水线
-func (s *GamePipelineGRPCService) Cancel(ctx context.Context, id string) error {
+func (s *GamePipelineService) Cancel(ctx context.Context, id string) error {
 	s.logger.Debug("取消流水线: %s", id)
 
 	// 获取当前流水线状态
@@ -373,7 +348,7 @@ func (s *GamePipelineGRPCService) Cancel(ctx context.Context, id string) error {
 }
 
 // Delete 删除流水线
-func (s *GamePipelineGRPCService) Delete(ctx context.Context, id string) error {
+func (s *GamePipelineService) Delete(ctx context.Context, id string) error {
 	s.logger.Debug("删除流水线: %s", id)
 	err := s.store.Delete(ctx, id)
 	if err != nil {
@@ -385,7 +360,7 @@ func (s *GamePipelineGRPCService) Delete(ctx context.Context, id string) error {
 }
 
 // Update 更新流水线
-func (s *GamePipelineGRPCService) Update(ctx context.Context, pipeline *models.GamePipeline) error {
+func (s *GamePipelineService) Update(ctx context.Context, pipeline *models.GamePipeline) error {
 	s.logger.Debug("更新流水线: %s", pipeline.ID)
 
 	// 1. 验证Pipeline信息

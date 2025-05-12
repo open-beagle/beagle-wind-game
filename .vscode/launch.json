@@ -20,6 +20,17 @@
       "env": {},
       "showLog": true,
       "trace": "verbose"
+    },
+    {
+      "name": "Debug Pipeline",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/tools/pipeline",
+      "args": [],
+      "env": {},
+      "showLog": true,
+      "trace": "verbose"
     }
   ]
 }

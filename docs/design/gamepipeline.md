@@ -322,20 +322,21 @@ message GamePipeline {
 ```protobuf
 // Pipeline 状态
 enum PipelineState {
-    PIPELINE_STATE_PENDING = 0;
-    PIPELINE_STATE_RUNNING = 1;
-    PIPELINE_STATE_COMPLETED = 2;
-    PIPELINE_STATE_FAILED = 3;
-    PIPELINE_STATE_CANCELED = 4;
+    PIPELINE_STATE_NOT_STARTED = 0;  // 未开始
+    PIPELINE_STATE_PENDING = 1;      // 等待中
+    PIPELINE_STATE_RUNNING = 2;      // 运行中
+    PIPELINE_STATE_COMPLETED = 3;    // 已完成
+    PIPELINE_STATE_FAILED = 4;       // 失败
+    PIPELINE_STATE_CANCELED = 5;     // 取消
 }
 
 // 步骤状态
 enum StepState {
-    STEP_STATE_PENDING = 0;
-    STEP_STATE_RUNNING = 1;
-    STEP_STATE_COMPLETED = 2;
-    STEP_STATE_FAILED = 3;
-    STEP_STATE_SKIPPED = 4;
+    STEP_STATE_PENDING = 0;    // 等待中
+    STEP_STATE_RUNNING = 1;    // 运行中
+    STEP_STATE_COMPLETED = 2;  // 已完成
+    STEP_STATE_FAILED = 3;     // 失败
+    STEP_STATE_SKIPPED = 4;    // 已跳过
 }
 ```
 

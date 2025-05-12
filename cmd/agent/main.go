@@ -56,7 +56,10 @@ func main() {
 		logger.Fatal("创建 GameNode Agent 失败: %v", err)
 	}
 
-	pipelineAgent := grpc.NewPipelineAgent(baseAgent)
+	gamePipelineAgent, err := grpc.NewGamePipelineAgent(baseAgent)
+	if err != nil {
+		logger.Fatal("创建 GamePipeline Agent 失败: %v", err)
+	}
 
 	// 6. 注册节点
 	if err := gameNodeAgent.Register(context.Background()); err != nil {
@@ -72,7 +75,7 @@ func main() {
 	}
 
 	// 启动 Pipeline Agent
-	if err := pipelineAgent.Start(ctx); err != nil {
+	if err := gamePipelineAgent.Start(ctx); err != nil {
 		logger.Fatal("启动 Pipeline Agent 失败: %v", err)
 	}
 

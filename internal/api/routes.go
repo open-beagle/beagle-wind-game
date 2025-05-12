@@ -9,7 +9,7 @@ import (
 // SetupRouter 设置路由
 func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeService *service.GameNodeService,
 	gameCardService *service.GameCardService, gameinstanceService *service.GameInstanceService,
-	GamePipelineGRPCService *service.GamePipelineGRPCService) *gin.Engine {
+	GamePipelineService *service.GamePipelineService) *gin.Engine {
 	// 创建默认的gin引擎
 	r := gin.Default()
 
@@ -32,7 +32,7 @@ func SetupRouter(gameplatformService *service.GamePlatformService, gamenodeServi
 	gamenodeHandler := NewGameNodeHandler(gamenodeService)
 	gameCardHandler := NewGameCardHandler(gameCardService)
 	gameinstanceHandler := NewGameInstanceHandler(gameinstanceService)
-	GamePipelineHandler := NewGamePipelineHandler(GamePipelineGRPCService)
+	GamePipelineHandler := NewGamePipelineHandler(GamePipelineService)
 
 	// API v1 路由组
 	v1 := r.Group("/api/v1")

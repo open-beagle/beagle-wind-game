@@ -73,8 +73,8 @@ func (s *NodeSession) GetSourceCount() int {
 	return len(s.Sources)
 }
 
-// PipelineServer 表示 Pipeline 服务器
-type PipelineServer struct {
+// GamePipelineServer 表示 Pipeline 服务器
+type GamePipelineServer struct {
 	proto.UnimplementedGamePipelineGRPCServiceServer
 
 	mu     sync.RWMutex
@@ -83,9 +83,9 @@ type PipelineServer struct {
 	stop   chan struct{}
 }
 
-// NewPipelineServer 创建一个新的 Pipeline 服务器
-func NewPipelineServer(logger *logrus.Logger) *PipelineServer {
-	server := &PipelineServer{
+// NewGamePipelineServer 创建一个新的 Pipeline 服务器
+func NewGamePipelineServer(logger *logrus.Logger) *GamePipelineServer {
+	server := &GamePipelineServer{
 		nodes:  make(map[string]*NodeSession),
 		logger: logger,
 		stop:   make(chan struct{}),
@@ -98,7 +98,7 @@ func NewPipelineServer(logger *logrus.Logger) *PipelineServer {
 }
 
 // eventDispatcher 事件分发器
-func (s *PipelineServer) eventDispatcher() {
+func (s *GamePipelineServer) eventDispatcher() {
 	ticker := time.NewTicker(heartbeatTimeout)
 	defer ticker.Stop()
 
@@ -120,14 +120,14 @@ func (s *PipelineServer) eventDispatcher() {
 }
 
 // handleSendError 处理发送错误
-func (s *PipelineServer) handleSendError(node *NodeSession, err error, msg string) error {
+func (s *GamePipelineServer) handleSendError(node *NodeSession, err error, msg string) error {
 	s.logger.Errorf("%s: %v", msg, err)
 	s.removeNode(node.ID)
 	return fmt.Errorf("%s: %w", msg, err)
 }
 
 // PipelineStream 处理 Pipeline 流式请求
-func (s *PipelineServer) PipelineStream(stream proto.GamePipelineGRPCService_PipelineStreamServer) error {
+func (s *GamePipelineServer) PipelineStream(stream proto.GamePipelineGRPCService_PipelineStreamServer) error {
 	var node *NodeSession
 
 	// 处理客户端请求
@@ -193,7 +193,7 @@ func (s *PipelineServer) PipelineStream(stream proto.GamePipelineGRPCService_Pip
 }
 
 // getOrCreateNode 获取或创建节点
-func (s *PipelineServer) getOrCreateNode(id string) *NodeSession {
+func (s *GamePipelineServer) getOrCreateNode(id string) *NodeSession {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -206,14 +206,14 @@ func (s *PipelineServer) getOrCreateNode(id string) *NodeSession {
 }
 
 // removeNode 移除节点
-func (s *PipelineServer) removeNode(id string) {
+func (s *GamePipelineServer) removeNode(id string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.nodes, id)
 }
 
 // SendPipeline 发送 Pipeline 任务到指定节点
-func (s *PipelineServer) SendPipeline(ctx context.Context, nodeID string, pipeline *proto.GamePipeline) error {
+func (s *GamePipelineServer) SendPipeline(ctx context.Context, nodeID string, pipeline *proto.GamePipeline) error {
 	s.mu.RLock()
 	node, ok := s.nodes[nodeID]
 	s.mu.RUnlock()
@@ -233,7 +233,7 @@ func (s *PipelineServer) SendPipeline(ctx context.Context, nodeID string, pipeli
 }
 
 // SendCancel 发送取消命令到指定节点
-func (s *PipelineServer) SendCancel(ctx context.Context, nodeID string, reason string) error {
+func (s *GamePipelineServer) SendCancel(ctx context.Context, nodeID string, reason string) error {
 	s.mu.RLock()
 	node, ok := s.nodes[nodeID]
 	s.mu.RUnlock()
@@ -248,7 +248,7 @@ func (s *PipelineServer) SendCancel(ctx context.Context, nodeID string, reason s
 }
 
 // UpdatePipelineStatus 更新 Pipeline 状态
-func (s *PipelineServer) UpdatePipelineStatus(ctx context.Context, req *proto.UpdatePipelineStatusRequest) (*proto.UpdatePipelineStatusResponse, error) {
+func (s *GamePipelineServer) UpdatePipelineStatus(ctx context.Context, req *proto.UpdatePipelineStatusRequest) (*proto.UpdatePipelineStatusResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -257,7 +257,7 @@ func (s *PipelineServer) UpdatePipelineStatus(ctx context.Context, req *proto.Up
 }
 
 // UpdateStepStatus 更新步骤状态
-func (s *PipelineServer) UpdateStepStatus(ctx context.Context, req *proto.UpdateStepStatusRequest) (*proto.UpdateStepStatusResponse, error) {
+func (s *GamePipelineServer) UpdateStepStatus(ctx context.Context, req *proto.UpdateStepStatusRequest) (*proto.UpdateStepStatusResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -266,11 +266,11 @@ func (s *PipelineServer) UpdateStepStatus(ctx context.Context, req *proto.Update
 }
 
 // Register 注册 Pipeline 服务到 gRPC 服务器
-func (s *PipelineServer) Register(server *grpc.Server) {
+func (s *GamePipelineServer) Register(server *grpc.Server) {
 	proto.RegisterGamePipelineGRPCServiceServer(server, s)
 }
 
 // Stop 停止服务器
-func (s *PipelineServer) Stop() {
+func (s *GamePipelineServer) Stop() {
 	close(s.stop)
 }
