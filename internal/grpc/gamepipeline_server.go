@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
 	"github.com/open-beagle/beagle-wind-game/internal/proto"
+	"github.com/open-beagle/beagle-wind-game/internal/utils"
 )
 
 const (
@@ -79,12 +79,12 @@ type GamePipelineServer struct {
 
 	mu     sync.RWMutex
 	nodes  map[string]*NodeSession
-	logger *logrus.Logger
+	logger utils.Logger
 	stop   chan struct{}
 }
 
 // NewGamePipelineServer 创建一个新的 Pipeline 服务器
-func NewGamePipelineServer(logger *logrus.Logger) *GamePipelineServer {
+func NewGamePipelineServer(logger utils.Logger) *GamePipelineServer {
 	server := &GamePipelineServer{
 		nodes:  make(map[string]*NodeSession),
 		logger: logger,
@@ -121,7 +121,7 @@ func (s *GamePipelineServer) eventDispatcher() {
 
 // handleSendError 处理发送错误
 func (s *GamePipelineServer) handleSendError(node *NodeSession, err error, msg string) error {
-	s.logger.Errorf("%s: %v", msg, err)
+	s.logger.Error("%s: %v", msg, err)
 	s.removeNode(node.ID)
 	return fmt.Errorf("%s: %w", msg, err)
 }

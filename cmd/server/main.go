@@ -104,7 +104,7 @@ func main() {
 
 	// 初始化存储
 	logger.Info("初始化存储...")
-	gamenodeStore, gamePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, err := initStores(context.Background())
+	gamenodeStore, GamePipelineStore, gamePlatformStore, gameCardStore, gameInstanceStore, err := initStores(context.Background())
 	if err != nil {
 		logger.Fatal("初始化存储失败: %v", err)
 	}
@@ -113,14 +113,14 @@ func main() {
 	// 创建服务实例
 	logger.Info("创建服务实例...")
 	nodeService := service.NewGameNodeService(gamenodeStore)
-	pipelineService := service.NewGamePipelineService(gamePipelineStore)
+	pipelineService := service.NewGamePipelineService(GamePipelineStore)
 	platformService := service.NewGamePlatformService(gamePlatformStore)
 	cardService := service.NewGameCardService(gameCardStore)
 	instanceService := service.NewGameInstanceService(gameInstanceStore)
 
-	// 创建 agent 服务器
+	// 创建 gRPC 服务器
 	logger.Info("创建 gRPC 服务器...")
-	gamenodeServer := grpc.NewGameNodeServer(
+	grpcServer := grpc.NewGRPCServer(
 		nodeService,
 		pipelineService,
 		logger,
@@ -157,10 +157,7 @@ func main() {
 	// 启动 gRPC 服务器
 	go func() {
 		logger.Info("gRPC服务器开始监听 %s", *grpcAddr)
-		opts := &grpc.GameNodeServerOptions{
-			ListenAddr: *grpcAddr,
-		}
-		if err := gamenodeServer.Start(ctx, opts); err != nil {
+		if err := grpcServer.Start(ctx, *grpcAddr); err != nil {
 			errCh <- fmt.Errorf("gRPC服务器运行失败: %v", err)
 		}
 	}()
@@ -186,7 +183,7 @@ func main() {
 
 	// 关闭存储层，确保数据保存
 	logger.Info("正在关闭所有存储...")
-	closeStores(gamenodeStore, gameCardStore, gameInstanceStore, gamePlatformStore, gamePipelineStore)
+	closeStores(gamenodeStore, gameCardStore, gameInstanceStore, gamePlatformStore, GamePipelineStore)
 
 	// 等待一段时间让服务器完成关闭
 	time.Sleep(5 * time.Second)
